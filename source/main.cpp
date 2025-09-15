@@ -8,11 +8,8 @@
 class TestTest : public partest::PartestBase
 {
 	public:
-	TestTest()
-	{
-		setName("TestTest");
-		setDescription("A test class to test the partest framework itself.");
-		
+	TestTest() : PartestBase("TestTest", "A test class to test the partest framework itself.")
+	{		
 		// Example of adding a test
 		partest::TestParams params;
 		params.name = "ExampleTest";

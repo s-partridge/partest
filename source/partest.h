@@ -11,141 +11,47 @@
 #include <vector>
 #include <functional>
 
+#include "partesttypes.h"
+
 namespace partest
 {
-	/**
-	* Enum type representing the status of a test.
-	*
-	* AWAITING - The test is awaiting execution.
-	* RUNNING - The test is currently running.
-	* PASSED - The test passed successfully.
-	* FAILED - The test failed.
-	* MIXED - The test contains both passed and failed sub-tests.
-	* SKIPPED - The test was skipped.
-	*/
-	enum TestStatus
-	{
-		AWAITING = 0,
-		RUNNING,
-		PASSED,
-		FAILED,
-		MIXED,
-		SKIPPED
-	};
+	class TestFrame
+	{		
+		std::vector<TestFrame *> subtests; // Vector of sub-tests
+		TestFrame *m_parent = nullptr; // Pointer to the parent test frame
 
-	/**
-	* Overloaded stream extraction operator for TestStatus enum.
-	*/
-	inline std::istream &operator>>(std::istream &in, TestStatus &status)
-	{
-		std::string statusString;
-		in >> statusString;
-		if(statusString == "AWAITING")
-			status = AWAITING;
-		else if(statusString == "RUNNING")
-			status = RUNNING;
-		else if(statusString == "PASSED")
-			status = PASSED;
-		else if(statusString == "FAILED")
-			status = FAILED;
-		else if(statusString == "MIXED")
-			status = MIXED;
-		else if(statusString == "SKIPPED")
-			status = SKIPPED;
-		else
-			status = AWAITING; // Default to AWAITING for unknown strings
-		return in;
-	}
+	public:
+		TestFrame() {};
+		TestFrame(const TestFrame &) = delete; // Disable copy constructor
+		TestFrame &operator=(const TestFrame &) = delete; // Disable copy assignment
 
-	/**
-	* Overloaded stream insertion operator for TestStatus enum.
-	*/
-	inline std::ostream &operator<<(std::ostream &out, const TestStatus &status)
-	{
-		std::string statusString;
-		switch(status)
+		~TestFrame()
 		{
-		case AWAITING:
-			statusString = "AWAITING";
-			break;
-		case RUNNING:
-			statusString = "RUNNING";
-			break;
-		case PASSED:
-			statusString = "PASSED";
-			break;
-		case FAILED:
-			statusString = "FAILED";
-			break;
-		case MIXED:
-			statusString = "MIXED";
-			break;
-		case SKIPPED:
-			statusString = "SKIPPED";
-			break;
-		default:
-			statusString = "UNKNOWN";
-			break;
+			for(TestFrame *subtest : subtests)
+				if(subtest != nullptr)
+				{
+					delete subtest;
+				}
 		}
-		out << statusString;
-		return out;
-	}
 
-	/**
-	* Struct representing flags for a test.
-	*/
-	struct TestParams
-	{
-		std::string name; // Name of the test
-		std::string description; // Description of the test
-		bool skip = false; // Whether to skip the test
-		bool stopOnFail = false; // Whether to stop execution on failure
-		bool stopSubtestOnFail = false; // Whether to stop subtest execution on failure
-		bool verbose = false; // Whether to run the test in verbose mode
-	};
-
-	struct RunnerState
-	{
-		bool stopOnFail = false; // Whether to stop execution on failure
-		bool stopSubtestOnFail = false; // Whether to stop execution on failure
-		bool verbose = false; // Whether to run tests in verbose mode
+		TestParams parameters; // Test parameters including flags
+		TestResult result; // Result of the test
 
 		/**
-		* Set flags based on TestParams
+		* Add a subtest to the current test frame.
 		* 
-		* @param params The TestParams object containing the flags to set
+		* @param subtest Pointer to the subtest to be added
 		*/
-		void setFlags(const TestParams &params)
+		void addSubtest(std::unique_ptr<TestFrame> &subtest)
 		{
-			stopOnFail = params.stopOnFail;
-			stopSubtestOnFail = params.stopSubtestOnFail;
-			verbose = params.verbose;
+			subtests.push_back(subtest.release());
+			subtests.back()->m_parent = this;
 		}
-	};
-	/**
-	* Struct representing the result of a test.
-	* 
-	* status - The status of the test.
-	* message - A message providing additional information about the test result.
-	*/
-	struct TestResult
-	{
-		// Status of the test
-		TestStatus status;
 
-		// Status of the test
-		std::string testName;
-
-		// Message providing additional information about the test result
-		std::string message;
-
-		TestResult(TestStatus status, std::string testName, const std::string &message) : status(status), testName(testName), message(message) {}
-
-		inline std::ostream &operator<<(std::ostream &out) const
-		{
-			out << "Test '" << testName << "' - Status: " << status << " - Message: " << message;
-			return out;
-		}
+		/**
+		* Get the parent test frame.
+		*/
+		const TestFrame *getParent() const { return m_parent; }
 	};
 
 	/**
@@ -161,8 +67,11 @@ namespace partest
 		RunnerState m_currentState; // Current state of the test runner
 
 		// Vector of test functions and their parameters
-		std::vector<std::pair<TestParams, std::function<TestStatus()>>> tests;
-		std::vector<TestResult> results; // Vector of test results
+		std::vector<std::pair<TestParams, std::function<TestStatus()>>> m_tests;
+		std::unique_ptr<TestFrame> m_testTree; // Dynamically growing tree of test frames
+		std::vector<TestResult> m_results; // Vector of test results
+
+		TestFrame *m_currentFrame; // Pointer to the current test frame
 	protected:
 
 		/** 
@@ -177,7 +86,13 @@ namespace partest
 		*/
 		void addTest(const TestParams &params, const std::function<TestStatus()> &testFunc)
 		{
-			tests.emplace_back(params, testFunc);
+			m_tests.emplace_back(params, testFunc);
+
+			std::unique_ptr<TestFrame> newFrame = std::make_unique<TestFrame>();
+			newFrame->parameters = params;
+			newFrame->result = TestResult(AWAITING, params.name, "Test is awaiting execution.");
+
+			m_testTree->addSubtest(std::move(newFrame));
 		}
 
 		void setRunnerState(const RunnerState &state) { m_currentState = state; }
@@ -203,10 +118,20 @@ namespace partest
 				message += "' is awaiting execution.";
 				break;
 			}
-			results.emplace_back(status, message);
+			m_results.emplace_back(status, message);
 		}
 	public:
-		PartestBase() = default;
+		PartestBase(const std::string &name, const std::string &description) : m_name(name), m_description(description)
+		{
+			// Initialize the root test frame. This frame is not associated with any specific test but serves as the root of the test tree.
+			// Its primary purpose is to contain information such as the overall test suite name and description in the same collection as the individual tests.
+			m_testTree = std::make_unique<TestFrame>();
+			m_testTree->parameters.name = name;
+			m_testTree->parameters.description = description;
+			m_testTree->result = TestResult(AWAITING, name, "Test is awaiting execution.");
+
+			m_currentFrame = m_testTree.get();
+		}
 		virtual ~PartestBase() = default;
 
 		std::string getName() const { return m_name; }
@@ -225,13 +150,28 @@ namespace partest
 		*/
 		virtual void teardown() {}
 
+		bool initializeSubtest(const TestParams &newTestParams)
+		{
+			std::unique_ptr<TestFrame>newSubtest = std::make_unique<TestFrame>();
+			newSubtest->parameters = newTestParams;
+			newSubtest->result = TestResult(AWAITING, newTestParams.name, "Subtest is awaiting execution.");
+
+			m_currentFrame->addSubtest(std::move(newSubtest));
+			return true;
+		}
+
+		bool finalizeSubtest()
+		{
+			return false;
+		}
+
 		void runTests()
 		{
 			// Call setup function
 			setup();
 			
 			// Iterate through all registered tests
-			for(const std::pair<const TestParams &, std::function<TestStatus()>> &test : tests)
+			for(const std::pair<const TestParams &, std::function<TestStatus()>> &test : m_tests)
 			{
 				m_currentState.setFlags(test.first);
 				addResult(test.second(), test.first.name); // Execute the test function and aggregate the result
@@ -246,9 +186,9 @@ namespace partest
 		* 
 		* @return A constant reference to a vector of TestResult objects representing the results of all executed tests.
 		*/
-		const std::vector<TestResult> &getResults() const { return results; }
+		const std::vector<TestResult> &getResults() const { return m_results; }
 	};
 
 } // namespace partest
 
-#endif // TEST_H
+#endif // PARTEST_H
