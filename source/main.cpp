@@ -15,11 +15,24 @@ class TestTest : public partest::PartestBase
 		params.name = "ExampleTest";
 		params.description = "An example test that always passes.";
 		params.verbose = true;
-		addTest(params, [this]() { return this->exampleTest(); });
+		addTest(params, [this]() { return this->exampleTest(3); });
+		addTest(params, [this]() { return this->exampleTest(6); });
 	}
-	partest::TestStatus exampleTest()
+	partest::TestStatus exampleTest(int testValue)
 	{
 		std::cout << "Running example test..." << std::endl;
+		
+		//Begin subtest somehow
+
+		// Formalized assertions will go here
+		if(testValue != 3)
+			return partest::FAILED;
+
+		//End subtest somehow
+		//Begin next subtest somehow
+		// ...
+		//End next subtest somehow
+
 		return partest::PASSED;
 	}
 	void setup() override
