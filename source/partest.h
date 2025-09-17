@@ -32,7 +32,7 @@ namespace partest
 
 	class TestFrame
 	{		
-		std::vector<TestFrame *> subtests; // Vector of sub-tests
+		std::vector<TestFrame *> m_subtests; // Vector of sub-tests
 		TestFrame *m_parent = nullptr; // Pointer to the parent test frame
 
 	public:
@@ -48,7 +48,7 @@ namespace partest
 
 		~TestFrame()
 		{
-			for(TestFrame *subtest : subtests)
+			for(TestFrame *subtest : m_subtests)
 				if(subtest != nullptr)
 				{
 					delete subtest;
@@ -66,10 +66,10 @@ namespace partest
 		*/
 		TestFrame *addSubtest(std::unique_ptr<TestFrame> &subtest)
 		{
-			subtests.push_back(subtest.release());
-			subtests.back()->m_parent = this;
+			m_subtests.push_back(subtest.release());
+			m_subtests.back()->m_parent = this;
 
-			return subtests.back();
+			return m_subtests.back();
 		}
 
 		/**
