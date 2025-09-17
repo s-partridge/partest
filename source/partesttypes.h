@@ -163,17 +163,29 @@ namespace partest
 
 		void updateStatus(const TestStatus &assertResult)
 		{
-			if(status == PASSED && assertResult == FAILED)
-			{
-				status = MIXED;
-			}
-			else if(status == FAILED && assertResult == PASSED)
-			{
-				status = MIXED;
-			}
-			else
+			// Update the status based on the new assertion result
+			if(status == AWAITING)
 			{
 				status = assertResult;
+			}
+			// If already passed or failed, update to mixed if the new result differs
+			else if(status == PASSED && assertResult == FAILED
+				 || status == FAILED && assertResult == PASSED)
+			{
+				status = MIXED;
+			}
+			// Mixed results remain mixed, skipped tests remain skipped
+			else if(status == MIXED || status == SKIPPED)
+			{}
+			// If currently running, set to the new result
+			else if(status == RUNNING)
+			{
+				status = assertResult;
+			}
+			// Unknown state, set to AWAITING
+			else
+			{
+				status = AWAITING;
 			}
 		}
 
