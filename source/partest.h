@@ -34,11 +34,13 @@ namespace partest
 	{		
 		std::vector<TestFrame *> m_subtests; // Vector of sub-tests
 		TestFrame *m_parent = nullptr; // Pointer to the parent test frame
+		
+		std::function<void()> m_testFunction = nullptr; // Test function associated with this frame
 
 	public:
 		TestFrame() : flags(), metadata(), result() {}
-		TestFrame(const TestFlags &flags, const TestInfo &metadata, const TestResult &result)
-			: flags(flags), metadata(metadata), result(result) { }
+		TestFrame(const TestFlags &flags, const TestInfo &metadata, const TestResult &result, const std::function<void()> &testFunction = nullptr)
+			: flags(flags), metadata(metadata), result(result), m_testFunction(testFunction) { }
 	
 		// Nothing should be moving or copying TestFrame instances. They exist as part of a tree structure managed by PartestBase.
 		TestFrame(const TestFrame &) = delete; // Disable copy constructor
@@ -78,6 +80,29 @@ namespace partest
 		TestFrame *getParent() const { return m_parent; }
 
 		/**
+		* Iterator access for subtests
+		*/
+		std::vector<TestFrame *>::iterator subtestsBegin() { return m_subtests.begin(); }
+		std::vector<TestFrame *>::iterator subtestsEnd() { return m_subtests.end(); }
+		size_t subtestCount() const { return m_subtests.size(); }
+		std::vector<TestFrame *>::const_iterator subtestsBegin() const { return m_subtests.cbegin(); }
+		std::vector<TestFrame *>::const_iterator subtestsEnd() const { return m_subtests.cend(); }
+
+		bool hasTestFunction() const { return m_testFunction != nullptr; }
+
+		void runTestFunction()
+		{
+			if(m_testFunction != nullptr)
+			{
+				m_testFunction();
+			}
+			else
+			{
+				throw std::runtime_error("Attempted to run a test function that is not set.");
+			}
+		}
+
+		/**
 		* Get the effective flags for this test frame, resolving any INHERIT values from parent frames.
 		* 
 		* @return The effective TestFlags for this test frame.
@@ -105,8 +130,6 @@ namespace partest
 	class PartestBase
 	{
 	private:
-		// Vector of test functions and their parameters
-		std::vector<std::pair<TestFrame *, std::function<void()>>> m_tests;
 		std::unique_ptr<TestFrame> m_testTree; // Dynamically growing tree of test frames
 		std::vector<TestResult> m_results; // Vector of test results
 
@@ -127,13 +150,11 @@ namespace partest
 		*/
 		void addTest(const TestInfo metadata, const TestFlags &flags, const std::function<void()> &testFunc)
 		{
-			std::unique_ptr<TestFrame> newFrame = std::make_unique<TestFrame>(flags, metadata, TestResult::defaultResult());
+			std::unique_ptr<TestFrame> newFrame = std::make_unique<TestFrame>(flags, metadata, TestResult::defaultResult(), testFunc);
 
 			// Add the new test frame as a subtest of the root test frame
 			// Adding it to the root ensures that all tests are organized under a single parent, simplifying management and execution
-			TestFrame *baseTestFrame = m_testTree->addSubtest(std::move(newFrame));
-
-			m_tests.emplace_back(baseTestFrame, testFunc);
+			m_testTree->addSubtest(std::move(newFrame));
 		}
 
 		void addResult(const TestStatus &status, const std::string &testName)
@@ -237,12 +258,13 @@ namespace partest
 			setup();
 			
 			// Iterate through all registered tests
-			for(const std::pair<TestFrame *, std::function<void()>> &test : m_tests)
+			for(std::vector<TestFrame*>::iterator test = m_testTree->subtestsBegin(); test != m_testTree->subtestsEnd(); ++test)
 			{
 				// Set the current frame to the test being executed
-				m_currentFrame = test.first;
+				m_currentFrame = *test;
 				// Execute the test function and aggregate the result
-				test.second();
+				m_currentFrame->runTestFunction();
+
 				addResult(m_currentFrame->result.status, m_currentFrame->metadata.name);
 			}
 
