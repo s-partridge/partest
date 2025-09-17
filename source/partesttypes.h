@@ -17,7 +17,7 @@ namespace partest
 	* MIXED - The test contains both passed and failed sub-tests.
 	* SKIPPED - The test was skipped.
 	*/
-	enum TestStatus
+	enum TestStatus : uint8_t
 	{
 		AWAITING = 0,
 		RUNNING,
@@ -25,6 +25,163 @@ namespace partest
 		FAILED,
 		MIXED,
 		SKIPPED
+	};
+
+	/**
+	* Enum type representing the state of a flag.
+	* 
+	* INHERIT - The flag state is inherited from a higher level (e.g., global or suite level).
+	* ENABLED - The flag is explicitly enabled.
+	* DISABLED - The flag is explicitly disabled.
+	* MASKED - The flag state is not changed (used for internal purposes).
+	*/
+	enum FlagState : uint8_t
+	{
+		DISABLED = 0,
+		ENABLED,
+		INHERIT,
+		MASKED
+	};
+
+	/**
+	* Flags that can be set for individual tests
+	*/
+	struct TestFlags
+	{
+		FlagState skip : 2; // Whether to skip the test
+		FlagState stopOnFail : 2; // Whether to stop execution on failure
+		FlagState stopSubtestOnFail : 2; // Whether to stop subtest execution on failure
+		FlagState verbose : 2; // Whether to run the test in verbose mode
+
+		TestFlags() : skip(DISABLED), stopOnFail(INHERIT), stopSubtestOnFail(INHERIT), verbose(INHERIT) {}
+		TestFlags(FlagState skip, FlagState stopOnFail, FlagState stopSubtestOnFail, FlagState verbose) : skip(skip), stopOnFail(stopOnFail), stopSubtestOnFail(stopSubtestOnFail), verbose(verbose) {}
+
+		/**
+		* Get a TestFlags instance with all flags set to DISABLED
+		*/
+		static inline TestFlags defaultDisabled() { return TestFlags(DISABLED, DISABLED, DISABLED, DISABLED); }
+		/**
+		* Get a TestFlags instance with all flags set to INHERIT
+		*/
+		static inline TestFlags defaultInherit() { return TestFlags(INHERIT, INHERIT, INHERIT, INHERIT); }
+		
+		/**
+		* Get a TestFlags instance with all flags set to MASKED. Used for internal purposes.
+		*/
+		static inline TestFlags defaultMasked() { return TestFlags(MASKED, MASKED, MASKED, MASKED); }
+
+		/**
+		* Default copy assignment operator.
+		*/
+		inline TestFlags &operator=(const TestFlags &other) = default;
+
+		/**
+		* Set flags from another TestFlags instance, ignoring MASKED values
+		* 
+		* @param other The TestFlags instance to copy flags from. Expects MASKED values to be ignored.
+		*/
+		inline void setFlags(const TestFlags &other)
+		{
+			if(other.skip != MASKED)
+				skip = other.skip;
+			if(other.stopOnFail != MASKED)
+				stopOnFail = other.stopOnFail;
+			if(other.stopSubtestOnFail != MASKED)
+				stopSubtestOnFail = other.stopSubtestOnFail;
+			if(other.verbose != MASKED)
+				verbose = other.verbose;
+		}
+
+		/**
+		* Get effective flags by resolving INHERIT values from parent flags
+		* If a flag is set to INHERIT, it takes the value from the parentFlags instance.
+		* 
+		* @param parentFlags The parent TestFlags instance to inherit from
+		* @return A new TestFlags instance with all INHERIT values resolved
+		*/
+		inline TestFlags getEffectiveFlags(const TestFlags &parentFlags) const
+		{
+			TestFlags effectiveFlags = *this;
+			if(effectiveFlags.skip == INHERIT)
+				effectiveFlags.skip = parentFlags.skip;
+			if(effectiveFlags.stopOnFail == INHERIT)
+				effectiveFlags.stopOnFail = parentFlags.stopOnFail;
+			if(effectiveFlags.stopSubtestOnFail == INHERIT)
+				effectiveFlags.stopSubtestOnFail = parentFlags.stopSubtestOnFail;
+			if(effectiveFlags.verbose == INHERIT)
+				effectiveFlags.verbose = parentFlags.verbose;
+			return effectiveFlags;
+		}
+
+		/**
+		* Check if all flags are resolved (i.e., none are set to INHERIT or MASKED)
+		*/
+		inline bool isResolved() const
+		{
+			return skip < INHERIT && stopOnFail < INHERIT && stopSubtestOnFail < INHERIT && verbose < INHERIT;
+		}
+	};
+
+	/**
+	* Parameters passed to an individual test
+	*/
+	struct TestInfo
+	{
+		std::string name; // Name of the test
+		std::string description; // Description of the test
+		TestInfo() : name(""), description("") {}
+		TestInfo(const std::string &name, const std::string &description) : name(name), description(description) {}
+
+		/**
+		* Get a TestInfo instance with default (empty) values
+		*/
+		static inline TestInfo defaultInfo() { return TestInfo("", ""); }
+	};
+
+	/**
+	* Struct representing the result of a test.
+	* 
+	* status - The status of the test.
+	* message - A message providing additional information about the test result.
+	*/
+	struct TestResult
+	{
+		// Status of the test
+		TestStatus status;
+
+		// Message providing additional information about the test result
+		std::string message;
+
+		// Constructors
+		TestResult() : status(AWAITING), message("") {}
+		TestResult(TestStatus status, const std::string &message) : status(status), message(message) {}
+
+		/**
+		* Get a TestResult instance with default values (AWAITING status and empty message)
+		*/
+		static inline TestResult defaultResult() { return TestResult(AWAITING, ""); }
+
+		void updateStatus(const TestStatus &assertResult)
+		{
+			if(status == PASSED && assertResult == FAILED)
+			{
+				status = MIXED;
+			}
+			else if(status == FAILED && assertResult == PASSED)
+			{
+				status = MIXED;
+			}
+			else
+			{
+				status = assertResult;
+			}
+		}
+
+		inline std::ostream &operator<<(std::ostream &out) const
+		{
+			out << "' - Status: " << status << " - Message: " << message;
+			return out;
+		}
 	};
 
 	/**
@@ -86,60 +243,43 @@ namespace partest
 	}
 
 	/**
-	* Struct representing flags for a test.
+	* Overloaded stream extraction operator for FlagState enum.
 	*/
-	struct TestParams
+	inline std::istream &operator>>(std::istream &in, FlagState &state)
 	{
-		std::string name; // Name of the test
-		std::string description; // Description of the test
-		bool skip = false; // Whether to skip the test
-		bool stopOnFail = false; // Whether to stop execution on failure
-		bool stopSubtestOnFail = false; // Whether to stop subtest execution on failure
-		bool verbose = false; // Whether to run the test in verbose mode
-	};
+		std::string stateString;
+		in >> stateString;
+		if(stateString == "INHERIT")
+			state = INHERIT;
+		else if(stateString == "ENABLED")
+			state = ENABLED;
+		else if(stateString == "DISABLED")
+			state = DISABLED;
+		else
+			state = INHERIT; // Default to INHERIT for unknown strings
+		return in;
+	}
 
-	struct RunnerState
-	{
-		bool stopOnFail = false; // Whether to stop execution on failure
-		bool stopSubtestOnFail = false; // Whether to stop execution on failure
-		bool verbose = false; // Whether to run tests in verbose mode
-
-		/**
-		* Set flags based on TestParams
-		* 
-		* @param params The TestParams object containing the flags to set
-		*/
-		void setFlags(const TestParams &params)
-		{
-			stopOnFail = params.stopOnFail;
-			stopSubtestOnFail = params.stopSubtestOnFail;
-			verbose = params.verbose;
-		}
-	};
 	/**
-	* Struct representing the result of a test.
-	* 
-	* status - The status of the test.
-	* message - A message providing additional information about the test result.
+	* Overloaded stream insertion operator for FlagState enum.
 	*/
-	struct TestResult
+	inline std::ostream &operator<<(std::ostream &out, const FlagState &state)
 	{
-		// Status of the test
-		TestStatus status;
-
-		// Status of the test
-		std::string testName;
-
-		// Message providing additional information about the test result
-		std::string message;
-
-		TestResult(TestStatus status = TestStatus::AWAITING, std::string testName = "", const std::string &message = "") : status(status), testName(testName), message(message) {}
-
-		inline std::ostream &operator<<(std::ostream &out) const
+		std::string stateString;
+		switch(state)
 		{
-			out << "Test '" << testName << "' - Status: " << status << " - Message: " << message;
-			return out;
+		case ENABLED:
+			stateString = "ENABLED";
+			break;
+		case DISABLED:
+			stateString = "DISABLED";
+			break;
+		default:
+			stateString = "INHERIT";
+			break;
 		}
-	};
+		out << stateString;
+		return out;
+	}
 }
 #endif // PARTESTTYPES_H

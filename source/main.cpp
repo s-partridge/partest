@@ -11,29 +11,28 @@ class TestTest : public partest::PartestBase
 	TestTest() : PartestBase("TestTest", "A test class to test the partest framework itself.")
 	{		
 		// Example of adding a test
-		partest::TestParams params;
-		params.name = "ExampleTest";
-		params.description = "An example test that always passes.";
-		params.verbose = true;
-		addTest(params, [this]() { return this->exampleTest(3); });
-		addTest(params, [this]() { return this->exampleTest(6); });
+		partest::TestInfo metadata("ExampleTest", "An example test that always passes.");
+		
+		partest::TestFlags flags = partest::TestFlags::defaultInherit();
+		flags.verbose = partest::FlagState::ENABLED;
+
+		addTest(metadata, flags, [this]() { return this->exampleTest(3); });
+		addTest(metadata, flags, [this]() { return this->exampleTest(6); });
 	}
-	partest::TestStatus exampleTest(int testValue)
+	void exampleTest(int testValue)
 	{
 		std::cout << "Running example test..." << std::endl;
 		
-		//Begin subtest somehow
-
-		// Formalized assertions will go here
-		if(testValue != 3)
-			return partest::FAILED;
-
-		//End subtest somehow
-		//Begin next subtest somehow
-		// ...
-		//End next subtest somehow
-
-		return partest::PASSED;
+		SUBTEST(partest::TestInfo("Subtest1", "A subtest that checks if testValue is 3."), partest::TestFlags::defaultInherit())
+		{
+			// Subtest logic here
+			ASSERT_TRUE(testValue == 3);
+		}
+		SUBTEST(partest::TestInfo("Subtest2", "A subtest that checks if testValue is 6."), partest::TestFlags::defaultInherit())
+		{
+			// Subtest logic here
+			ASSERT_TRUE(testValue == 6);
+		}
 	}
 	void setup() override
 	{
