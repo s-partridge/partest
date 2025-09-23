@@ -14,7 +14,7 @@
 #include "partesttypes.h"
 
 /**
-* Macro to define a subtest block with specific flags. Must be used within a TestFrame context.
+* Macro to define a subtest block with specific flags. Must be called within a TestFrame context.
 *
 * @param testInfo Metadata for the subtest, including name and description. Use TestInfo::defaultInfo() for default values.
 * @param flags Flags specific to this subtest, which can override global or current flags. Use TestFlags::defaultInherit() to inherit all flags.
@@ -22,7 +22,7 @@
 #define SUBTEST(testInfo, flags) for(bool _subtest_once = initializeSubtest(flags, testInfo); _subtest_once; _subtest_once = finalizeSubtest())
 
 /**
-* Basic assertion macro for use within tests. Must be used within a TestFrame context.
+* Basic assertion macro for use within tests. Must be called within a TestFrame context.
 */
 #define ASSERT_TRUE(condition) updateTestStatus((condition) ? partest::PASSED : partest::FAILED)
 
