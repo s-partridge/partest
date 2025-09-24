@@ -13,29 +13,37 @@ public:
 		// Example of adding a test
 		partest::TestInfo metadata("ExampleTest", "An example test that always passes.");
 		
-		partest::TestFlags flags = partest::TestFlags::defaultInherit();
-		flags.verbose = partest::FlagState::ENABLED;
+		partest::TestFlags flags = partest::TEST_FLAGS_SKIP;
 
 		addTest(metadata, flags, [this]() { return this->exampleTest(3); });
 		addTest(metadata, flags, [this]() { return this->exampleTest(6); });
 
-		addTest(partest::TestInfo("FailingTest", "A test that always fails."), partest::TestFlags::defaultInherit(), [this]() { return this->exampleFailingTest(); });
-		addTest(partest::TestInfo("MixedTest", "A test that has mixed results."), partest::TestFlags::defaultInherit(), [this]() { return this->exampleMixedTest(); });
-		addTest(partest::TestInfo("PassedTest", "A test that always passes."), partest::TestFlags::defaultInherit(), [this]() { return this->examplePassedTest(); });
-		addTest(partest::TestInfo("NestedNestedTest", "A test with nested subtests."), partest::TestFlags::defaultInherit(), [this]() { return this->exampleNestedNestedTest(); });
+		addTest(partest::TestInfo("FailingTest", "A test that always fails."),
+			flags,
+			[this]() { return this->exampleFailingTest(); });
+		addTest(partest::TestInfo("MixedTest", "A test that has mixed results."),
+			flags,
+			[this]() { return this->exampleMixedTest(); });
+		addTest(partest::TestInfo("PassedTest", "A test that always passes."),
+			flags,
+			[this]() { return this->examplePassedTest(); });
+		addTest(partest::TestInfo("NestedNestedTest", "A test with nested subtests."),
+			flags,
+			[this]() { return this->exampleNestedNestedTest(); });
+		addTest(partest::TestInfo("TestWithStopOnFail", "A test with stopOnFail enabled."), partest::TEST_FLAGS_INHERIT, [this]() { return this->exampleTestWithStopOnFail(); });
 	}
 
 	void exampleTest(int testValue)
 	{
 		std::cout << "Running example test..." << std::endl;
 
-		SUBTEST(partest::TestInfo("Subtest1", "A subtest that checks if testValue is 3."), partest::TestFlags::defaultInherit())
+		SUBTEST(partest::TestInfo("Subtest1", "A subtest that checks if testValue is 3."), partest::TEST_FLAGS_INHERIT)
 		{
 			// Subtest logic here
 			ASSERT_TRUE(testValue == 3);
 		}END_SUBTEST();
 
-		SUBTEST(partest::TestInfo("Subtest2", "A subtest that checks if testValue is 6."), partest::TestFlags::defaultInherit())
+		SUBTEST(partest::TestInfo("Subtest2", "A subtest that checks if testValue is 6."), partest::TEST_FLAGS_INHERIT)
 		{
 			// Subtest logic here
 			ASSERT_TRUE(testValue == 6);
@@ -65,20 +73,20 @@ public:
 		
 		std::cout << "Current test status: " << getCurrentFrame().result.status << std::endl;
 
-		SUBTEST(partest::TestInfo("NestedSubtest1", "A nested subtest that always passes."), partest::TestFlags::defaultInherit())
+		SUBTEST(partest::TestInfo("NestedSubtest1", "A nested subtest that always passes."), partest::TEST_FLAGS_INHERIT)
 		{
 			std::cout << "Running NestedSubtest1..." << std::endl;
 
 			std::cout << "Subtest status initial: " << getCurrentFrame().result.status << std::endl;
 			ASSERT_TRUE(true); // This assertion will pass
 			std::cout << "Current subtest status: " << getCurrentFrame().result.status << std::endl;
-			SUBTEST(partest::TestInfo("NestedSubtest1.1", "A nested subtest that always fails."), partest::TestFlags::defaultInherit())
+			SUBTEST(partest::TestInfo("NestedSubtest1.1", "A nested subtest that always fails."), partest::TEST_FLAGS_INHERIT)
 			{
 				ASSERT_TRUE(false); // This assertion will fail
 			}END_SUBTEST();
 
 			std::cout << "Current subtest status: " << getCurrentFrame().result.status << std::endl;
-			SUBTEST(partest::TestInfo("NestedSubtest1.2", "A nested subtest that always passes."), partest::TestFlags::defaultInherit())
+			SUBTEST(partest::TestInfo("NestedSubtest1.2", "A nested subtest that always passes."), partest::TEST_FLAGS_INHERIT)
 			{
 				ASSERT_TRUE(true); // This assertion will pass
 			}END_SUBTEST();
@@ -86,7 +94,7 @@ public:
 			std::cout << "Current subtest status: " << getCurrentFrame().result.status << std::endl;
 		}END_SUBTEST();
 
-		SUBTEST(partest::TestInfo("NestedSubtest2", "A nested subtest that always passes."), partest::TestFlags::defaultInherit())
+		SUBTEST(partest::TestInfo("NestedSubtest2", "A nested subtest that always passes."), partest::TEST_FLAGS_INHERIT)
 		{
 			std::cout << "Running NestedSubtest1..." << std::endl;
 
@@ -96,6 +104,36 @@ public:
 		}END_SUBTEST();
 
 		std::cout << "Current test status: " << getCurrentFrame().result.status << std::endl;
+	}
+
+	void exampleTestWithStopOnFail()
+	{
+		std::cout << "Running example test with stopOnFail..." << std::endl;
+
+		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
+		flags.stopOnFail = partest::FlagState::ENABLED;
+
+		SUBTEST(partest::TestInfo("Subtest1", "A subtest that checks if 1 + 1 == 2."), flags)
+		{
+			// This assertion will pass
+			ASSERT_TRUE(1 + 1 == 2);
+		}END_SUBTEST();
+		SUBTEST(partest::TestInfo("Subtest2", "A subtest that checks if 2 + 2 == 5."), flags)
+		{
+			SUBTEST(partest::TestInfo("NestedSubtest", "A nested subtest that checks if 2 + 2 == 4."), flags)
+			{
+				// This assertion will fail
+				ASSERT_TRUE(2 + 2 == 5);
+			}END_SUBTEST();
+
+			// This assertion will pass, if it is hit, which it shouldn't be if stopOnFail is ENABLED.
+			ASSERT_TRUE(2 + 2 == 4);
+		}END_SUBTEST();
+		SUBTEST(partest::TestInfo("Subtest3", "A subtest that checks if 3 + 3 == 6."), flags)
+		{
+			// This assertion will pass, but may not be reached if stopOnFail is ENABLED in Subtest2
+			ASSERT_TRUE(3 + 3 == 6);
+		}END_SUBTEST();
 	}
 
 	void setup() override

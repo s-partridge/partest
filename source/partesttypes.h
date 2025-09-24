@@ -342,5 +342,17 @@ namespace partest
 		out << stateString;
 		return out;
 	}
+
+	/**
+	* Default flag constants for easy reference
+	*/
+	// Enable all flags
+	const TestFlags TEST_FLAGS_DISABLED = TestFlags::TestFlags(FlagState::DISABLED, FlagState::DISABLED, FlagState::DISABLED, FlagState::DISABLED);
+	// Inherit all flags from parent test
+	const TestFlags TEST_FLAGS_INHERIT = TestFlags::TestFlags(FlagState::INHERIT, FlagState::INHERIT, FlagState::INHERIT, FlagState::INHERIT);
+	// Mask all flags (used for internal purposes)
+	const TestFlags TEST_FLAGS_MASKED = TestFlags::TestFlags(FlagState::MASKED, FlagState::MASKED, FlagState::MASKED, FlagState::MASKED);
+	// Set flags to skip the test
+	const TestFlags TEST_FLAGS_SKIP = TestFlags::TestFlags(FlagState::ENABLED, FlagState::INHERIT, FlagState::INHERIT, FlagState::INHERIT);
 }
 #endif // PARTESTTYPES_H

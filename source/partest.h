@@ -21,13 +21,14 @@
 */
 #define SUBTEST(testInfo, flags) do \
 	{ \
-		initializeSubtest(flags, testInfo); \
-		try
+		if(initializeSubtest(flags, testInfo)) \
+		{ \
+			try
 
 #define END_SUBTEST() catch (const partest::AssertionFailure &e) { } \
+		} \
 		finalizeSubtest(); \
 	} while(0)
-
 
 // Example expansion of SUBTEST and END_SUBTEST macros
 /**
@@ -36,22 +37,25 @@ void hardCodedSubtest(const TestFlags& flags = TestFlags::defaultInherit(), cons
 	// SUBTEST() macro expansion
 	do {
 		// Enter a new subtest context with the specified flags and metadata
-		initializeSubtest(testInfo, flags);
-		try
-		// Subtest code goes here, including braces the same as a branch or loop.
-		// Single line subtests can (but probably shouldn't) omit braces, but multi-line subtests must include them.
+		// If initialization fails (e.g., due to skip flag), exit the subtest early.
+		if(initializeSubtest(flags, testInfo))
 		{
+			try
+			// Subtest code goes here, including braces the same as a branch or loop.
+			// Single line subtests can (but probably shouldn't) omit braces, but multi-line subtests must include them.
+			{
 		
-		}
+			}
 	// END_SUBTEST() macro expansion
-		// Catch assertion failures to prevent them from propagating outside the subtest.
-		// Assertion failures are only thrown by ASSERT macros, and only when stopOnFail is enabled.
-		catch(const partest::AssertionFailure &e) {	}
+			// Catch assertion failures to prevent them from propagating outside the subtest.
+			// Assertion failures are only thrown by ASSERT macros, and only when stopOnFail is enabled.
+			catch(const partest::AssertionFailure &e) {	}
+		}
 		// Fall out of the current subtest and restore parent test frame.
+		// Finalize happens whether initialization succeeded or not.
 		finalizeSubtest();
 	} while(0);
-}
-*/
+}*/
 
 /**
 * Basic assertion macro for use within tests. Must be called within a TestFrame context.
@@ -292,10 +296,24 @@ namespace partest
 		* @param newFlags Flags specific to this subtest, which can override global or current flags. Use TestFlags::defaultInherit() to inherit all flags.
 		* @param newMetadata Metadata for the subtest, including name and description. Use TestInfo::defaultInfo() for default values.
 		*/
-		void initializeSubtest(const TestFlags& newFlags = TestFlags::defaultInherit(), const TestInfo &newMetadata = TestInfo::defaultInfo())
+		bool initializeSubtest(const TestFlags& newFlags = TestFlags::defaultInherit(), const TestInfo &newMetadata = TestInfo::defaultInfo())
 		{
 			std::unique_ptr<TestFrame>newSubtest = std::make_unique<TestFrame>(newFlags, newMetadata, TestResult::defaultResult());
+
+			// If effective flags indicate the test should be skipped, mark it as skipped immediately
 			m_currentFrame = m_currentFrame->addSubtest(std::move(newSubtest));
+
+		    if(m_currentFrame->getEffectiveFlags().skip == ENABLED)
+			{
+				m_currentFrame->result.status = SKIPPED;
+				return false;
+			}
+			else
+			{
+				m_currentFrame->result.status = RUNNING;
+			}
+
+			return true;
 		}
 
 		/**
@@ -316,6 +334,8 @@ namespace partest
 
 		/**
 		* Finalize the current subtest and return to the parent test frame.
+		* 
+		* @throws TestIntegrityFailure if the current frame has no parent (i.e., is the root frame).
 		*/
 		void finalizeSubtest()
 		{
@@ -327,7 +347,7 @@ namespace partest
 			}
 			else
 			{
-				std::cerr << "Warning: Attempted to finalize subtest but already at root test frame." << std::endl;
+				throw TestIntegrityFailure("Error: Unrecoverable error in test framework. Attempted to finalize a subtest with no parent. Current frame: " + m_currentFrame->metadata.name + ".");
 			}
 		}
 
@@ -345,12 +365,20 @@ namespace partest
 			{
 				// Set the current frame to the test being executed
 				m_currentFrame = *test;
+
+				// If the test is marked to be skipped, update its status and continue to the next test
+				if(m_currentFrame->getEffectiveFlags().skip == ENABLED)
+				{
+					m_currentFrame->result.status = SKIPPED;
+					addResult(m_currentFrame->result.status, m_currentFrame->metadata.name);
+					continue;
+				}
 				try
 				{
 					// Execute the test function and aggregate the result
+					m_currentFrame->result.status = RUNNING;
 					m_currentFrame->runTestFunction();
 				}
-
 				// A test returned early due to an assertion failure with stopOnFail enabled.
 				// Nothing special to do here, but this is necessary to prevent the exception from propagating further.
 				catch(const partest::AssertionFailure &e) {	}
