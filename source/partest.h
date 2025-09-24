@@ -19,12 +19,45 @@
 * @param testInfo Metadata for the subtest, including name and description. Use TestInfo::defaultInfo() for default values.
 * @param flags Flags specific to this subtest, which can override global or current flags. Use TestFlags::defaultInherit() to inherit all flags.
 */
-#define SUBTEST(testInfo, flags) for(bool _subtest_once = initializeSubtest(flags, testInfo); _subtest_once; _subtest_once = finalizeSubtest())
+#define SUBTEST(testInfo, flags) do \
+	{ \
+		initializeSubtest(flags, testInfo); \
+		try
+
+#define END_SUBTEST() catch (const partest::AssertionFailure &e) { } \
+		finalizeSubtest(); \
+	} while(0)
+
+
+// Example expansion of SUBTEST and END_SUBTEST macros
+/**
+void hardCodedSubtest(const TestFlags& flags = TestFlags::defaultInherit(), const TestInfo &testInfo = TestInfo::defaultInfo())
+{
+	// SUBTEST() macro expansion
+	do {
+		// Enter a new subtest context with the specified flags and metadata
+		initializeSubtest(testInfo, flags);
+		try
+		// Subtest code goes here, including braces the same as a branch or loop.
+		// Single line subtests can (but probably shouldn't) omit braces, but multi-line subtests must include them.
+		{
+		
+		}
+	// END_SUBTEST() macro expansion
+		// Catch assertion failures to prevent them from propagating outside the subtest.
+		// Assertion failures are only thrown by ASSERT macros, and only when stopOnFail is enabled.
+		catch(const partest::AssertionFailure &e) {	}
+		// Fall out of the current subtest and restore parent test frame.
+		finalizeSubtest();
+	} while(0);
+}
+*/
 
 /**
 * Basic assertion macro for use within tests. Must be called within a TestFrame context.
 */
-#define ASSERT_TRUE(condition) updateTestStatus((condition) ? partest::PASSED : partest::FAILED)
+#define ASSERT_TRUE(condition) updateTestStatus((condition) ? partest::PASSED : partest::FAILED); \
+	maybeRaiseForCurrentTest(__FILE__, __LINE__, #condition);
 
 namespace partest
 {
@@ -76,6 +109,8 @@ namespace partest
 
 		/**
 		* Get the parent test frame.
+		* 
+		* @return non-owning pointer to the parent TestFrame, or nullptr if this is the root frame.
 		*/
 		TestFrame *getParent() const { return m_parent; }
 
@@ -90,6 +125,11 @@ namespace partest
 
 		bool hasTestFunction() const { return m_testFunction != nullptr; }
 
+		/**
+		* Run the test function associated with this test frame, if one is set.
+		*
+		* @throws std::runtime_error if no test function is set.
+		*/
 		void runTestFunction()
 		{
 			if(m_testFunction != nullptr)
@@ -195,6 +235,26 @@ namespace partest
 		TestFlags getCurrentFlags() const { return m_currentFrame->getEffectiveFlags(); }
 		void updateTestStatus(TestStatus result) { m_currentFrame->result.updateStatus(result); }
 
+		
+		/**
+		* Finalize the current test frame and return to the specified target frame. Called internally on improper test completion, such as unexpected exceptions.
+		* 
+		* @param targetFrame The target TestFrame to finalize to. Typically the parent of the current frame.
+		* @throws TestIntegrityFailure if unable to finalize to the target frame.
+		*/
+		void finalizeToFrame(const TestFrame *targetFrame)
+		{
+			while(m_currentFrame != targetFrame)
+			{
+				finalizeSubtest();
+
+				if(m_currentFrame == nullptr || m_currentFrame == m_testTree.get())
+				{
+					throw TestIntegrityFailure("Error: Unrecoverable error in test framework. Could not finalize to target frame " + targetFrame->metadata.name + ".");
+				}
+			}
+		}
+
 	public:
 		PartestBase(const std::string &name, const std::string &description, const TestFlags &flags = TestFlags::defaultDisabled())
 		{
@@ -226,16 +286,38 @@ namespace partest
 		*/
 		virtual void teardown() {}
 
-		bool initializeSubtest(const TestFlags& newFlags = TestFlags::defaultInherit(), const TestInfo &newMetadata = TestInfo::defaultInfo())
+		/**
+		* Initialize a new subtest within the current test frame.
+		* 
+		* @param newFlags Flags specific to this subtest, which can override global or current flags. Use TestFlags::defaultInherit() to inherit all flags.
+		* @param newMetadata Metadata for the subtest, including name and description. Use TestInfo::defaultInfo() for default values.
+		*/
+		void initializeSubtest(const TestFlags& newFlags = TestFlags::defaultInherit(), const TestInfo &newMetadata = TestInfo::defaultInfo())
 		{
 			std::unique_ptr<TestFrame>newSubtest = std::make_unique<TestFrame>(newFlags, newMetadata, TestResult::defaultResult());
 			m_currentFrame = m_currentFrame->addSubtest(std::move(newSubtest));
-
-			// Always return true to ensure the for loop in the SUBTEST macro executes exactly once
-			return true;
 		}
 
-		bool finalizeSubtest()
+		/**
+		* Check if the current test should raise an assertion failure based on its status and flags. Used in ASSERT macros.
+		* 
+		* @param file The file where the assertion is being checked. Typically provided by the __FILE__ macro.
+		* @param line The line number where the assertion is being checked. Typically provided by the __LINE__ macro.
+		* @param condition The condition being asserted, as a string. Typically provided by the condition expression itself.
+		* @throws AssertionFailure if the current test has failed and stopOnFail is enabled.
+		*/
+		void maybeRaiseForCurrentTest(const char *file, int line, const std::string &condition)
+		{
+			if(m_currentFrame->getEffectiveFlags().stopOnFail == ENABLED && m_currentFrame->result.status == FAILED)
+			{
+				throw AssertionFailure(file, line, "Assertion failed: " + condition + " in test '" + m_currentFrame->metadata.name + "'.");
+			}
+		}
+
+		/**
+		* Finalize the current subtest and return to the parent test frame.
+		*/
+		void finalizeSubtest()
 		{
 			if(m_currentFrame->getParent() != nullptr)
 			{
@@ -247,11 +329,12 @@ namespace partest
 			{
 				std::cerr << "Warning: Attempted to finalize subtest but already at root test frame." << std::endl;
 			}
-
-			// Always return false to ensure the for loop in the SUBTEST macro executes exactly once
-			return false;
 		}
 
+		/**
+		* Public function to run all registered tests.
+		* Run all registered tests, calling setup and teardown functions before and after.
+		*/
 		void runTests()
 		{
 			// Call setup function
@@ -262,10 +345,43 @@ namespace partest
 			{
 				// Set the current frame to the test being executed
 				m_currentFrame = *test;
-				// Execute the test function and aggregate the result
-				m_currentFrame->runTestFunction();
+				try
+				{
+					// Execute the test function and aggregate the result
+					m_currentFrame->runTestFunction();
+				}
 
+				// A test returned early due to an assertion failure with stopOnFail enabled.
+				// Nothing special to do here, but this is necessary to prevent the exception from propagating further.
+				catch(const partest::AssertionFailure &e) {	}
+				catch(const std::exception &e)
+				{
+					// An unexpected exception occurred during test execution.
+					// Mark the test as failed and log the exception message.
+					m_currentFrame->result.updateStatus(FAILED);
+
+					std::cerr << "Error: Exception in test '" << m_currentFrame->metadata.name << "': " << e.what() << std::endl;
+				}
+				catch(...)
+				{
+					// An unknown exception occurred during test execution.
+					// Mark the test as failed and log a generic message.
+					m_currentFrame->result.updateStatus(FAILED);
+					std::cerr << "Error: Unknown exception in test '" << m_currentFrame->metadata.name << "'." << std::endl;
+				}
+
+				// Ensure we finalize back to the current test frame in case of improper test completion.
+				finalizeToFrame(*test);
+
+				// Store the result of the test
 				addResult(m_currentFrame->result.status, m_currentFrame->metadata.name);
+
+				// If the test failed and stopOnFail is enabled, stop executing further tests
+				if(m_currentFrame->result.status == FAILED && m_currentFrame->getEffectiveFlags().stopOnFail == ENABLED)
+				{
+					std::cout << "Stopping further tests due to failure in test '" << m_currentFrame->metadata.name << "' with stopOnFail enabled." << std::endl;
+					break;
+				}
 			}
 
 			// Call teardown function
@@ -281,6 +397,8 @@ namespace partest
 		* @return A constant reference to a vector of TestResult objects representing the results of all executed tests.
 		*/
 		const std::vector<TestResult> &getResults() const { return m_results; }
+
+
 	};
 } // namespace partest
 

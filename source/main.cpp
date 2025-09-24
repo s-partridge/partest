@@ -33,13 +33,13 @@ public:
 		{
 			// Subtest logic here
 			ASSERT_TRUE(testValue == 3);
-		}
+		}END_SUBTEST();
 
 		SUBTEST(partest::TestInfo("Subtest2", "A subtest that checks if testValue is 6."), partest::TestFlags::defaultInherit())
 		{
 			// Subtest logic here
 			ASSERT_TRUE(testValue == 6);
-		}
+		}END_SUBTEST();
 	}
 
 	void exampleFailingTest()
@@ -75,14 +75,16 @@ public:
 			SUBTEST(partest::TestInfo("NestedSubtest1.1", "A nested subtest that always fails."), partest::TestFlags::defaultInherit())
 			{
 				ASSERT_TRUE(false); // This assertion will fail
-			}
+			}END_SUBTEST();
+
 			std::cout << "Current subtest status: " << getCurrentFrame().result.status << std::endl;
 			SUBTEST(partest::TestInfo("NestedSubtest1.2", "A nested subtest that always passes."), partest::TestFlags::defaultInherit())
 			{
 				ASSERT_TRUE(true); // This assertion will pass
-			}
+			}END_SUBTEST();
+
 			std::cout << "Current subtest status: " << getCurrentFrame().result.status << std::endl;
-		}
+		}END_SUBTEST();
 
 		SUBTEST(partest::TestInfo("NestedSubtest2", "A nested subtest that always passes."), partest::TestFlags::defaultInherit())
 		{
@@ -91,7 +93,8 @@ public:
 			std::cout << "Subtest status initial: " << getCurrentFrame().result.status << std::endl;
 			ASSERT_TRUE(true); // This assertion will pass
 			std::cout << "Current subtest status: " << getCurrentFrame().result.status << std::endl;
-		}
+		}END_SUBTEST();
+
 		std::cout << "Current test status: " << getCurrentFrame().result.status << std::endl;
 	}
 
