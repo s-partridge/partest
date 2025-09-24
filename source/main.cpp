@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "partest.h"
+#include "partestrunner.h"
 
 class TestTest : public partest::PartestBase
 {
@@ -159,14 +160,11 @@ int main()
 {
 	std::cout << "Partest framework initialized." << std::endl;
 	
-	TestTest test;
+	partest::PartestRunner &runner = partest::PartestRunner::getInstance();
 
-	test.runTests();
-
-	const std::vector<partest::TestResult> &results = test.getResults();
-	
-	test.printTestTree();
-
+	runner.addTest(std::make_unique<TestTest>());
+	runner.runAllTests();
+	runner.printAllTestTrees();
 	//std::cout << "All tests completed." << std::endl;
 
 	//for(const partest::TestResult &result : results)

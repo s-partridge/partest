@@ -26,5 +26,8 @@
     <ClInclude Include="source\partesttypes.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="source\partestrunner.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

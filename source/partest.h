@@ -89,10 +89,12 @@ namespace partest
 		~TestFrame()
 		{
 			for(TestFrame *subtest : m_subtests)
+			{
 				if(subtest != nullptr)
 				{
 					delete subtest;
 				}
+			}
 		}
 
 		TestInfo metadata; // Test parameters including flags
@@ -289,6 +291,11 @@ namespace partest
 			m_currentFrame = m_testTree.get();
 		}
 		virtual ~PartestBase() = default;
+
+		PartestBase(const PartestBase &) = delete; // Disable copy constructor
+		PartestBase &operator=(const PartestBase &) = delete; // Disable copy assignment
+		PartestBase(PartestBase &&) = delete; // Disable move constructor
+		PartestBase &operator=(PartestBase &&) = delete; // Disable move assignment
 
 		void setName(const std::string &name) { m_testTree->metadata.name = name; }
 		std::string getName() const { return m_testTree->metadata.name; }

@@ -23,6 +23,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="source\partest.h" />
+    <ClInclude Include="source\partestrunner.h" />
     <ClInclude Include="source\partesttypes.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
