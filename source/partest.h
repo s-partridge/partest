@@ -158,7 +158,7 @@ namespace partest
 			{
 				// Inherit from parent.
 				TestFlags parentFlags = m_parent->getEffectiveFlags();
-				return flags.getEffectiveFlags(parentFlags);
+				return flags.mergeWithParentFlags(parentFlags);
 			}
 			else
 			{

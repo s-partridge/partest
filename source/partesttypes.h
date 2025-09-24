@@ -148,8 +148,9 @@ namespace partest
 		* @param parentFlags The parent TestFlags instance to inherit from
 		* @return A new TestFlags instance with all INHERIT values resolved
 		*/
-		inline TestFlags getEffectiveFlags(const TestFlags &parentFlags) const
+		inline TestFlags mergeWithParentFlags(const TestFlags &parentFlags) const
 		{
+			// Start with a copy of the current flags
 			TestFlags effectiveFlags = *this;
 			if(effectiveFlags.skip == INHERIT)
 				effectiveFlags.skip = parentFlags.skip;
