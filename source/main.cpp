@@ -30,7 +30,13 @@ public:
 		addTest(partest::TestInfo("NestedNestedTest", "A test with nested subtests."),
 			flags,
 			[this]() { return this->exampleNestedNestedTest(); });
-		addTest(partest::TestInfo("TestWithStopOnFail", "A test with stopOnFail enabled."), partest::TEST_FLAGS_INHERIT, [this]() { return this->exampleTestWithStopOnFail(); });
+
+		flags.skip = partest::DISABLED;
+		flags.stopOnFail = partest::ENABLED;
+
+		addTest(partest::TestInfo("TestWithStopOnFail", "A test with stopOnFail enabled."),
+			flags,
+			[this]() { return this->exampleTestWithStopOnFail(); });
 	}
 
 	void exampleTest(int testValue)
@@ -110,27 +116,29 @@ public:
 	{
 		std::cout << "Running example test with stopOnFail..." << std::endl;
 
-		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
-		flags.stopOnFail = partest::FlagState::ENABLED;
+		partest::TestFlags stopFlags = partest::TEST_FLAGS_INHERIT;
+		stopFlags.stopOnFail = partest::FlagState::ENABLED;
 
-		SUBTEST(partest::TestInfo("Subtest1", "A subtest that checks if 1 + 1 == 2."), flags)
+		SUBTEST(partest::TestInfo("Subtest1", "A subtest that checks if 1 + 1 == 2."), stopFlags)
 		{
 			// This assertion will pass
 			ASSERT_TRUE(1 + 1 == 2);
 		}END_SUBTEST();
-		SUBTEST(partest::TestInfo("Subtest2", "A subtest that checks if 2 + 2 == 5."), flags)
+		SUBTEST(partest::TestInfo("Subtest2", "A subtest that checks if 2 + 2 == 5."), stopFlags)
 		{
-			SUBTEST(partest::TestInfo("NestedSubtest", "A nested subtest that checks if 2 + 2 == 4."), flags)
+			SUBTEST(partest::TestInfo("NestedSubtest", "A nested subtest that checks if 2 + 2 == 4."), stopFlags)
 			{
 				// This assertion will fail
 				ASSERT_TRUE(2 + 2 == 5);
 			}END_SUBTEST();
 
 			// This assertion will pass, if it is hit, which it shouldn't be if stopOnFail is ENABLED.
+			std::cout << "Error: This assertion should not run if stopOnFail is ENABLED and a previous assertion failed." << std::endl;
 			ASSERT_TRUE(2 + 2 == 4);
 		}END_SUBTEST();
-		SUBTEST(partest::TestInfo("Subtest3", "A subtest that checks if 3 + 3 == 6."), flags)
+		SUBTEST(partest::TestInfo("Subtest3", "A subtest that checks if 3 + 3 == 6."), stopFlags)
 		{
+			std::cout << "Error: This subtest should not run if stopOnFail is ENABLED and a previous assertion failed." << std::endl;
 			// This assertion will pass, but may not be reached if stopOnFail is ENABLED in Subtest2
 			ASSERT_TRUE(3 + 3 == 6);
 		}END_SUBTEST();
@@ -156,12 +164,15 @@ int main()
 	test.runTests();
 
 	const std::vector<partest::TestResult> &results = test.getResults();
-	std::cout << "All tests completed." << std::endl;
+	
+	test.printTestTree();
 
-	for(const partest::TestResult &result : results)
-	{
-		std::cout << result.status << " " << result.message << std::endl;
-	}
+	//std::cout << "All tests completed." << std::endl;
+
+	//for(const partest::TestResult &result : results)
+	//{
+	//	std::cout << result.status << " " << result.message << std::endl;
+	//}
 
 	return 0;
 }

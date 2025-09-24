@@ -260,6 +260,24 @@ namespace partest
 			}
 		}
 
+		/**
+		* Recursively print the test tree starting from the given frame, with indentation based on depth.
+		* @param frame The TestFrame to start printing from.
+		* @param depth The current depth in the tree, used for indentation. Default is 0.
+		*/
+		const void printTestTree(const TestFrame &frame, unsigned depth = 0) const
+		{
+			std::string depthPrefix = std::string(depth, '\t');
+			std::cout << depthPrefix << "Test '" << frame.metadata.name << "' - Status: " << frame.result.status << " - Message: " << frame.result.message << std::endl;
+
+			depth++;
+			// Recursively print subtests
+			for(auto frameIter = frame.subtestsBegin(); frameIter != frame.subtestsEnd(); ++frameIter)
+			{
+				printTestTree(**frameIter, depth);
+			}
+		}
+
 	public:
 		PartestBase(const std::string &name, const std::string &description, const TestFlags &flags = TestFlags::defaultDisabled())
 		{
@@ -327,7 +345,7 @@ namespace partest
 		*/
 		void maybeRaiseForCurrentTest(const char *file, int line, const std::string &condition)
 		{
-			if(m_currentFrame->getEffectiveFlags().stopOnFail == ENABLED && m_currentFrame->result.status == FAILED)
+			if(m_currentFrame->getEffectiveFlags().stopOnFail == ENABLED && (m_currentFrame->result.status == FAILED || m_currentFrame->result.status == MIXED))
 			{
 				throw AssertionFailure(file, line, "Assertion failed: " + condition + " in test '" + m_currentFrame->metadata.name + "'.");
 			}
@@ -374,6 +392,7 @@ namespace partest
 					addResult(m_currentFrame->result.status, m_currentFrame->metadata.name);
 					continue;
 				}
+
 				try
 				{
 					// Execute the test function and aggregate the result
@@ -427,7 +446,13 @@ namespace partest
 		*/
 		const std::vector<TestResult> &getResults() const { return m_results; }
 
-
+		/**
+		* Print the entire test tree, including all tests and their statuses.
+		*/
+		void printTestTree() const
+		{
+			printTestTree(*m_testTree);
+		}
 	};
 } // namespace partest
 
