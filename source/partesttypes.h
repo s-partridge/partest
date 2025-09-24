@@ -210,31 +210,45 @@ namespace partest
 		*/
 		static inline TestResult defaultResult() { return TestResult(AWAITING, ""); }
 
+		/**
+		* Update the test result status based on a new assertion result.
+		* @param assertResult The result of the new assertion to incorporate into the test result.
+		*/
 		void updateStatus(const TestStatus &assertResult)
 		{
-			// Update the status based on the new assertion result
-			if(status == AWAITING)
+			switch(assertResult)
 			{
-				status = assertResult;
-			}
-			// If already passed or failed, update to mixed if the new result differs
-			else if(status == PASSED && assertResult == FAILED
-				 || status == FAILED && assertResult == PASSED)
-			{
-				status = MIXED;
-			}
-			// Mixed results remain mixed, skipped tests remain skipped
-			else if(status == MIXED || status == SKIPPED)
-			{}
-			// If currently running, set to the new result
-			else if(status == RUNNING)
-			{
-				status = assertResult;
-			}
-			// Unknown state, set to AWAITING
-			else
-			{
+			case AWAITING:
 				status = AWAITING;
+				break;
+			case RUNNING:
+				status = RUNNING;
+				break;
+			case PASSED:
+				if(status == AWAITING || status == RUNNING)
+					status = PASSED;
+				else if(status == FAILED)
+					status = MIXED;
+				// MIXED and SKIPPED remain unchanged
+				break;
+			case FAILED:
+				if(status == AWAITING || status == RUNNING)
+					status = FAILED;
+				else if(status == PASSED)
+					status = MIXED;
+				// MIXED and SKIPPED remain unchanged
+				break;
+			case MIXED:
+				status = MIXED;
+				break;
+			case SKIPPED:
+				if(status == AWAITING || status == RUNNING)
+					status = SKIPPED;
+				// PASSED, FAILED, and MIXED remain unchanged
+				break;
+			default:
+				status = AWAITING;
+				break;
 			}
 		}
 
