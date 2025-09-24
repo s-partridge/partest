@@ -28,6 +28,7 @@
 #define END_SUBTEST() catch (const partest::AssertionFailure &e) { } \
 		} \
 		finalizeSubtest(); \
+		maybeRaiseForCurrentTest(__FILE__, __LINE__, "Stopped on failure"); \
 	} while(0)
 
 // Example expansion of SUBTEST and END_SUBTEST macros
