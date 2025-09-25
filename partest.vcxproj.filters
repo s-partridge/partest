@@ -20,13 +20,16 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="source\partest.h">
+    <ClInclude Include="source\partestbase.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="source\partesttypes.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="source\partestrunner.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="partest.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -22,7 +22,8 @@
     <ClCompile Include="source\main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="source\partest.h" />
+    <ClInclude Include="partest.h" />
+    <ClInclude Include="source\partestbase.h" />
     <ClInclude Include="source\partestrunner.h" />
     <ClInclude Include="source\partesttypes.h" />
   </ItemGroup>

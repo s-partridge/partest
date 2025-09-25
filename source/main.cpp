@@ -3,8 +3,7 @@
 #include <iostream>
 #include <vector>
 
-#include "partest.h"
-#include "partestrunner.h"
+#include "../partest.h"
 
 class TestTest : public partest::PartestBase
 {
@@ -160,11 +159,10 @@ int main()
 {
 	std::cout << "Partest framework initialized." << std::endl;
 	
-	partest::PartestRunner &runner = partest::PartestRunner::getInstance();
+	partest::addTestClass(std::make_unique<TestTest>());
+	partest::runAllTests();
+	partest::displayAllTests();
 
-	runner.addTest(std::make_unique<TestTest>());
-	runner.runAllTests();
-	runner.printAllTestTrees();
 	//std::cout << "All tests completed." << std::endl;
 
 	//for(const partest::TestResult &result : results)

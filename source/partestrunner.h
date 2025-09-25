@@ -49,6 +49,7 @@ namespace partest
 		{
 			m_tests.push_back(test.release());
 		}
+
 		/**
 		* Run all added tests in sequence.
 		*/
@@ -58,6 +59,24 @@ namespace partest
 			{
 				test->runTests();
 			}
+		}
+
+		/**
+		* Run a specific test by name.
+		* 
+		* @param name The name of the test to run.
+		*/
+		void runTestWithName(const std::string &name)
+		{
+			for(PartestBase *test : m_tests)
+			{
+				if(test->getName() == name)
+				{
+					test->runTests();
+					return;
+				}
+			}
+			std::cerr << "Error: No test found with name '" << name << "'." << std::endl;
 		}
 
 		void printAllTestTrees() const
