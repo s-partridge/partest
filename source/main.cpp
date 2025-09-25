@@ -3,7 +3,7 @@
 #include <iostream>
 #include <vector>
 
-#include "../partest.h"
+#include "..\partest.h"
 
 class TestTest : public partest::PartestBase
 {
