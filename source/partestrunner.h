@@ -3,7 +3,7 @@
 
 #include <vector>
 
-#include "partest.h"
+#include "partestbase.h"
 
 namespace partest
 {

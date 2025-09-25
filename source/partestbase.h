@@ -3,8 +3,8 @@
 // Partest is a lightweight C++ testing framework designed for simplicity and ease of use.
 // It allows developers to define and run tests with minimal boilerplate code, making it ideal for quick validation of code functionality.
 // Header-only implementation for easy integration into existing projects.
-#ifndef PARTEST_H
-#define PARTEST_H
+#ifndef PARTESTBASE_H
+#define PARTESTBASE_H
 
 #include <iostream>
 #include <string>
