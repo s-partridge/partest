@@ -106,7 +106,7 @@ namespace partest
 		* 
 		* @param subtest Pointer to the subtest to be added
 		*/
-		TestFrame *addSubtest(std::unique_ptr<TestFrame> &subtest)
+		TestFrame *addSubtest(std::unique_ptr<TestFrame> subtest)
 		{
 			m_subtests.push_back(subtest.release());
 			m_subtests.back()->m_parent = this;
