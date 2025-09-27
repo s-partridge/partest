@@ -180,7 +180,7 @@ namespace partest
 		std::string name; // Name of the test
 		std::string description; // Description of the test
 		TestInfo() : name(""), description("") {}
-		TestInfo(const std::string &name, const std::string &description) : name(name), description(description) {}
+		TestInfo(const std::string &name, const std::string &description = "") : name(name), description(description) {}
 
 		/**
 		* Get a TestInfo instance with default (empty) values

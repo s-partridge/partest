@@ -14,55 +14,16 @@
 #include "partesttypes.h"
 
 /**
-* Macro to define a subtest block with specific flags. Must be called within a TestFrame context.
-*
-* @param testInfo Metadata for the subtest, including name and description. Use TestInfo::defaultInfo() for default values.
-* @param flags Flags specific to this subtest, which can override global or current flags. Use TestFlags::defaultInherit() to inherit all flags.
-*/
-#define SUBTEST(testInfo, flags) do \
-	{ \
-		if(initializeSubtest(flags, testInfo)) \
-		{ \
-			try
-
-#define END_SUBTEST() catch (const partest::AssertionFailure &e) { } \
-		} \
-		finalizeSubtest(); \
-		maybeRaiseForCurrentTest(__FILE__, __LINE__, "Stopped on failure"); \
-	} while(0)
-
-// Example expansion of SUBTEST and END_SUBTEST macros
-/**
-void hardCodedSubtest(const TestFlags& flags = TestFlags::defaultInherit(), const TestInfo &testInfo = TestInfo::defaultInfo())
-{
-	// SUBTEST() macro expansion
-	do {
-		// Enter a new subtest context with the specified flags and metadata
-		// If initialization fails (e.g., due to skip flag), exit the subtest early.
-		if(initializeSubtest(flags, testInfo))
-		{
-			try
-			// Subtest code goes here, including braces the same as a branch or loop.
-			// Single line subtests can (but probably shouldn't) omit braces, but multi-line subtests must include them.
-			{
-		
-			}
-	// END_SUBTEST() macro expansion
-			// Catch assertion failures to prevent them from propagating outside the subtest.
-			// Assertion failures are only thrown by ASSERT macros, and only when stopOnFail is enabled.
-			catch(const partest::AssertionFailure &e) {	}
-		}
-		// Fall out of the current subtest and restore parent test frame.
-		// Finalize happens whether initialization succeeded or not.
-		finalizeSubtest();
-	} while(0);
-}*/
-
-/**
 * Basic assertion macro for use within tests. Must be called within a TestFrame context.
 */
 #define ASSERT_TRUE(condition) updateTestStatus((condition) ? partest::PASSED : partest::FAILED); \
 	maybeRaiseForCurrentTest(__FILE__, __LINE__, #condition);
+
+/**
+* Basic assertion macros for equality checks. Must be called within a TestFrame context.
+*/
+#define ASSERT_EQUAL(expected, actual) ASSERT_TRUE((expected) == (actual))
+#define ASSERT_NOT_EQUAL(expected, actual) ASSERT_TRUE((expected) != (actual))
 
 namespace partest
 {
@@ -242,7 +203,6 @@ namespace partest
 		TestFlags getCurrentFlags() const { return m_currentFrame->getEffectiveFlags(); }
 		void updateTestStatus(TestStatus result) { m_currentFrame->result.updateStatus(result); }
 
-		
 		/**
 		* Finalize the current test frame and return to the specified target frame. Called internally on improper test completion, such as unexpected exceptions.
 		* 
@@ -377,6 +337,39 @@ namespace partest
 			}
 		}
 
+		template<typename Func>
+		void subtest(Func &&testFunc) { subtest(TestInfo::defaultInfo(), TestFlags::defaultInherit(), testFunc); }
+
+		template<typename Func>
+		void subtest(const TestFlags& flags, Func &&testFunc) { subtest(TestInfo::defaultInfo(), flags, testFunc); }
+
+		template<typename Func>
+		void subtest(const TestInfo &testInfo, Func &&testFunc) { subtest(testInfo, TestFlags::defaultInherit(), testFunc); }
+
+		template<typename Func>
+		void subtest(const TestInfo &testInfo, const TestFlags& flags, Func &&testFunc)
+		{
+			// Enter a new subtest context with the specified flags and metadata
+			// If initialization fails (e.g., due to skip flag), exit the subtest early.
+			if(initializeSubtest(flags, testInfo))
+			{
+				try
+				{
+					m_currentFrame->result.status = RUNNING;
+					testFunc();
+				}
+				// Catch assertion failures to prevent them from propagating outside the subtest.
+				// Assertion failures are only thrown by ASSERT macros, and only when stopOnFail is enabled.
+				
+				// Assertion failures indicate that the test has already been marked as FAILED, so no additional action is needed here.
+				#pragma warning(suppress:4101) 
+				catch(const partest::AssertionFailure &e) {	}
+			}
+			// Whether the test ran successfully or not, the subtest stack needs to be rolled up.
+			finalizeSubtest();
+			maybeRaiseForCurrentTest(__FILE__, __LINE__, "Stopped on subtest failure");
+		}
+
 		/**
 		* Public function to run all registered tests.
 		* Run all registered tests, calling setup and teardown functions before and after.
@@ -408,7 +401,11 @@ namespace partest
 				}
 				// A test returned early due to an assertion failure with stopOnFail enabled.
 				// Nothing special to do here, but this is necessary to prevent the exception from propagating further.
+
+				// Assertion failures indicate that the test has already been marked as FAILED, so no additional action is needed here.
+				#pragma warning(suppress:4101) 
 				catch(const partest::AssertionFailure &e) {	}
+
 				catch(const std::exception &e)
 				{
 					// An unexpected exception occurred during test execution.
