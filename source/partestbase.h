@@ -9,9 +9,9 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include <type_traits>
 #include <functional>
 
+#include "partestcommon.h"
 #include "partesttypes.h"
 
 /**
@@ -28,35 +28,6 @@
 
 namespace partest
 {
-	// Trait to check if a type is callable (i.e., can be invoked like a function)
-	// Used to constrain the addTest and subtest functions to only accept callable types
-	namespace traits
-	{
-		// Primary template handles all types
-		template<typename MaybeInvocable>
-		// Specialization that does the checking
-		struct is_callable
-		{
-		private:
-			// SFINAE test for callable types
-			template<typename T>
-			static auto check(int) -> decltype(std::declval<T>()(), std::true_type());
-			template<typename T>
-			static auto check(...) -> std::false_type;
-		public:
-			// Value is true if MaybeInvocable is callable, false otherwise
-			// Passing 0 here prefers the first overload of check if it is valid
-			// if MaybeInvocable is not a callable type with zero arguments, the second overload is chosen because it does not match declval<T>()(),
-			// which requires T to be callable with no arguments.
-			// Thus, it falls back to the ellipsis version, which always returns false_type.
-			static constexpr bool value = decltype(check<MaybeInvocable>(0))::value;
-		};
-	}
-	// Helper macro to enable functions only if the provided type is callable
-	// If is_callable evaluates to true, the function is enabled and can be instantiated
-	// If is_callable evaluates to false, type does not exist, causing a substitution failure
-	#define PARTEST_ENABLE_IF_INVOCABLE(MaybeInvocable) typename = typename std::enable_if<partest::traits::is_callable<MaybeInvocable>::value>::type
-
 	class PartestBase; // Forward declaration
 
 	class TestFrame
@@ -367,16 +338,16 @@ namespace partest
 			}
 		}
 
-		template<typename Func, PARTEST_ENABLE_IF_INVOCABLE(Func)>
+		template<PARTEST_ENABLE_IF_INVOCABLE(Func)>
 		void subtest(Func &&testFunc) { subtest(TestInfo::defaultInfo(), TestFlags::defaultInherit(), testFunc); }
 
-		template<typename Func, PARTEST_ENABLE_IF_INVOCABLE(Func)>
+		template<PARTEST_ENABLE_IF_INVOCABLE(Func)>
 		void subtest(const TestFlags& flags, Func &&testFunc) { subtest(TestInfo::defaultInfo(), flags, testFunc); }
 
-		template<typename Func, PARTEST_ENABLE_IF_INVOCABLE(Func)>
+		template<PARTEST_ENABLE_IF_INVOCABLE(Func)>
 		void subtest(const TestInfo &testInfo, Func &&testFunc) { subtest(testInfo, TestFlags::defaultInherit(), testFunc); }
 
-		template<typename Func, PARTEST_ENABLE_IF_INVOCABLE(Func)>
+		template<PARTEST_ENABLE_IF_INVOCABLE(Func)>
 		void subtest(const TestInfo &testInfo, const TestFlags& flags, Func &&testFunc)
 		{
 			// Enter a new subtest context with the specified flags and metadata

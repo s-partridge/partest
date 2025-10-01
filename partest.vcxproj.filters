@@ -32,5 +32,8 @@
     <ClInclude Include="partest.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="source\partestcommon.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
