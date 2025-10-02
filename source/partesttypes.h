@@ -57,23 +57,36 @@ namespace partest
 	};
 
 	/**
-	* Enum type representing the status of a test.
+	* Enum type representing the state of a test.
 	*
-	* AWAITING - The test is awaiting execution.
+	* AWAITING - The test has not yet started.
 	* RUNNING - The test is currently running.
-	* PASSED - The test passed successfully.
-	* FAILED - The test failed.
-	* MIXED - The test contains both passed and failed sub-tests.
-	* SKIPPED - The test was skipped.
+	* COMPLETED - The test has completed successfully.
+	* ABORTED - The test was aborted due to an error or failure.
 	*/
 	enum TestStatus : uint8_t
 	{
 		AWAITING = 0,
 		RUNNING,
-		PASSED,
-		FAILED,
-		MIXED,
+		COMPLETED,
+		ABORTED,
 		SKIPPED
+	};
+
+	/**
+	* Enum type representing the result of a test.
+	* 
+	* NO_RESULT - The test has not yet finished, or was skipped.
+	* FAILED - The test failed.
+	* PASSED - The test passed.
+	* MIXED - The test had mixed results (some assertions passed, some failed).
+	*/
+	enum TestResult : uint8_t
+	{
+		NO_RESULT = 0,
+		FAILED,
+		PASSED,
+		MIXED
 	};
 
 	/**
@@ -194,70 +207,65 @@ namespace partest
 	* status - The status of the test.
 	* message - A message providing additional information about the test result.
 	*/
-	struct TestResult
+	class TestState
 	{
-		// Status of the test
-		TestStatus status;
-
-		// Message providing additional information about the test result
-		std::string message;
-
+		TestStatus m_status; // Status of the test
+		TestResult m_result; // Result of the test
+	public:
 		// Constructors
-		TestResult() : status(AWAITING), message("") {}
-		TestResult(TestStatus status, const std::string &message) : status(status), message(message) {}
+		TestState() : m_status(AWAITING), m_result(NO_RESULT) {}
+		TestState(TestStatus status) : m_status(status), m_result(NO_RESULT) {}
 
 		/**
 		* Get a TestResult instance with default values (AWAITING status and empty message)
 		*/
-		static inline TestResult defaultResult() { return TestResult(AWAITING, ""); }
+		static inline TestState defaultState() { return TestState(AWAITING); }
+
+		TestStatus getStatus() const { return m_status; }
+		TestResult getResult() const { return m_result; }
 
 		/**
-		* Update the test result status based on a new assertion result.
+		* 
+		*/
+		void updateStatus(const TestStatus &status)
+		{
+			m_status = status;
+		}
+
+		/**
+		* Update the test result based on a new assertion result.
 		* @param assertResult The result of the new assertion to incorporate into the test result.
 		*/
-		void updateStatus(const TestStatus &assertResult)
+		void updateResult(const TestResult &assertResult)
 		{
 			switch(assertResult)
 			{
-			case AWAITING:
-				status = AWAITING;
-				break;
-			case RUNNING:
-				status = RUNNING;
+			case NO_RESULT:
+				m_result = NO_RESULT;
 				break;
 			case PASSED:
-				if(status == AWAITING || status == RUNNING)
-					status = PASSED;
-				else if(status == FAILED)
-					status = MIXED;
-				// MIXED and SKIPPED remain unchanged
+				if(m_result == NO_RESULT)
+					m_result = PASSED;
+				else if(m_result == FAILED)
+					m_result = MIXED;
+				// MIXED remains unchanged
 				break;
 			case FAILED:
-				if(status == AWAITING || status == RUNNING)
-					status = FAILED;
-				else if(status == PASSED)
-					status = MIXED;
-				// MIXED and SKIPPED remain unchanged
+				if(m_result == NO_RESULT)
+					m_result = FAILED;
+				else if(m_result == PASSED)
+					m_result = MIXED;
+				// MIXED remains unchanged
 				break;
 			case MIXED:
-				status = MIXED;
-				break;
-			case SKIPPED:
-				if(status == AWAITING || status == RUNNING)
-					status = SKIPPED;
-				// PASSED, FAILED, and MIXED remain unchanged
+				m_result = MIXED;
 				break;
 			default:
-				status = AWAITING;
-				break;
+				m_result = NO_RESULT;
 			}
 		}
 
-		inline std::ostream &operator<<(std::ostream &out) const
-		{
-			out << "' - Status: " << status << " - Message: " << message;
-			return out;
-		}
+		friend std::ostream &operator<<(std::ostream &out, const TestState &state);
 	};
 
 	/**
@@ -271,12 +279,10 @@ namespace partest
 			status = AWAITING;
 		else if(statusString == "RUNNING")
 			status = RUNNING;
-		else if(statusString == "PASSED")
-			status = PASSED;
-		else if(statusString == "FAILED")
-			status = FAILED;
-		else if(statusString == "MIXED")
-			status = MIXED;
+		else if(statusString == "COMPLETED")
+			status = COMPLETED;
+		else if(statusString == "ABORTED")
+			status = ABORTED;
 		else if(statusString == "SKIPPED")
 			status = SKIPPED;
 		else
@@ -299,6 +305,53 @@ namespace partest
 			statusString = "RUNNING";
 			break;
 		case PASSED:
+			statusString = "COMPLETED";
+			break;
+		case ABORTED:
+			statusString = "ABORTED";
+			break;
+		case SKIPPED:
+			statusString = "SKIPPED";
+			break;
+		default:
+			statusString = "INVALID STATUS VALUE";
+		}
+		out << statusString;
+		return out;
+	}
+
+	/**
+	* Overloaded stream extraction operator for TestResult enum.
+	*/
+	inline std::istream &operator>>(std::istream &in, TestResult &result)
+	{
+		std::string statusString;
+		in >> statusString;
+		if(statusString	== "NO_RESULT")
+			result = NO_RESULT;
+		else if(statusString == "PASSED")
+			result = PASSED;
+		else if(statusString == "FAILED")
+			result = FAILED;
+		else if(statusString == "MIXED")
+			result = MIXED;
+		else
+			result = NO_RESULT; // Default to NO_RESULT for unknown strings
+		return in;
+	}
+
+	/**
+	* Overloaded stream insertion operator for TestResult enum.
+	*/
+	inline std::ostream &operator<<(std::ostream &out, const TestResult &result)
+	{
+		std::string statusString;
+		switch(result)
+		{
+		case NO_RESULT:
+			statusString = "NO_RESULT";
+			break;
+		case PASSED:
 			statusString = "PASSED";
 			break;
 		case FAILED:
@@ -307,12 +360,8 @@ namespace partest
 		case MIXED:
 			statusString = "MIXED";
 			break;
-		case SKIPPED:
-			statusString = "SKIPPED";
-			break;
 		default:
-			statusString = "UNKNOWN";
-			break;
+			statusString = "INVALID RESULT VALUE";
 		}
 		out << statusString;
 		return out;
@@ -331,6 +380,8 @@ namespace partest
 			state = ENABLED;
 		else if(stateString == "DISABLED")
 			state = DISABLED;
+		else if(stateString == "MASKED")
+			state = MASKED;
 		else
 			state = INHERIT; // Default to INHERIT for unknown strings
 		return in;
@@ -344,17 +395,31 @@ namespace partest
 		std::string stateString;
 		switch(state)
 		{
+		case INHERIT:
+			stateString = "INHERIT";
+			break;
 		case ENABLED:
 			stateString = "ENABLED";
 			break;
 		case DISABLED:
 			stateString = "DISABLED";
 			break;
-		default:
-			stateString = "INHERIT";
+		case MASKED:
+			stateString = "MASKED";
 			break;
+		default:
+			stateString = "INVALID FLAG VALUE";
 		}
 		out << stateString;
+		return out;
+	}
+
+	/**
+	* Overloaded stream extraction operator for TestState.
+	*/
+	inline std::ostream &operator<<(std::ostream &out, const TestState &state)
+	{
+		out << "Status: " << state.m_status << " - Result: " << state.m_result;
 		return out;
 	}
 

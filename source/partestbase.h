@@ -17,7 +17,7 @@
 /**
 * Basic assertion macro for use within tests. Must be called within a TestFrame context.
 */
-#define ASSERT_TRUE(condition) updateTestStatus((condition) ? partest::PASSED : partest::FAILED); \
+#define ASSERT_TRUE(condition) updateTestResult((condition) ? partest::PASSED : partest::FAILED); \
 	maybeRaiseForCurrentTest(__FILE__, __LINE__, #condition);
 
 /**
@@ -38,9 +38,9 @@ namespace partest
 		std::function<void()> m_testFunction = nullptr; // Test function associated with this frame
 
 	public:
-		TestFrame() : flags(), metadata(), result() {}
-		TestFrame(const TestFlags &flags, const TestInfo &metadata, const TestResult &result, const std::function<void()> &testFunction = nullptr)
-			: flags(flags), metadata(metadata), result(result), m_testFunction(testFunction) { }
+		TestFrame() : flags(), metadata(), state() {}
+		TestFrame(const TestFlags &flags, const TestInfo &metadata, const TestState &result, const std::function<void()> &testFunction = nullptr)
+			: flags(flags), metadata(metadata), state(result), m_testFunction(testFunction) { }
 	
 		// Nothing should be moving or copying TestFrame instances. They exist as part of a tree structure managed by PartestBase.
 		TestFrame(const TestFrame &) = delete; // Disable copy constructor
@@ -61,7 +61,7 @@ namespace partest
 
 		TestInfo metadata; // Test parameters including flags
 		TestFlags flags; // Effective flags for this test frame
-		TestResult result; // Result of the test
+		TestState state; // Result of the test
 
 		/**
 		* Add a subtest to the current test frame.
@@ -140,7 +140,6 @@ namespace partest
 	{
 	private:
 		std::unique_ptr<TestFrame> m_testTree; // Dynamically growing tree of test frames
-		std::vector<TestResult> m_results; // Vector of test results
 
 		TestFrame *m_currentFrame; // Pointer to the current test frame
 
@@ -159,35 +158,11 @@ namespace partest
 		*/
 		void addTest(const TestInfo metadata, const TestFlags &flags, const std::function<void()> &testFunc)
 		{
-			std::unique_ptr<TestFrame> newFrame = std::make_unique<TestFrame>(flags, metadata, TestResult::defaultResult(), testFunc);
+			std::unique_ptr<TestFrame> newFrame = std::make_unique<TestFrame>(flags, metadata, TestState::defaultState(), testFunc);
 
 			// Add the new test frame as a subtest of the root test frame
 			// Adding it to the root ensures that all tests are organized under a single parent, simplifying management and execution
 			m_testTree->addSubtest(std::move(newFrame));
-		}
-
-		void addResult(const TestStatus &status, const std::string &testName)
-		{
-			std::string message = "Test '" + testName;
-			switch(status)
-			{
-			case PASSED:
-				message += "' passed successfully.";
-				break;
-			case MIXED:
-				message +=  "' had mixed results.";
-				break;
-			case FAILED:
-				message += "' failed.";
-				break;
-			case SKIPPED:
-				message += "' was skipped.";
-				break;
-			default:
-				message += "' is awaiting execution.";
-				break;
-			}
-			m_results.emplace_back(status, message);
 		}
 
 		// Current test frame accessors
@@ -202,7 +177,7 @@ namespace partest
 		* @return The effective TestFlags of the current test frame.
 		*/
 		TestFlags getCurrentFlags() const { return m_currentFrame->getEffectiveFlags(); }
-		void updateTestStatus(TestStatus result) { m_currentFrame->result.updateStatus(result); }
+		void updateTestResult(TestResult result) { m_currentFrame->state.updateResult(result); }
 
 		/**
 		* Finalize the current test frame and return to the specified target frame. Called internally on improper test completion, such as unexpected exceptions.
@@ -231,7 +206,7 @@ namespace partest
 		const void printTestTree(const TestFrame &frame, unsigned depth = 0) const
 		{
 			std::string depthPrefix = std::string(depth, '\t');
-			std::cout << depthPrefix << "Test '" << frame.metadata.name << "' - Status: " << frame.result.status << " - Message: " << frame.result.message << std::endl;
+			std::cout << depthPrefix << "Test '" << frame.metadata.name << ": " << frame.state << std::endl;
 
 			depth++;
 			// Recursively print subtests
@@ -246,7 +221,7 @@ namespace partest
 		{
 			// Initialize the root test frame. This frame is not associated with any specific test but serves as the root of the test tree.
 			// Its primary purpose is to contain information such as the overall test suite name and description in the same collection as the individual tests.
-			m_testTree = std::make_unique<TestFrame>(flags, TestInfo(name, description), TestResult::defaultResult());
+			m_testTree = std::make_unique<TestFrame>(flags, TestInfo(name, description), TestState::defaultState());
 		
 			// Set the current frame to the root test frame initially
 			m_currentFrame = m_testTree.get();
@@ -285,19 +260,19 @@ namespace partest
 		*/
 		bool initializeSubtest(const TestFlags& newFlags = TestFlags::defaultInherit(), const TestInfo &newMetadata = TestInfo::defaultInfo())
 		{
-			std::unique_ptr<TestFrame>newSubtest = std::make_unique<TestFrame>(newFlags, newMetadata, TestResult::defaultResult());
+			std::unique_ptr<TestFrame>newSubtest = std::make_unique<TestFrame>(newFlags, newMetadata, TestState::defaultState());
 
 			// If effective flags indicate the test should be skipped, mark it as skipped immediately
 			m_currentFrame = m_currentFrame->addSubtest(std::move(newSubtest));
 
 		    if(m_currentFrame->getEffectiveFlags().skip == ENABLED)
 			{
-				m_currentFrame->result.status = SKIPPED;
+				m_currentFrame->state.updateStatus(SKIPPED);
 				return false;
 			}
 			else
 			{
-				m_currentFrame->result.status = RUNNING;
+				m_currentFrame->state.updateStatus(RUNNING);
 			}
 
 			return true;
@@ -313,7 +288,7 @@ namespace partest
 		*/
 		void maybeRaiseForCurrentTest(const char *file, int line, const std::string &condition)
 		{
-			if(m_currentFrame->getEffectiveFlags().stopOnFail == ENABLED && (m_currentFrame->result.status == FAILED || m_currentFrame->result.status == MIXED))
+			if(m_currentFrame->getEffectiveFlags().stopOnFail == ENABLED && (m_currentFrame->state.getResult() == FAILED || m_currentFrame->state.getResult() == MIXED))
 			{
 				throw AssertionFailure(file, line, "Assertion failed: " + condition + " in test '" + m_currentFrame->metadata.name + "'.");
 			}
@@ -328,9 +303,16 @@ namespace partest
 		{
 			if(m_currentFrame->getParent() != nullptr)
 			{
-				TestStatus subtestStatus = m_currentFrame->result.status;
+				TestStatus subtestStatus = m_currentFrame->state.getStatus();
+				TestResult subtestResult = m_currentFrame->state.getResult();
+
 				m_currentFrame = m_currentFrame->getParent();
-				m_currentFrame->result.updateStatus(subtestStatus);
+				m_currentFrame->state.updateStatus(subtestStatus);
+
+				if(subtestStatus != ABORTED)
+					m_currentFrame->state.updateStatus(COMPLETED);
+				
+				m_currentFrame->state.updateResult(subtestResult);
 			}
 			else
 			{
@@ -356,7 +338,7 @@ namespace partest
 			{
 				try
 				{
-					m_currentFrame->result.status = RUNNING;
+					m_currentFrame->state.updateStatus(RUNNING);
 					testFunc();
 				}
 				// Catch assertion failures to prevent them from propagating outside the subtest.
@@ -389,15 +371,14 @@ namespace partest
 				// If the test is marked to be skipped, update its status and continue to the next test
 				if(m_currentFrame->getEffectiveFlags().skip == ENABLED)
 				{
-					m_currentFrame->result.status = SKIPPED;
-					addResult(m_currentFrame->result.status, m_currentFrame->metadata.name);
+					m_currentFrame->state.updateStatus(SKIPPED);
 					continue;
 				}
 
 				try
 				{
 					// Execute the test function and aggregate the result
-					m_currentFrame->result.status = RUNNING;
+					m_currentFrame->state.updateStatus(RUNNING);
 					m_currentFrame->runTestFunction();
 				}
 				// A test returned early due to an assertion failure with stopOnFail enabled.
@@ -410,27 +391,26 @@ namespace partest
 				catch(const std::exception &e)
 				{
 					// An unexpected exception occurred during test execution.
-					// Mark the test as failed and log the exception message.
-					m_currentFrame->result.updateStatus(FAILED);
+					// Mark the test as aborted and log a generic message.
+					m_currentFrame->state.updateStatus(ABORTED);
+					m_currentFrame->state.updateResult(FAILED);
 
 					std::cerr << "Error: Exception in test '" << m_currentFrame->metadata.name << "': " << e.what() << std::endl;
 				}
 				catch(...)
 				{
 					// An unknown exception occurred during test execution.
-					// Mark the test as failed and log a generic message.
-					m_currentFrame->result.updateStatus(FAILED);
+					// Mark the test as aborted and log a generic message.
+					m_currentFrame->state.updateStatus(ABORTED);
+					m_currentFrame->state.updateResult(FAILED);
 					std::cerr << "Error: Unknown exception in test '" << m_currentFrame->metadata.name << "'." << std::endl;
 				}
 
 				// Ensure we finalize back to the current test frame in case of improper test completion.
 				finalizeToFrame(*test);
 
-				// Store the result of the test
-				addResult(m_currentFrame->result.status, m_currentFrame->metadata.name);
-
 				// If the test failed and stopOnFail is enabled, stop executing further tests
-				if(m_currentFrame->result.status == FAILED && m_currentFrame->getEffectiveFlags().stopOnFail == ENABLED)
+				if(m_currentFrame->state.getResult() == FAILED && m_currentFrame->getEffectiveFlags().stopOnFail == ENABLED)
 				{
 					std::cout << "Stopping further tests due to failure in test '" << m_currentFrame->metadata.name << "' with stopOnFail enabled." << std::endl;
 					break;
@@ -443,13 +423,6 @@ namespace partest
 			// Reset current frame to root after tests
 			m_currentFrame = m_testTree.get();
 		}
-
-		/**
-		* Get the results of all executed tests.
-		* 
-		* @return A constant reference to a vector of TestResult objects representing the results of all executed tests.
-		*/
-		const std::vector<TestResult> &getResults() const { return m_results; }
 
 		/**
 		* Print the entire test tree, including all tests and their statuses.

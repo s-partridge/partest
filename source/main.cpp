@@ -93,15 +93,15 @@ public:
 	{
 		std::cout << "Running example nested nested test..." << std::endl;
 		
-		std::cout << "Current test status: " << getCurrentFrame().result.status << std::endl;
+		std::cout << "Current test result: " << getCurrentFrame().state.getResult() << std::endl;
 
 		subtest(partest::TestInfo("NestedSubtest1", "A nested subtest that always passes."), partest::TEST_FLAGS_INHERIT, [this]()
 		{
 			std::cout << "Running NestedSubtest1..." << std::endl;
 
-			std::cout << "Subtest status initial: " << getCurrentFrame().result.status << std::endl;
+			std::cout << "Subtest result initial: " << getCurrentFrame().state.getResult() << std::endl;
 			ASSERT_TRUE(true); // This assertion will pass
-			std::cout << "Current subtest status: " << getCurrentFrame().result.status << std::endl;
+			std::cout << "Current result status: " << getCurrentFrame().state.getResult() << std::endl;
 			
 			subtest(partest::TestInfo("NestedSubtest 1.1"), [this]()
 			{
@@ -113,25 +113,25 @@ public:
 				ASSERT_TRUE(false); // This assertion will fail
 			});
 
-			std::cout << "Current subtest status: " << getCurrentFrame().result.status << std::endl;
+			std::cout << "Current subtest result: " << getCurrentFrame().state.getResult() << std::endl;
 			subtest(partest::TestInfo("NestedSubtest1.3", "A nested subtest that always passes."), partest::TEST_FLAGS_INHERIT, [this]()
 			{
 				ASSERT_TRUE(true); // This assertion will pass
 			});
 
-			std::cout << "Current subtest status: " << getCurrentFrame().result.status << std::endl;
+			std::cout << "Current subtest result: " << getCurrentFrame().state.getResult() << std::endl;
 		});
 
 		subtest(partest::TestInfo("NestedSubtest2", "A nested subtest that always passes."), partest::TEST_FLAGS_INHERIT, [this]()
 		{
 			std::cout << "Running NestedSubtest1..." << std::endl;
 
-			std::cout << "Subtest status initial: " << getCurrentFrame().result.status << std::endl;
+			std::cout << "Subtest status initial: " << getCurrentFrame().state.getResult() << std::endl;
 			ASSERT_TRUE(true); // This assertion will pass
-			std::cout << "Current subtest status: " << getCurrentFrame().result.status << std::endl;
+			std::cout << "Current subtest status: " << getCurrentFrame().state.getResult() << std::endl;
 		});
 
-		std::cout << "Current test status: " << getCurrentFrame().result.status << std::endl;
+		std::cout << "Current test status: " << getCurrentFrame().state.getResult() << std::endl;
 	}
 
 	void exampleTestWithStopOnFail()
@@ -191,7 +191,7 @@ int main()
 
 	//for(const partest::TestResult &result : results)
 	//{
-	//	std::cout << result.status << " " << result.message << std::endl;
+	//	std::cout << result.getResult() << " " << result.message << std::endl;
 	//}
 
 	return 0;
