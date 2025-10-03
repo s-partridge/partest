@@ -57,7 +57,7 @@ namespace partest
 		{
 			for(PartestBase *test : m_tests)
 			{
-				test->runTests();
+				test->run();
 			}
 		}
 
@@ -72,7 +72,7 @@ namespace partest
 			{
 				if(test->getName() == name)
 				{
-					test->runTests();
+					test->run();
 					return;
 				}
 			}

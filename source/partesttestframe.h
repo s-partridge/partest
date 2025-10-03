@@ -1,0 +1,181 @@
+#ifndef PARTESTTESTFRAME_H
+#define PARTESTTESTFRAME_H
+
+#include <vector>
+#include <memory>
+#include <functional>
+
+#include "partestcommon.h"
+#include "partesttypes.h"
+
+namespace partest
+{
+	class TestFrame
+	{		
+	protected:
+		std::vector<TestFrame *> m_subtests; // Vector of sub-tests
+		TestFrame *m_parent = nullptr; // Pointer to the parent test frame
+		
+		std::function<void()> m_testSetup = nullptr; // Test function associated with this frame
+		std::function<void()> m_testFunction = nullptr; // Test function associated with this frame
+		std::function<void()> m_testTeardown = nullptr; // Test function associated with this frame
+
+	public:
+		TestFrame() : flags(), metadata(), state() {}
+		TestFrame(const TestFlags &flags, const TestInfo &metadata, const TestState &result, const std::function<void()> &testFunction = nullptr, const std::function<void()> &testSetup = nullptr, const std::function<void()> &testTeardown = nullptr)
+			: flags(flags), metadata(metadata), state(result), m_testFunction(testFunction), m_testSetup(testSetup), m_testTeardown(testTeardown) { }
+	
+		// Nothing should be moving or copying TestFrame instances. They exist as part of a tree structure managed by PartestBase.
+		TestFrame(const TestFrame &) = delete; // Disable copy constructor
+		TestFrame &operator=(const TestFrame &) = delete; // Disable copy assignment
+		TestFrame(TestFrame &&) = delete; // Disable move constructor
+		TestFrame &operator=(TestFrame &&) = delete; // Disable move assignment
+
+		~TestFrame()
+		{
+			for(TestFrame *subtest : m_subtests)
+			{
+				if(subtest != nullptr)
+				{
+					delete subtest;
+				}
+			}
+		}
+
+		TestInfo metadata; // Test parameters including flags
+		TestFlags flags; // Effective flags for this test frame
+		TestState state; // Result of the test
+
+		void setSetupFunction(const std::function<void()> &setupFunction) { m_testSetup = setupFunction; }
+		void setTestFunction(const std::function<void()> &testFunction) { m_testFunction = testFunction; }
+		void setTeardownFunction(const std::function<void()> &teardownFunction) { m_testTeardown = teardownFunction; }
+		
+		bool hasSetupFunction() const { return m_testSetup != nullptr; }
+		bool hasTestFunction() const { return m_testFunction != nullptr; }
+		bool hasTeardownFunction() const { return m_testTeardown != nullptr; }
+
+		bool isDescendentOf(const TestFrame *other) const
+		{
+			const TestFrame *current = m_parent;
+
+			while(current != nullptr)
+			{
+				if(current == other)
+					return true;
+				current = current->m_parent;
+			}
+
+			return false;
+		}
+
+		bool isAncestorOf(const TestFrame *other) const
+		{
+			return other != nullptr && other->isDescendentOf(this);
+		}
+
+		/**
+		* Get the parent test frame.
+		* 
+		* @return non-owning pointer to the parent TestFrame, or nullptr if this is the root frame.
+		*/
+		TestFrame *getParent() const { return m_parent; }
+		bool hasParent() const { return m_parent != nullptr; }
+		bool hasSubtests() const { return !m_subtests.empty(); }
+
+		/**
+		* Add a subtest to the current test frame.
+		* 
+		* @param subtest Pointer to the subtest to be added
+		*/
+		TestFrame *addSubtest(std::unique_ptr<TestFrame> subtest)
+		{
+			m_subtests.push_back(subtest.release());
+			m_subtests.back()->m_parent = this;
+
+			return m_subtests.back();
+		}
+
+		/**
+		* Iterator access for subtests
+		*/
+		std::vector<TestFrame *>::iterator subtestsBegin() { return m_subtests.begin(); }
+		std::vector<TestFrame *>::iterator subtestsEnd() { return m_subtests.end(); }
+		size_t subtestCount() const { return m_subtests.size(); }
+		std::vector<TestFrame *>::const_iterator subtestsBegin() const { return m_subtests.cbegin(); }
+		std::vector<TestFrame *>::const_iterator subtestsEnd() const { return m_subtests.cend(); }
+
+		bool initializeTest()
+		{
+			// If effective flags indicate the test should be skipped, mark it as skipped immediately
+			if(getEffectiveFlags().skip == ENABLED)
+			{
+				state.updateStatus(SKIPPED);
+				return false;
+			}
+			else
+			{
+				if(m_testSetup != nullptr)
+				{
+					m_testSetup();
+				}
+				state.updateStatus(RUNNING);
+				return true;
+			}
+		}
+
+		/**
+		* Run the test function associated with this test frame, if one is set.
+		*
+		* @throws std::runtime_error if no test function is set.
+		*/
+		void runTestFunction()
+		{
+			if(m_testFunction != nullptr)
+			{
+				m_testFunction();
+			}
+			else
+			{
+				throw std::runtime_error("Attempted to run a test function that is not set.");
+			}
+		}
+
+		TestFrame *finalizeTest()
+		{
+			if(state.getStatus() != ABORTED && state.getStatus() != SKIPPED)
+				state.updateStatus(COMPLETED);
+
+			if(m_parent != nullptr)
+				m_parent->state.updateResult(state.getResult());
+
+			if(m_testTeardown != nullptr)
+			{
+				m_testTeardown();
+			}
+
+			return m_parent;
+		}
+
+		/**
+		* Get the effective flags for this test frame, resolving any INHERIT values from parent frames.
+		* 
+		* @return The effective TestFlags for this test frame.
+		*/
+		TestFlags getEffectiveFlags() const
+		{
+			// If the current flags are not fully resolved, inherit from parent
+			if(m_parent != nullptr && !flags.isResolved())
+			{
+				// Inherit from parent.
+				TestFlags parentFlags = m_parent->getEffectiveFlags();
+				return flags.mergeWithParentFlags(parentFlags);
+			}
+			else
+			{
+				return flags;
+			}
+		}
+	};
+}
+
+#endif // PARTESTTESTFRAME_H

@@ -58,6 +58,7 @@
     <ClInclude Include="source\partestbase.h" />
     <ClInclude Include="source\partestcommon.h" />
     <ClInclude Include="source\partestrunner.h" />
+    <ClInclude Include="source\partesttestframe.h" />
     <ClInclude Include="source\partesttypes.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
