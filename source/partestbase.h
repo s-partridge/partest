@@ -9,6 +9,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <cassert>
 #include <functional>
 
 #include "partestcommon.h"
@@ -39,8 +40,12 @@ namespace partest
 
 		TestFrame *m_currentFrame; // Pointer to the current test frame
 
-		void runTest(TestFrame *test)
+		void runTest(TestFrame *test) noexcept
 		{
+			// There is no point where this should be null in production code.
+			// If it is, it indicates a serious issue with the test framework itself.
+			assert(test != nullptr && "Test was run with a null TestFrame pointer.");
+
 			m_currentFrame = test;
 			if(m_currentFrame->initializeTest())
 			{
