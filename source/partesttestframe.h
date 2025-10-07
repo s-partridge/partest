@@ -14,6 +14,8 @@ namespace partest
 	{		
 	protected:
 		std::vector<TestFrame *> m_subtests; // Vector of sub-tests
+		std::vector<std::string> m_logs; // Logs associated with this test frame
+
 		TestFrame *m_parent = nullptr; // Pointer to the parent test frame
 		
 		std::function<void()> m_testSetup = nullptr; // Test function associated with this frame
@@ -42,7 +44,7 @@ namespace partest
 			}
 		}
 
-		TestInfo metadata; // Test parameters including flags
+		TestInfo metadata; // Test metadata, including name and description
 		TestFlags flags; // Effective flags for this test frame
 		TestState state; // Result of the test
 
@@ -50,11 +52,33 @@ namespace partest
 		void setTestFunction(const std::function<void()> &testFunction) { m_testFunction = testFunction; }
 		void setTeardownFunction(const std::function<void()> &teardownFunction) { m_testTeardown = teardownFunction; }
 		
-		bool hasSetupFunction() const { return m_testSetup != nullptr; }
-		bool hasTestFunction() const { return m_testFunction != nullptr; }
-		bool hasTeardownFunction() const { return m_testTeardown != nullptr; }
+		bool hasSetupFunction() const noexcept { return m_testSetup != nullptr; }
+		bool hasTestFunction() const noexcept { return m_testFunction != nullptr; }
+		bool hasTeardownFunction() const noexcept { return m_testTeardown != nullptr; }
 
-		bool isDescendentOf(const TestFrame *other) const
+		void log(const std::string &message) { m_logs.push_back(message); }
+		const std::vector<std::string> &getLogs() const noexcept { return m_logs; }
+
+		void clearLogs() noexcept { m_logs.clear(); }
+		void clearSubtests() 
+		{ 
+			for(TestFrame *subtest : m_subtests)
+			{
+				if(subtest != nullptr)
+				{
+					delete subtest;
+				}
+			}
+			m_subtests.clear(); 
+		}
+		void clearAll() 
+		{ 
+			clearLogs(); 
+			clearSubtests(); 
+			state = TestState::defaultState();
+		}
+
+		bool isDescendentOf(const TestFrame *other) const noexcept
 		{
 			const TestFrame *current = m_parent;
 

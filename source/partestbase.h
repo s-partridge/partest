@@ -8,6 +8,7 @@
 
 #include <iostream>
 #include <string>
+#include <sstream>
 #include <vector>
 #include <cassert>
 #include <functional>
@@ -19,14 +20,13 @@
 /**
 * Basic assertion macro for use within tests. Must be called within a TestFrame context.
 */
-#define ASSERT_TRUE(condition) updateTestResult((condition) ? partest::PASSED : partest::FAILED); \
-	maybeRaiseForCurrentTest(__FILE__, __LINE__, #condition);
+#define ASSERT_TRUE(condition) handleAssertTrue((condition), #condition, __FILE__, __LINE__)
 
 /**
 * Basic assertion macros for equality checks. Must be called within a TestFrame context.
 */
-#define ASSERT_EQUAL(expected, actual) ASSERT_TRUE((expected) == (actual))
-#define ASSERT_NOT_EQUAL(expected, actual) ASSERT_TRUE((expected) != (actual))
+#define ASSERT_EQUAL(expected, actual) handleAssertEqual((expected), (actual), #expected, #actual, __FILE__, __LINE__)
+#define ASSERT_NOT_EQUAL(expected, actual) handleAssertNotEqual((expected), (actual), #expected, #actual, __FILE__, __LINE__)
 
 namespace partest
 {
@@ -151,7 +151,11 @@ namespace partest
 		* @return The effective TestFlags of the current test frame.
 		*/
 		TestFlags getCurrentFlags() const { return m_currentFrame->getEffectiveFlags(); }
-		void updateTestResult(TestResult result) { m_currentFrame->state.updateResult(result); }
+		void updateTestResult(TestResult result, const std::string &log)
+		{
+			m_currentFrame->state.updateResult(result);
+			m_currentFrame->log(log);
+		}
 
 		/**
 		* Check if the current test should raise an assertion failure based on its status and flags. Used in ASSERT macros.
@@ -165,6 +169,7 @@ namespace partest
 		{
 			if(m_currentFrame->getEffectiveFlags().stopOnFail == ENABLED && (m_currentFrame->state.getResult() == FAILED || m_currentFrame->state.getResult() == MIXED))
 			{
+				m_currentFrame->log("Stopped test early due to failure.");
 				throw AssertionFailure(file, line, "Assertion failed: " + condition + " in test '" + m_currentFrame->metadata.name + "'.");
 			}
 		}
@@ -196,6 +201,109 @@ namespace partest
 		* Teardown function to be overridden by derived classes
 		*/
 		virtual void teardown() {}
+
+		////////////////
+		// Assertions //
+		////////////////
+		template<typename T>
+		void handleAssertTrue(const T &condition, const char *conditionStr, const char *file, int line)
+		{
+			std::ostringstream message;
+			if(condition)
+			{
+				message << "ASSERT_TRUE(" << conditionStr << ") passed.";
+				updateTestResult(PASSED, message.str());
+				return;
+			}
+
+			message << "Assertion failed at " << file << ":" << line
+				<< ": ASSERT_TRUE(" << conditionStr << ") was false.\n";
+
+			updateTestResult(FAILED, message.str());
+			maybeRaiseForCurrentTest(file, line, message.str());
+		}
+
+		template<typename T, typename U>
+		void handleAssertEqual(const T &expected, const U &actual, const char *expectedStr, const char *actualStr, const char *file, int line)
+		{
+			std::ostringstream message;
+
+			if(expected == actual)
+			{
+				message << "ASSERT_EQUAL(" << expectedStr << ", " << actualStr << ") passed.";
+				updateTestResult(PASSED, message.str());
+				return;
+			}
+
+			message << "Assertion failed at " << file << ":" << line
+				<< ": ASSERT_EQUAL(" << expectedStr << ", " << actualStr << ")\n"
+				<< "  Expected: " << expected << "\n"
+				<< "  Actual:   " << actual << "\n";
+
+			updateTestResult(FAILED, message.str());
+			maybeRaiseForCurrentTest(file, line, message.str());
+		}
+
+		void handleAssertEqual(const char* expected, const char* actual, const char* expectedStr, const char* actualStr, const char* file, int line)
+		{
+			std::ostringstream message;
+
+			if (expected != nullptr && actual != nullptr && strcmp(expected, actual) == 0
+			    || expected == nullptr && actual == nullptr)
+			{
+				message << "ASSERT_EQUAL(" << expectedStr << ", " << actualStr << ") passed.";
+				updateTestResult(PASSED, message.str());
+				return;
+			}
+
+			message << "Assertion failed at " << file << ":" << line
+				<< ": ASSERT_EQUAL(" << expectedStr << ", " << actualStr << ")\n"
+				<< "  Expected: \"" << expected << "\"\n"
+				<< "  Actual:   \"" << actual << "\"\n";
+			updateTestResult(FAILED, message.str());
+			maybeRaiseForCurrentTest(file, line, message.str());
+		}
+
+		template<typename T, typename U>
+		void handleAssertNotEqual(const T &expected, const U &actual, const char *expectedStr, const char *actualStr, const char *file, int line)
+		{
+			std::ostringstream message;
+
+			if(expected != actual)
+			{
+				message << "ASSERT_NOT_EQUAL(" << expectedStr << ", " << actualStr << ") passed.";
+				updateTestResult(PASSED, message.str());
+				return;
+			}
+
+			message << "Assertion failed at " << file << ":" << line
+				<< ": ASSERT_NOT_EQUAL(" << expectedStr << ", " << actualStr << ")\n"
+				<< "\"" << actualStr << "\" should not have been " << expected << "\n";
+
+			updateTestResult(FAILED, message.str());
+			maybeRaiseForCurrentTest(file, line, message.str());
+		}
+
+
+		void handleAssertNotEqual(const char* expected, const char* actual, const char* expectedStr, const char* actualStr, const char* file, int line)
+		{
+			std::ostringstream message;
+
+			if(expected != actual)
+			{
+				message << "ASSERT_NOT_EQUAL(" << expectedStr << ", " << actualStr << ") passed.";
+				updateTestResult(PASSED, message.str());
+				return;
+			}
+
+			message << "Assertion failed at " << file << ":" << line
+				<< ": ASSERT_NOT_EQUAL(" << expectedStr << ", " << actualStr << ")\n"
+				<< "\"" << actualStr << "\" should not have been " << expected << "\n";
+
+			updateTestResult(FAILED, message.str());
+			maybeRaiseForCurrentTest(file, line, message.str());
+		}
+
 
 	public:
 		PartestBase(const std::string &name, const std::string &description, const TestFlags &flags = TestFlags::defaultDisabled())
