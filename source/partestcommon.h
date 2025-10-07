@@ -31,6 +31,56 @@
     #define PARTEST_CPP_VERSION 11
 #endif // defined(_MSVC_LANG)
 
+/**
+* constexpr usage by C++ standard version
+C++11	Keyword introduced.
+        Only a single return statement. No locals, no loops, no branching except ternary operator. Simple compile-time math, basic constant objects.
+C++14	Allowed local variables, loops, if/switch. Writing normal-looking functions that run at compile time.
+C++17	if constexpr, constexpr lambdas. Cleaner and more powerful template metaprogramming.
+C++20	Allowed mutation of *this, virtual, new/delete, try/catch. Modifying objects at compile time, compile-time containers (std::vector, std::string).
+*/
+
+// --- C++11 constexpr support ---
+#if PARTEST_CPP_VERSION >= 11
+    #define PARTEST_CONSTEXPR_11 constexpr
+#else
+    #define PARTEST_CONSTEXPR_11
+#endif
+
+// --- C++14 constexpr support ---
+#if PARTEST_CPP_VERSION >= 14
+    #define PARTEST_CONSTEXPR_14 constexpr
+#else
+    #define PARTEST_CONSTEXPR_14
+#endif
+
+// --- C++17 constexpr support ---
+#if PARTEST_CPP_VERSION >= 17
+    #define PARTEST_CONSTEXPR_17 constexpr
+#else
+    #define PARTEST_CONSTEXPR_17
+#endif
+
+// --- C++20 constexpr support ---
+#if PARTEST_CPP_VERSION >= 20
+    #define PARTEST_CONSTEXPR_20 constexpr
+#else
+    #define PARTEST_CONSTEXPR_20
+#endif
+
+/**
+* String parameter type by C++ standard version
+*/
+#include <string>
+
+// Use std::string_view for C++17 and later, const std::string& for C++11 and C++14
+#if PARTEST_CPP_VERSION >= 17
+    #include <string_view>
+	#define PARTEST_STRING_PARAM std::string_view
+#else
+	#define PARTEST_STRING_PARAM const std::string&
+#endif
+
 namespace partest
 {
 // For C++20, include <concepts> and define a `requires` clause macro
