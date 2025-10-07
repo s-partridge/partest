@@ -11,7 +11,7 @@ namespace partest
 	{
 	private:
 		std::vector<PartestBase *> m_tests; // Vector of tests to run
-		PartestRunner() = default;
+		PartestRunner() noexcept = default;
 	public:
 		// Delete copy and move constructors and assignment operators to enforce singleton pattern
 		PartestRunner(const PartestRunner &) = delete;
@@ -33,7 +33,7 @@ namespace partest
 		/**
 		* Get the singleton instance of the PartestRunner.
 		*/
-		static PartestRunner &getInstance()
+		static PartestRunner &getInstance() noexcept
 		{
 			static PartestRunner instance;
 			return instance;
@@ -66,7 +66,7 @@ namespace partest
 		* 
 		* @param name The name of the test to run.
 		*/
-		void runTestWithName(const std::string &name)
+		void runTestWithName(PARTEST_STRING_PARAM name)
 		{
 			for(PartestBase *test : m_tests)
 			{

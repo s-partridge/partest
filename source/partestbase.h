@@ -151,7 +151,7 @@ namespace partest
 		* @return The effective TestFlags of the current test frame.
 		*/
 		TestFlags getCurrentFlags() const { return m_currentFrame->getEffectiveFlags(); }
-		void updateTestResult(TestResult result, const std::string &log)
+		void updateTestResult(TestResult result, PARTEST_STRING_PARAM log)
 		{
 			m_currentFrame->state.updateResult(result);
 			m_currentFrame->log(log);
@@ -165,7 +165,7 @@ namespace partest
 		* @param condition The condition being asserted, as a string. Typically provided by the condition expression itself.
 		* @throws AssertionFailure if the current test has failed and stopOnFail is enabled.
 		*/
-		void maybeRaiseForCurrentTest(const char *file, int line, const std::string &condition)
+		void maybeRaiseForCurrentTest(const char *file, int line, PARTEST_STRING_PARAM condition)
 		{
 			if(m_currentFrame->getEffectiveFlags().stopOnFail == ENABLED && (m_currentFrame->state.getResult() == FAILED || m_currentFrame->state.getResult() == MIXED))
 			{
@@ -306,7 +306,7 @@ namespace partest
 
 
 	public:
-		PartestBase(const std::string &name, const std::string &description, const TestFlags &flags = TestFlags::defaultDisabled())
+		PartestBase(PARTEST_STRING_PARAM name, PARTEST_STRING_PARAM description, const TestFlags &flags = TestFlags::defaultDisabled())
 		{
 			// Initialize the root test frame. This frame is not associated with any specific test but serves as the root of the test tree.
 			// Its primary purpose is to contain information such as the overall test suite name and description in the same collection as the individual tests.
@@ -325,11 +325,11 @@ namespace partest
 		PartestBase(PartestBase &&) = delete; // Disable move constructor
 		PartestBase &operator=(PartestBase &&) = delete; // Disable move assignment
 
-		void setName(const std::string &name) { m_testTree->metadata.name = name; }
-		std::string getName() const { return m_testTree->metadata.name; }
+		void setName(PARTEST_STRING_PARAM name) { m_testTree->metadata.name = name; }
+		const std::string &getName() const { return m_testTree->metadata.name; }
 
-		void setDescription(const std::string &description) { m_testTree->metadata.description = description; }
-		std::string getDescription() const { return m_testTree->metadata.description; }
+		void setDescription(PARTEST_STRING_PARAM description) { m_testTree->metadata.description = description; }
+		const std::string &getDescription() const { return m_testTree->metadata.description; }
 		
 		void setFlags(const TestFlags &flags) { m_testTree->flags.setFlags(flags); }
 		const TestFlags &getFlags() const { return m_testTree->flags; }
