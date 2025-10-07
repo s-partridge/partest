@@ -23,7 +23,7 @@ namespace partest
 		std::function<void()> m_testTeardown = nullptr; // Test function associated with this frame
 
 	public:
-		TestFrame() : flags(), metadata(), state() {}
+		TestFrame() noexcept : flags(), metadata(), state() {}
 		TestFrame(const TestFlags &flags, const TestInfo &metadata, const TestState &result, const std::function<void()> &testFunction = nullptr, const std::function<void()> &testSetup = nullptr, const std::function<void()> &testTeardown = nullptr)
 			: flags(flags), metadata(metadata), state(result), m_testFunction(testFunction), m_testSetup(testSetup), m_testTeardown(testTeardown) { }
 	
@@ -56,7 +56,7 @@ namespace partest
 		bool hasTestFunction() const noexcept { return m_testFunction != nullptr; }
 		bool hasTeardownFunction() const noexcept { return m_testTeardown != nullptr; }
 
-		void log(const std::string &message) { m_logs.push_back(message); }
+		void log(PARTEST_STRING_PARAM message) { m_logs.push_back(message); }
 		const std::vector<std::string> &getLogs() const noexcept { return m_logs; }
 
 		void clearLogs() noexcept { m_logs.clear(); }
@@ -92,7 +92,7 @@ namespace partest
 			return false;
 		}
 
-		bool isAncestorOf(const TestFrame *other) const
+		bool isAncestorOf(const TestFrame *other) const noexcept
 		{
 			return other != nullptr && other->isDescendentOf(this);
 		}
@@ -102,9 +102,9 @@ namespace partest
 		* 
 		* @return non-owning pointer to the parent TestFrame, or nullptr if this is the root frame.
 		*/
-		TestFrame *getParent() const { return m_parent; }
-		bool hasParent() const { return m_parent != nullptr; }
-		bool hasSubtests() const { return !m_subtests.empty(); }
+		TestFrame *getParent() const noexcept { return m_parent; }
+		bool hasParent() const noexcept { return m_parent != nullptr; }
+		bool hasSubtests() const noexcept { return !m_subtests.empty(); }
 
 		/**
 		* Add a subtest to the current test frame.
@@ -122,11 +122,11 @@ namespace partest
 		/**
 		* Iterator access for subtests
 		*/
-		std::vector<TestFrame *>::iterator subtestsBegin() { return m_subtests.begin(); }
-		std::vector<TestFrame *>::iterator subtestsEnd() { return m_subtests.end(); }
-		size_t subtestCount() const { return m_subtests.size(); }
-		std::vector<TestFrame *>::const_iterator subtestsBegin() const { return m_subtests.cbegin(); }
-		std::vector<TestFrame *>::const_iterator subtestsEnd() const { return m_subtests.cend(); }
+		std::vector<TestFrame *>::iterator subtestsBegin() noexcept { return m_subtests.begin(); }
+		std::vector<TestFrame *>::iterator subtestsEnd() noexcept { return m_subtests.end(); }
+		size_t subtestCount() const noexcept { return m_subtests.size(); }
+		std::vector<TestFrame *>::const_iterator subtestsBegin() const noexcept{ return m_subtests.cbegin(); }
+		std::vector<TestFrame *>::const_iterator subtestsEnd() const noexcept { return m_subtests.cend(); }
 
 		bool initializeTest()
 		{
@@ -185,14 +185,13 @@ namespace partest
 		* 
 		* @return The effective TestFlags for this test frame.
 		*/
-		TestFlags getEffectiveFlags() const
+		TestFlags getEffectiveFlags() const noexcept
 		{
 			// If the current flags are not fully resolved, inherit from parent
 			if(m_parent != nullptr && !flags.isResolved())
 			{
 				// Inherit from parent.
-				TestFlags parentFlags = m_parent->getEffectiveFlags();
-				return flags.mergeWithParentFlags(parentFlags);
+				return flags.mergeWithParentFlags(m_parent->getEffectiveFlags());
 			}
 			else
 			{
