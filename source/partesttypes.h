@@ -24,7 +24,7 @@ namespace partest
 		* @param line The line number where the assertion failed. Typically provided by the __LINE__ macro.
 		* @param message A message describing the assertion failure.
 		*/
-		AssertionFailure(const char *file, int line, const std::string &message)
+		AssertionFailure(const char *file, int line, PARTEST_STRING_PARAM message)
 			: std::runtime_error(message), m_file(file), m_line(line) {}
 
 		/**
@@ -53,7 +53,7 @@ namespace partest
 		* Constructor for TestIntegrityFailure.
 		* @param message A message describing the integrity failure.
 		*/
-		TestIntegrityFailure(const std::string &message) : std::runtime_error(message) {}
+		TestIntegrityFailure(PARTEST_STRING_PARAM message) : std::runtime_error(message) {}
 	};
 
 	/**
@@ -115,34 +115,34 @@ namespace partest
 		FlagState stopSubtestOnFail : 2; // Whether to stop subtest execution on failure
 		FlagState verbose : 2; // Whether to run the test in verbose mode
 
-		TestFlags() : skip(DISABLED), stopOnFail(INHERIT), stopSubtestOnFail(INHERIT), verbose(INHERIT) {}
-		TestFlags(FlagState skip, FlagState stopOnFail, FlagState stopSubtestOnFail, FlagState verbose) : skip(skip), stopOnFail(stopOnFail), stopSubtestOnFail(stopSubtestOnFail), verbose(verbose) {}
+		PARTEST_CONSTEXPR_11 TestFlags() noexcept : skip(DISABLED), stopOnFail(INHERIT), stopSubtestOnFail(INHERIT), verbose(INHERIT) {}
+		PARTEST_CONSTEXPR_11 TestFlags(FlagState skip, FlagState stopOnFail, FlagState stopSubtestOnFail, FlagState verbose) noexcept : skip(skip), stopOnFail(stopOnFail), stopSubtestOnFail(stopSubtestOnFail), verbose(verbose) {}
 
 		/**
 		* Get a TestFlags instance with all flags set to DISABLED
 		*/
-		static inline TestFlags defaultDisabled() { return TestFlags(DISABLED, DISABLED, DISABLED, DISABLED); }
+		static PARTEST_CONSTEXPR_11 TestFlags defaultDisabled() noexcept { return TestFlags(DISABLED, DISABLED, DISABLED, DISABLED); }
 		/**
 		* Get a TestFlags instance with all flags set to INHERIT
 		*/
-		static inline TestFlags defaultInherit() { return TestFlags(INHERIT, INHERIT, INHERIT, INHERIT); }
+		static PARTEST_CONSTEXPR_11 TestFlags defaultInherit() noexcept { return TestFlags(INHERIT, INHERIT, INHERIT, INHERIT); }
 		
 		/**
 		* Get a TestFlags instance with all flags set to MASKED. Used for internal purposes.
 		*/
-		static inline TestFlags defaultMasked() { return TestFlags(MASKED, MASKED, MASKED, MASKED); }
+		static PARTEST_CONSTEXPR_11 TestFlags defaultMasked() noexcept { return TestFlags(MASKED, MASKED, MASKED, MASKED); }
 
 		/**
 		* Default copy assignment operator.
 		*/
-		inline TestFlags &operator=(const TestFlags &other) = default;
+		PARTEST_CONSTEXPR_20 TestFlags &operator=(const TestFlags &other) noexcept = default;
 
 		/**
 		* Set flags from another TestFlags instance, ignoring MASKED values
 		* 
 		* @param other The TestFlags instance to copy flags from. Expects MASKED values to be ignored.
 		*/
-		inline void setFlags(const TestFlags &other)
+		PARTEST_CONSTEXPR_20 void setFlags(const TestFlags &other) noexcept
 		{
 			if(other.skip != MASKED)
 				skip = other.skip;
@@ -161,7 +161,7 @@ namespace partest
 		* @param parentFlags The parent TestFlags instance to inherit from
 		* @return A new TestFlags instance with all INHERIT values resolved
 		*/
-		inline TestFlags mergeWithParentFlags(const TestFlags &parentFlags) const
+		PARTEST_CONSTEXPR_14 TestFlags mergeWithParentFlags(const TestFlags &parentFlags) const noexcept
 		{
 			// Start with a copy of the current flags
 			TestFlags effectiveFlags = *this;
@@ -179,7 +179,7 @@ namespace partest
 		/**
 		* Check if all flags are resolved (i.e., none are set to INHERIT or MASKED)
 		*/
-		inline bool isResolved() const
+		PARTEST_CONSTEXPR_11 bool isResolved() const noexcept
 		{
 			return skip < INHERIT && stopOnFail < INHERIT && stopSubtestOnFail < INHERIT && verbose < INHERIT;
 		}
@@ -192,13 +192,13 @@ namespace partest
 	{
 		std::string name; // Name of the test
 		std::string description; // Description of the test
-		TestInfo() : name(""), description("") {}
-		TestInfo(const std::string &name, const std::string &description = "") : name(name), description(description) {}
+		PARTEST_CONSTEXPR_20 TestInfo() : name(""), description("") {}
+		PARTEST_CONSTEXPR_20 TestInfo(PARTEST_STRING_PARAM name, PARTEST_STRING_PARAM description = "") : name(name), description(description) {}
 
 		/**
 		* Get a TestInfo instance with default (empty) values
 		*/
-		static inline TestInfo defaultInfo() { return TestInfo("", ""); }
+		static PARTEST_CONSTEXPR_20 TestInfo defaultInfo() { return TestInfo("", ""); }
 	};
 
 	/**
@@ -213,30 +213,27 @@ namespace partest
 		TestResult m_result; // Result of the test
 	public:
 		// Constructors
-		TestState() : m_status(AWAITING), m_result(NO_RESULT) {}
-		TestState(TestStatus status) : m_status(status), m_result(NO_RESULT) {}
+		PARTEST_CONSTEXPR_11 TestState() noexcept : m_status(AWAITING), m_result(NO_RESULT) {}
+		PARTEST_CONSTEXPR_11 TestState(TestStatus status) noexcept : m_status(status), m_result(NO_RESULT) {}
 
 		/**
 		* Get a TestResult instance with default values (AWAITING status and empty message)
 		*/
-		static inline TestState defaultState() { return TestState(AWAITING); }
+		static PARTEST_CONSTEXPR_11 TestState defaultState() noexcept { return TestState(AWAITING); }
 
-		TestStatus getStatus() const { return m_status; }
-		TestResult getResult() const { return m_result; }
+		PARTEST_CONSTEXPR_11 TestStatus getStatus() const noexcept { return m_status; }
+		PARTEST_CONSTEXPR_11 TestResult getResult() const noexcept { return m_result; }
 
 		/**
 		* 
 		*/
-		void updateStatus(const TestStatus &status)
-		{
-			m_status = status;
-		}
+		PARTEST_CONSTEXPR_20 void updateStatus(const TestStatus &status) noexcept { m_status = status; }
 
 		/**
 		* Update the test result based on a new assertion result.
 		* @param assertResult The result of the new assertion to incorporate into the test result.
 		*/
-		void updateResult(const TestResult &assertResult)
+		PARTEST_CONSTEXPR_20 void updateResult(const TestResult &assertResult) noexcept
 		{
 			switch(assertResult)
 			{
@@ -427,12 +424,12 @@ namespace partest
 	* Default flag constants for easy reference
 	*/
 	// Enable all flags
-	const TestFlags TEST_FLAGS_DISABLED = TestFlags::TestFlags(FlagState::DISABLED, FlagState::DISABLED, FlagState::DISABLED, FlagState::DISABLED);
+	PARTEST_CONSTEXPR_11 const TestFlags TEST_FLAGS_DISABLED = TestFlags(FlagState::DISABLED, FlagState::DISABLED, FlagState::DISABLED, FlagState::DISABLED);
 	// Inherit all flags from parent test
-	const TestFlags TEST_FLAGS_INHERIT = TestFlags::TestFlags(FlagState::INHERIT, FlagState::INHERIT, FlagState::INHERIT, FlagState::INHERIT);
+	PARTEST_CONSTEXPR_11 const TestFlags TEST_FLAGS_INHERIT = TestFlags(FlagState::INHERIT, FlagState::INHERIT, FlagState::INHERIT, FlagState::INHERIT);
 	// Mask all flags (used for internal purposes)
-	const TestFlags TEST_FLAGS_MASKED = TestFlags::TestFlags(FlagState::MASKED, FlagState::MASKED, FlagState::MASKED, FlagState::MASKED);
+	PARTEST_CONSTEXPR_11 const TestFlags TEST_FLAGS_MASKED = TestFlags(FlagState::MASKED, FlagState::MASKED, FlagState::MASKED, FlagState::MASKED);
 	// Set flags to skip the test
-	const TestFlags TEST_FLAGS_SKIP = TestFlags::TestFlags(FlagState::ENABLED, FlagState::INHERIT, FlagState::INHERIT, FlagState::INHERIT);
+	PARTEST_CONSTEXPR_11 const TestFlags TEST_FLAGS_SKIP = TestFlags(FlagState::ENABLED, FlagState::INHERIT, FlagState::INHERIT, FlagState::INHERIT);
 }
 #endif // PARTESTTYPES_H
