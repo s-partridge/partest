@@ -167,10 +167,24 @@ namespace partest
 		*/
 		void maybeRaiseForCurrentTest(const char *file, int line, PARTEST_STRING_PARAM condition)
 		{
+			std::cout << condition << std::endl;
+
 			if(m_currentFrame->getEffectiveFlags().stopOnFail == ENABLED && (m_currentFrame->state.getResult() == FAILED || m_currentFrame->state.getResult() == MIXED))
 			{
+				std::cout << "Stopped test early due to failure in " << m_currentFrame->metadata.name << std::endl;
 				m_currentFrame->log("Stopped test early due to failure.");
 				throw AssertionFailure(file, line, "Assertion failed: " + condition + " in test '" + m_currentFrame->metadata.name + "'.");
+			}
+		}
+
+		void logAndMaybeRaiseForCurrentFrame(const char *file, int line, PARTEST_STRING_PARAM message)
+		{
+			std::cout << message << std::endl;
+			if(m_currentFrame->getEffectiveFlags().stopOnFail == ENABLED && (m_currentFrame->state.getResult() == FAILED || m_currentFrame->state.getResult() == MIXED))
+			{
+				std::cout << "Stopped test early due to failure in " << m_currentFrame->metadata.name << std::endl;
+				m_currentFrame->log("Stopped test early due to failure.");
+				throw AssertionFailure(file, line, message);
 			}
 		}
 
