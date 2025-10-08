@@ -16,6 +16,7 @@
 #include "partestcommon.h"
 #include "partesttypes.h"
 #include "partesttestframe.h"
+#include "partestexceptions.h"
 
 /**
 * Basic assertion macro for use within tests. Must be called within a TestFrame context.
