@@ -78,6 +78,9 @@ namespace partest
 			state = TestState::defaultState();
 		}
 
+		void updateStatus(TestStatus status) { state.updateStatus(status); }
+		void updateResult(TestResult result) { state.updateResult(result); }
+
 		bool isDescendentOf(const TestFrame *other) const noexcept
 		{
 			const TestFrame *current = m_parent;
