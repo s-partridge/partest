@@ -7,6 +7,7 @@
 
 #include "partestcommon.h"
 #include "partesttypes.h"
+#include "partestlog.h"
 
 namespace partest
 {
@@ -14,7 +15,7 @@ namespace partest
 	{		
 	protected:
 		std::vector<TestFrame *> m_subtests; // Vector of sub-tests
-		std::vector<std::string> m_logs; // Logs associated with this test frame
+		std::vector<LogEntry> m_logs; // Logs associated with this test frame
 
 		TestFrame *m_parent = nullptr; // Pointer to the parent test frame
 		
@@ -56,8 +57,9 @@ namespace partest
 		bool hasTestFunction() const noexcept { return m_testFunction != nullptr; }
 		bool hasTeardownFunction() const noexcept { return m_testTeardown != nullptr; }
 
-		void log(PARTEST_STRING_PARAM message) { m_logs.push_back(message); }
-		const std::vector<std::string> &getLogs() const noexcept { return m_logs; }
+		void log(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message) { m_logs.push_back(LogEntry(level, type, message)); }
+		void log(const LogEntry &level) { m_logs.push_back(level); }
+		const std::vector<LogEntry> &getLogs() const noexcept { return m_logs; }
 
 		void clearLogs() noexcept { m_logs.clear(); }
 		void clearSubtests() 

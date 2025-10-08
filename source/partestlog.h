@@ -2,12 +2,13 @@
 #define PARTESTLOG_H
 
 #include <string>
+#include <chrono>
 #include "partestcommon.h"
 
 // For logs from assert statements, used internally
 #define PARTEST_LOG_ASSERT "Assertion"
-// For logs generated on test completion
-#define PARTEST_LOG_TEST_END "TestEnd"
+// For general test and subtest-level logs
+#define PARTEST_LOG_TEST "Test"
 // For all other logs
 #define PARTEST_LOG_DEFAULT "Default"
 
@@ -15,9 +16,9 @@ namespace partest
 {
 	enum LogLevel : uint8_t
 	{
-		INFO = 0,
+		ERROR = 0,
 		WARNING,
-		ERROR,
+		INFO,
 		DEBUG
 	};
 
@@ -26,8 +27,10 @@ namespace partest
 		LogLevel level;
 		std::string type;
 		std::string message;
-		PARTEST_CONSTEXPR_20 LogEntry() : level(INFO), type(PARTEST_LOG_DEFAULT), message("") {}
-		PARTEST_CONSTEXPR_20 LogEntry(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message) : level(level),  type(type), message(message) {}
+		std::chrono::system_clock::time_point timestamp;
+
+		LogEntry() : LogEntry(INFO, PARTEST_LOG_DEFAULT, "") { }
+		LogEntry(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message) : level(level),  type(type), message(message), timestamp(std::chrono::system_clock::now()) {}
 	};
 }
 

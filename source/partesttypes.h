@@ -42,6 +42,12 @@ namespace partest
 		MIXED
 	};
 
+	enum AssertionResult : uint8_t
+	{
+		ASSERT_FAILED = 0,
+		ASSERT_PASSED
+	};
+
 	/**
 	* Enum type representing the state of a flag.
 	* 
