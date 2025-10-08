@@ -22,8 +22,13 @@ namespace partest
 		* @param line The line number where the assertion failed. Typically provided by the __LINE__ macro.
 		* @param message A message describing the assertion failure.
 		*/
-		AssertionFailure(const char *file, int line, PARTEST_STRING_PARAM message)
-			: std::runtime_error(message), m_file(file), m_line(line) {}
+	#if PARTEST_CPP_VERSION >= 17
+		AssertionFailure(const char *file, int line, std::string_view message) : AssertionFailure(file, line, std::string(message)) {}
+	#endif
+
+		AssertionFailure(const char *file, int line, const std::string &message) : AssertionFailure(file, line, message.c_str()) {}
+
+		AssertionFailure(const char *file, int line, const char *message) : std::runtime_error(message), m_file(file), m_line(line) {}
 
 		/**
 		* Get the file where the assertion failed.
@@ -42,7 +47,7 @@ namespace partest
 
 	/**
 	* Exception class for test integrity failures. Indicates a serious issue with the test itself.
-	* These will be raised by the framework when it detects an invalid state within the test hierarchy.
+	* These will be raised by the framework when an invalid state is detected within the test hierarchy.
 	*/
 	class TestIntegrityFailure : public std::runtime_error
 	{
@@ -51,7 +56,13 @@ namespace partest
 		* Constructor for TestIntegrityFailure.
 		* @param message A message describing the integrity failure.
 		*/
-		TestIntegrityFailure(PARTEST_STRING_PARAM message) : std::runtime_error(message) {}
+	#if PARTEST_CPP_VERSION >= 17
+		TestIntegrityFailure(std::string_view message) : TestIntegrityFailure(std::string(message)) {}
+	#endif
+
+		TestIntegrityFailure(const std::string &message) : TestIntegrityFailure(message.c_str()) {}
+
+		TestIntegrityFailure(const char *message) : std::runtime_error(message) {}
 	};
 }
 #endif
