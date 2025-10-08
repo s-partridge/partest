@@ -91,17 +91,9 @@ public:
 	// This test should result in a MIXED status due to nested subtests
 	void exampleNestedNestedTest()
 	{
-		std::cout << "Running example nested nested test..." << std::endl;
-		
-		std::cout << "Current test result: " << getCurrentFrame().state.getResult() << std::endl;
-
 		subtest(partest::TestInfo("NestedSubtest1", "A nested subtest that always passes."), partest::TEST_FLAGS_INHERIT, [this]()
 		{
-			std::cout << "Running NestedSubtest1..." << std::endl;
-
-			std::cout << "Subtest result initial: " << getCurrentFrame().state.getResult() << std::endl;
 			ASSERT_TRUE(true); // This assertion will pass
-			std::cout << "Current result status: " << getCurrentFrame().state.getResult() << std::endl;
 			
 			subtest(partest::TestInfo("NestedSubtest 1.1"), [this]()
 			{
@@ -113,31 +105,20 @@ public:
 				ASSERT_TRUE(false); // This assertion will fail
 			});
 
-			std::cout << "Current subtest result: " << getCurrentFrame().state.getResult() << std::endl;
 			subtest(partest::TestInfo("NestedSubtest1.3", "A nested subtest that always passes."), partest::TEST_FLAGS_INHERIT, [this]()
 			{
 				ASSERT_TRUE(true); // This assertion will pass
 			});
-
-			std::cout << "Current subtest result: " << getCurrentFrame().state.getResult() << std::endl;
 		});
 
 		subtest(partest::TestInfo("NestedSubtest2", "A nested subtest that always passes."), partest::TEST_FLAGS_INHERIT, [this]()
 		{
-			std::cout << "Running NestedSubtest1..." << std::endl;
-
-			std::cout << "Subtest status initial: " << getCurrentFrame().state.getResult() << std::endl;
 			ASSERT_TRUE(true); // This assertion will pass
-			std::cout << "Current subtest status: " << getCurrentFrame().state.getResult() << std::endl;
 		});
-
-		std::cout << "Current test status: " << getCurrentFrame().state.getResult() << std::endl;
 	}
 
 	void exampleTestWithStopOnFail()
 	{
-		std::cout << "Running example test with stopOnFail..." << std::endl;
-
 		partest::TestFlags stopFlags = partest::TEST_FLAGS_INHERIT;
 		stopFlags.stopOnFail = partest::FlagState::ENABLED;
 
@@ -155,7 +136,7 @@ public:
 				ASSERT_TRUE(2 + 2 == 5);
 			});
 
-			// This assertion will pass, if it is hit, which it shouldn't be if stopOnFail is ENABLED.
+			// This assertion will pass, if it is hit, which it shouldn't be if stopOnFail is ENABLED
 			std::cout << "Error: This assertion should not run if stopOnFail is ENABLED and a previous assertion failed." << std::endl;
 			ASSERT_TRUE(2 + 2 == 4);
 		});
@@ -186,13 +167,6 @@ int main()
 	partest::addTestClass(std::make_unique<TestTest>());
 	partest::runAllTests();
 	partest::displayAllTests();
-
-	//std::cout << "All tests completed." << std::endl;
-
-	//for(const partest::TestResult &result : results)
-	//{
-	//	std::cout << result.getResult() << " " << result.message << std::endl;
-	//}
 
 	return 0;
 }
