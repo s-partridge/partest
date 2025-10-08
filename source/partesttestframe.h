@@ -133,10 +133,9 @@ namespace partest
 
 		bool initializeTest()
 		{
-			// If effective flags indicate the test should be skipped, mark it as skipped immediately
+			// If effective flags indicate the test should be skipped, do nothing and return immediately
 			if(getEffectiveFlags().skip == ENABLED)
 			{
-				state.updateStatus(SKIPPED);
 				return false;
 			}
 			else
@@ -169,9 +168,6 @@ namespace partest
 
 		TestFrame *finalizeTest()
 		{
-			if(state.getStatus() != ABORTED && state.getStatus() != SKIPPED)
-				state.updateStatus(COMPLETED);
-
 			if(m_parent != nullptr)
 				m_parent->state.updateResult(state.getResult());
 

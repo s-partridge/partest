@@ -52,7 +52,9 @@ namespace partest
 			{
 				try
 				{
+					test->updateStatus(RUNNING);
 					test->runTestFunction();
+					test->updateStatus(COMPLETED);
 				}
 				// A test returned early due to an assertion failure with stopOnFail enabled.
 				// Nothing special to do here, but this is necessary to prevent the exception from propagating further.
@@ -65,8 +67,9 @@ namespace partest
 				{
 					// An unexpected exception occurred during test execution.
 					// Mark the test as aborted and log a generic message.
-					test->state.updateStatus(ABORTED);
-					test->state.updateResult(FAILED);
+					test->updateStatus(ABORTED);
+					// Ensure that the test result was set. A generic exception indicates test failure.
+					test->updateResult(FAILED);
 
 					std::cerr << "Error: Exception in test '" << m_currentFrame->metadata.name << "': " << e.what() << std::endl;
 				}
@@ -74,10 +77,14 @@ namespace partest
 				{
 					// An unknown exception occurred during test execution.
 					// Mark the test as aborted and log a generic message.
-					test->state.updateStatus(ABORTED);
-					test->state.updateResult(FAILED);
-					std::cerr << "Error: Unknown exception in test '" << m_currentFrame->metadata.name << "'." << std::endl;
+					test->updateStatus(ABORTED);
+					// Ensure that the test result was set. A generic exception indicates test failure.
+					test->updateResult(FAILED);
 				}
+			}
+			else
+			{
+				m_currentFrame->updateStatus(SKIPPED);
 			}
 			m_currentFrame = test->finalizeTest();
 		}
@@ -154,7 +161,7 @@ namespace partest
 		TestFlags getCurrentFlags() const { return m_currentFrame->getEffectiveFlags(); }
 		void updateTestResult(TestResult result, PARTEST_STRING_PARAM log)
 		{
-			m_currentFrame->state.updateResult(result);
+			m_currentFrame->updateResult(result ? PASSED : FAILED);
 			m_currentFrame->log(log);
 		}
 
