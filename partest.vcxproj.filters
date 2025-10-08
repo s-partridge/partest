@@ -38,5 +38,11 @@
     <ClInclude Include="source\partesttestframe.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="source\partestlog.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="source\partestexceptions.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
