@@ -3,6 +3,7 @@
 
 // Public interface for the Partest testing framework
 
+#include "source/partestcommon.h"
 #include "source/partestbase.h"
 #include "source/partestrunner.h"
 
@@ -29,7 +30,7 @@ namespace partest
 	/**
 	* Run a specific test class by name in the global test runner.
 	*/
-	void runTestClassWithName(const std::string &name)
+	void runTestClassWithName(PARTEST_STRING_PARAM name)
 	{
 		partest::PartestRunner::getInstance().runTestWithName(name);
 	}

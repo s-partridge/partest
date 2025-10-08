@@ -90,6 +90,7 @@ namespace partest
 
 // For C++17, use the standard library trait
 #elif PARTEST_CPP_VERSION >= 17
+#include <type_traits>
 #define PARTEST_ENABLE_IF_INVOCABLE(MaybeInvocable) typename Func, typename = std::enable_if_t<std::is_invocable_v<MaybeInvocable>>
 
 // For C++11, C++14, define our own trait and use it
