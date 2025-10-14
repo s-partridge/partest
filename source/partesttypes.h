@@ -224,6 +224,42 @@ namespace partest
 		friend std::ostream &operator<<(std::ostream &out, const TestState &state);
 	};
 
+	PARTEST_CONSTEXPR_20 std::string to_string(const TestStatus &status)
+	{
+		switch(status)
+		{
+		case AWAITING:
+			return "AWAITING";
+		case RUNNING:
+			return "RUNNING";
+		case COMPLETED:
+			return "COMPLETED";
+		case ABORTED:
+			return "ABORTED";
+		case SKIPPED:
+			return "SKIPPED";
+		default:
+			return "INVALID STATUS VALUE";
+		}
+	}
+
+	PARTEST_CONSTEXPR_20 std::string to_string(const TestResult &result)
+	{
+		switch(result)
+		{
+		case NO_RESULT:
+			return "NO_RESULT";
+		case PASSED:
+			return "PASSED";
+		case FAILED:
+			return "FAILED";
+		case MIXED:
+			return "MIXED";
+		default:
+			return "INVALID RESULT VALUE";
+		}
+	}
+
 	/**
 	* Overloaded stream extraction operator for TestStatus enum.
 	*/
