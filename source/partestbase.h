@@ -11,6 +11,7 @@
 #include <sstream>
 #include <vector>
 #include <cassert>
+#include <cstring>
 #include <functional>
 
 #include "partestcommon.h"
