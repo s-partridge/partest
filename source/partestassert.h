@@ -103,10 +103,10 @@ namespace partest
 		* @param key The metadata key
 		* @param value The metadata value
 		*/
-		void setMetadata(PARTEST_STRING_PARAM key, PARTEST_STRING_PARAM value) { m_metadata[key] = value; }
+		void setMetadata(PARTEST_STRING_PARAM key, PARTEST_STRING_PARAM value) { m_metadata[PARTEST_STRING_PARAM_TO_STRING(key)] = value; }
 
 		template<typename T>
-		void setMetadata(PARTEST_STRING_PARAM key, const T &value) { m_metadata[key] = maybeStringify(value); }
+		void setMetadata(PARTEST_STRING_PARAM key, const T &value) { m_metadata[PARTEST_STRING_PARAM_TO_STRING(key)] = maybeStringify(value); }
 
 		/**
 		* Check whether metadata exists for the given key
@@ -114,7 +114,7 @@ namespace partest
 		* @param key The metadata key
 		* @return true if a value exists for `key`, false otherwise
 		*/
-		bool hasMetadata(PARTEST_STRING_PARAM key) const noexcept { return m_metadata.find(key) != m_metadata.end(); }
+		bool hasMetadata(PARTEST_STRING_PARAM key) const noexcept { return m_metadata.find(PARTEST_STRING_PARAM_TO_STRING(key)) != m_metadata.end(); }
 
 		/**
 		* Get the value of a metadata key for this assertion result
@@ -124,7 +124,7 @@ namespace partest
 		*/
 		std::string getMetadata(PARTEST_STRING_PARAM key) const
 		{
-			auto it = m_metadata.find(key);
+			auto it = m_metadata.find(PARTEST_STRING_PARAM_TO_STRING(key));
 			if(it != m_metadata.end())
 			{
 				return it->second;
