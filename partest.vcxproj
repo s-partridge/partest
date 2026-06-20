@@ -55,6 +55,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="partest.h" />
+    <ClInclude Include="source\partestassert.h" />
     <ClInclude Include="source\partestbase.h" />
     <ClInclude Include="source\partestcommon.h" />
     <ClInclude Include="source\partestexceptions.h" />

@@ -81,10 +81,14 @@ namespace partest
 
 		void printAllTestTrees() const
 		{
-			for(PartestBase *test : m_tests)
+			for(PartestBase *test: m_tests)
+			{
+				test->printLogs(partest::INFO, 10);
+			}
+		/*	for(PartestBase *test : m_tests)
 			{
 				test->printTestTree();
-			}
+			}*/
 		}
 	};
 };

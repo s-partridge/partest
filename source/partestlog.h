@@ -9,6 +9,8 @@
 #define PARTEST_LOG_ASSERT "Assertion"
 // For general test and subtest-level logs
 #define PARTEST_LOG_TEST "Test"
+// For general test and subtest-level logs
+#define PARTEST_LOG_SUBTEST "Subtest"
 // For all other logs
 #define PARTEST_LOG_DEFAULT "Default"
 
@@ -27,10 +29,10 @@ namespace partest
 		LogLevel level;
 		std::string type;
 		std::string message;
-		std::chrono::system_clock::time_point timestamp;
+		unsigned int testFrameID;
 
 		LogEntry() : LogEntry(INFO, PARTEST_LOG_DEFAULT, "") { }
-		LogEntry(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message) : level(level),  type(type), message(message), timestamp(std::chrono::system_clock::now()) {}
+		LogEntry(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message, unsigned int testFrameID = 0) : level(level),  type(type), message(message), testFrameID(testFrameID) {}
 	};
 }
 
