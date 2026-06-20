@@ -8,6 +8,7 @@
 #include "partestcommon.h"
 #include "partesttypes.h"
 #include "partestlog.h"
+#include "partestassert.h"
 
 namespace partest
 {
@@ -16,6 +17,7 @@ namespace partest
 	protected:
 		std::vector<TestFrame *> m_subtests; // Vector of sub-tests
 		std::vector<LogEntry> m_logs; // Logs associated with this test frame
+		std::vector<AssertionResult> m_assertions; // Results of assertions triggered by this test frame
 
 		TestFrame *m_parent = nullptr; // Pointer to the parent test frame
 		
@@ -23,10 +25,27 @@ namespace partest
 		std::function<void()> m_testFunction = nullptr; // Test function associated with this frame
 		std::function<void()> m_testTeardown = nullptr; // Test function associated with this frame
 
+		/**
+		* Get a globally incrementing counter. Used internally to assign IDs to newly created test frames.
+		* 
+		* @return the next value for frameCount
+		*/
+		static unsigned int getNextFrameID() noexcept {
+			static std::atomic<unsigned int> frameCount = 0;
+			return frameCount++;
+		}
+
+		unsigned int m_frameID;
+
 	public:
-		TestFrame() noexcept : flags(), metadata(), state() {}
-		TestFrame(const TestFlags &flags, const TestInfo &metadata, const TestState &result, const std::function<void()> &testFunction = nullptr, const std::function<void()> &testSetup = nullptr, const std::function<void()> &testTeardown = nullptr)
-			: flags(flags), metadata(metadata), state(result), m_testFunction(testFunction), m_testSetup(testSetup), m_testTeardown(testTeardown) { }
+		TestFrame() noexcept : flags(), metadata(), state(), m_frameID(getNextFrameID()) { }
+		TestFrame(const TestFlags &flags, const TestInfo &metadata, const TestState &result,
+				const std::function<void()> &testFunction = nullptr,
+				const std::function<void()> &testSetup = nullptr,
+				const std::function<void()> &testTeardown = nullptr)
+			: flags(flags), metadata(metadata), state(result),
+				m_testFunction(testFunction), m_testSetup(testSetup), m_testTeardown(testTeardown),
+				m_frameID(getNextFrameID()) {}
 	
 		// Nothing should be moving or copying TestFrame instances. They exist as part of a tree structure managed by PartestBase.
 		TestFrame(const TestFrame &) = delete; // Disable copy constructor
@@ -45,6 +64,8 @@ namespace partest
 			}
 		}
 
+		unsigned int frameID() const noexcept { return m_frameID; }
+
 		TestInfo metadata; // Test metadata, including name and description
 		TestFlags flags; // Effective flags for this test frame
 		TestState state; // Result of the test
@@ -57,9 +78,29 @@ namespace partest
 		bool hasTestFunction() const noexcept { return m_testFunction != nullptr; }
 		bool hasTeardownFunction() const noexcept { return m_testTeardown != nullptr; }
 
+		void logSubtestTransition(PARTEST_STRING_PARAM message, const TestFrame *frame)
+		{
+			LogEntry logEntry(LogLevel::INFO, PARTEST_LOG_SUBTEST, message);
+			logEntry.testFrameID = frame != nullptr ? frame->frameID() : 0;
+			log(logEntry);
+		}
+
 		void log(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message) { m_logs.push_back(LogEntry(level, type, message)); }
 		void log(const LogEntry &level) { m_logs.push_back(level); }
 		const std::vector<LogEntry> &getLogs() const noexcept { return m_logs; }
+
+		void logAssertion(const AssertionResult &result)
+		{
+			m_assertions.push_back(result);
+		}
+
+		void logAssertion(bool passed,
+				PARTEST_STRING_PARAM assertType, PARTEST_STRING_PARAM condition,
+				PARTEST_STRING_PARAM message, PARTEST_STRING_PARAM file,
+				int line)
+		{
+			m_assertions.push_back(AssertionResult(passed, assertType, condition, message, file, line));
+		}
 
 		void clearLogs() noexcept { m_logs.clear(); }
 		void clearSubtests() 
@@ -80,8 +121,8 @@ namespace partest
 			state = TestState::defaultState();
 		}
 
-		void updateStatus(TestStatus status) { state.updateStatus(status); }
-		void updateResult(TestResult result) { state.updateResult(result); }
+		void updateStatus(TestStatus status) noexcept { state.updateStatus(status); }
+		void updateResult(TestResult result) noexcept { state.updateResult(result); }
 
 		bool isDescendentOf(const TestFrame *other) const noexcept
 		{
@@ -138,15 +179,20 @@ namespace partest
 			// If effective flags indicate the test should be skipped, do nothing and return immediately
 			if(getEffectiveFlags().skip == ENABLED)
 			{
+				
+				updateStatus(SKIPPED);
 				return false;
 			}
 			else
 			{
+				if(m_parent != nullptr)
+				{
+					m_parent->logSubtestTransition("Initializing subtest " + metadata.name, this);
+				}
 				if(m_testSetup != nullptr)
 				{
 					m_testSetup();
 				}
-				state.updateStatus(RUNNING);
 				return true;
 			}
 		}
@@ -160,7 +206,9 @@ namespace partest
 		{
 			if(m_testFunction != nullptr)
 			{
+				updateStatus(RUNNING);
 				m_testFunction();
+				updateStatus(COMPLETED);
 			}
 			else
 			{
@@ -170,12 +218,25 @@ namespace partest
 
 		TestFrame *finalizeTest()
 		{
-			if(m_parent != nullptr)
-				m_parent->state.updateResult(state.getResult());
-
-			if(m_testTeardown != nullptr)
+			// If effective flags indicate the test should be skipped, do nothing and return immediately
+			if(getEffectiveFlags().skip == DISABLED)
 			{
-				m_testTeardown();
+				if(state.getStatus() != ABORTED)
+					updateStatus(COMPLETED);
+
+				if(m_parent != nullptr)
+				{
+					std::string logString = "Finished: " + metadata.name + "; Results: " + to_string(state.getResult());
+					log(INFO, PARTEST_LOG_TEST, logString);
+
+					//m_parent->log("Finalizing subtest " + metadata.name, this);
+					m_parent->state.updateResult(state.getResult());
+				}
+
+				if(m_testTeardown != nullptr)
+				{
+					m_testTeardown();
+				}
 			}
 
 			return m_parent;

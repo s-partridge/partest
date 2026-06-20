@@ -17,19 +17,9 @@
 #include "partestcommon.h"
 #include "partesttypes.h"
 #include "partestlog.h"
+#include "partestassert.h"
 #include "partesttestframe.h"
 #include "partestexceptions.h"
-
-/**
-* Basic assertion macro for use within tests. Must be called within a TestFrame context.
-*/
-#define ASSERT_TRUE(condition) handleAssertTrue((condition), #condition, __FILE__, __LINE__)
-
-/**
-* Basic assertion macros for equality checks. Must be called within a TestFrame context.
-*/
-#define ASSERT_EQUAL(expected, actual) handleAssertEqual((expected), (actual), #expected, #actual, __FILE__, __LINE__)
-#define ASSERT_NOT_EQUAL(expected, actual) handleAssertNotEqual((expected), (actual), #expected, #actual, __FILE__, __LINE__)
 
 namespace partest
 {
@@ -43,7 +33,7 @@ namespace partest
 
 		TestFrame *m_currentFrame; // Pointer to the current test frame
 
-		void runTest(TestFrame *test) noexcept
+		void runTest(TestFrame *test)
 		{
 			// There is no point where this should be null in production code.
 			// If it is, it indicates a serious issue with the test framework itself.
@@ -52,11 +42,10 @@ namespace partest
 			m_currentFrame = test;
 			if(m_currentFrame->initializeTest())
 			{
+				std::stringstream resultStream;
 				try
 				{
-					test->updateStatus(RUNNING);
-					test->runTestFunction();
-					test->updateStatus(COMPLETED);
+					m_currentFrame->runTestFunction();
 				}
 				// A test returned early due to an assertion failure with stopOnFail enabled.
 				// Nothing special to do here, but this is necessary to prevent the exception from propagating further.
@@ -64,47 +53,42 @@ namespace partest
 				// Assertion failures indicate that the test has already been marked as FAILED, so no additional action is needed here.
 				#pragma warning(suppress:4101) 
 				catch(const partest::AssertionFailure &e)
-				{		
-					std::stringstream err;
-					err << "Stopped test early due to failure in " << m_currentFrame->metadata.name << std::endl;
+				{
+					resultStream << "Stopped test early due to failure in " << m_currentFrame->metadata.name << std::endl;
 
 					if(e.file() != "" && e.line() != 0)
-						err << "At: " << e.file() << ":" << e.line() << std::endl;
+						resultStream << "At: " << e.file() << ":" << e.line() << std::endl;
 
-					test->updateStatus(COMPLETED);
-					test->log(LogEntry(LogLevel::INFO, PARTEST_LOG_TEST, err.str()));
+					m_currentFrame->log(LogLevel::INFO, PARTEST_LOG_TEST, resultStream.str());
 				}
 
 				catch(const std::exception &e)
 				{
 					// An unexpected exception occurred during test execution.
 					// Mark the test as aborted and log a generic message.
-					test->updateStatus(ABORTED);
+					m_currentFrame->updateStatus(ABORTED);
 					// Ensure that the test result was set. A generic exception indicates test failure.
-					test->updateResult(FAILED);
+					m_currentFrame->updateResult(FAILED);
 
-					std::stringstream err;
-					err << "Error: Unhandled exception in test '" << m_currentFrame->metadata.name << "': " << e.what() << std::endl;
-					test->log(LogEntry(LogLevel::ERROR, PARTEST_LOG_DEFAULT, err.str()));
+					resultStream << "Error: Unhandled exception in test '" << m_currentFrame->metadata.name << "': " << e.what() << std::endl;
+					m_currentFrame->log(LogLevel::ERROR, PARTEST_LOG_DEFAULT, resultStream.str());
 				}
 				catch(...)
 				{
 					// An unknown exception occurred during test execution.
 					// Mark the test as aborted and log a generic message.
-					test->updateStatus(ABORTED);
+					m_currentFrame->updateStatus(ABORTED);
 					// Ensure that the test result was set. A generic exception indicates test failure.
-					test->updateResult(FAILED);
+					m_currentFrame->updateResult(FAILED);
 
-					std::stringstream err;
-					err << "Error: Unknown exception in test '" << m_currentFrame->metadata.name << "'." << std::endl;
-					test->log(LogEntry(LogLevel::ERROR, PARTEST_LOG_DEFAULT, err.str()));
+					resultStream << "Error: Unknown exception in test '" << m_currentFrame->metadata.name << "'." << std::endl;
+					m_currentFrame->log(LogLevel::ERROR, PARTEST_LOG_DEFAULT, resultStream.str());
 				}
+
+				m_currentFrame->finalizeTest();
 			}
-			else
-			{
-				m_currentFrame->updateStatus(SKIPPED);
-			}
-			m_currentFrame = test->finalizeTest();
+			
+			m_currentFrame = m_currentFrame->getParent();
 		}
 
 		/**
@@ -178,9 +162,15 @@ namespace partest
 		*/
 		TestFlags getCurrentFlags() const { return m_currentFrame->getEffectiveFlags(); }
 
-		void logAssertion(AssertionResult result, PARTEST_STRING_PARAM log)
+		void logAssertion(const AssertionResult &result)
 		{
-			m_currentFrame->updateResult(result ? PASSED : FAILED);
+			m_currentFrame->updateResult(result.passed ? PASSED : FAILED);
+			m_currentFrame->logAssertion(result);
+		}
+
+		void logAssertion(bool passed, PARTEST_STRING_PARAM log)
+		{
+			m_currentFrame->updateResult(passed ? PASSED : FAILED);
 			m_currentFrame->log(LogLevel::INFO, PARTEST_LOG_ASSERT, log);
 		}
 
@@ -232,103 +222,134 @@ namespace partest
 		// Assertions //
 		////////////////
 		template<typename T>
-		void handleAssertTrue(const T &condition, const char *conditionStr, const char *file, int line)
+		void handleAssertTrue(const T &condition, const char *type, const char *conditionStr, const char *file, int line)
 		{
+			AssertionResult result(condition, ASSERT_TRUE_STR, conditionStr, file, line);
 			std::ostringstream message;
+
 			if(condition)
 			{
-				message << "ASSERT_TRUE(" << conditionStr << ") passed.";
-				logAssertion(ASSERT_PASSED, message.str());
+				message << type << "(" << conditionStr << ") passed.";
+				result.message = message.str();
+
+				logAssertion(result);
+				logAssertion(true, message.str());
 				return;
 			}
 
 			message << "Assertion failed at " << file << ":" << line
 				<< ": ASSERT_TRUE(" << conditionStr << ") was false.\n";
-
-			logAssertion(ASSERT_FAILED, message.str());			
+			
+			result.message = message.str();
+			logAssertion(result);
+			logAssertion(false, message.str());			
 			maybeRaiseOnAssertion(file, line, message.str());
 		}
 
-		template<typename T, typename U>
-		void handleAssertEqual(const T &expected, const U &actual, const char *expectedStr, const char *actualStr, const char *file, int line)
+		/**
+		* @param expected The expected value
+		* @param actual The actual value
+		* @param type The type of assertion (e.g., "ASSERT_EQUAL")
+		* @param conditionStr The string representation of the condition being tested
+		* @param file The file where the assertion is made
+		* @param line The line number where the assertion is made
+		*/
+		template <typename T, typename U>
+		void handleAssertEqual(const T &expected, const U &actual, const char *type, const char *conditionStr, const char *file, int line)
 		{
+			AssertionResult result(expected == actual, type, conditionStr, file, line);
 			std::ostringstream message;
 
 			if(expected == actual)
 			{
-				message << "ASSERT_EQUAL(" << expectedStr << ", " << actualStr << ") passed.";
-				logAssertion(ASSERT_PASSED, message.str());
+				message << type << "(" << conditionStr << ") passed.";
+				logAssertion(true, message.str());
 				return;
 			}
-
 			message << "Assertion failed at " << file << ":" << line
-				<< ": ASSERT_EQUAL(" << expectedStr << ", " << actualStr << ")\n"
-				<< "  Expected: " << expected << "\n"
-				<< "  Actual:   " << actual << "\n";
+				<< ": " << type << "(" << conditionStr << ")\n"
+				<< "  Expected: " << maybeStringify(expected) << "\n"
+				<< "  Actual:   " << maybeStringify(actual) << "\n";
 
-			logAssertion(ASSERT_FAILED, message.str());			
+			// Write the message to the AssertionResult for logging
+			result.message = message.str();
+			// Store the assertion result
+			logAssertion(result);
+			// Old style log for compatibility, for now
+			logAssertion(false, message.str());			
 			maybeRaiseOnAssertion(file, line, message.str());
 		}
 
 		// C-string specialization for string comparisons
-		void handleAssertEqual(const char* expected, const char* actual, const char* expectedStr, const char* actualStr, const char* file, int line)
+		void handleAssertEqual(const char* expected, const char* actual, const char *type, const char *conditionStr, const char* file, int line)
 		{
+			AssertionResult result(expected == actual, type, conditionStr, file, line);
 			std::ostringstream message;
 
 			if (expected != nullptr && actual != nullptr && strcmp(expected, actual) == 0
 			    || expected == nullptr && actual == nullptr)
 			{
-				message << "ASSERT_EQUAL(" << expectedStr << ", " << actualStr << ") passed.";
-				logAssertion(ASSERT_PASSED, message.str());
+				message << type << "(" << conditionStr << ") passed.";
+				logAssertion(true, message.str());
 				return;
 			}
 
 			message << "Assertion failed at " << file << ":" << line
-				<< ": ASSERT_EQUAL(" << expectedStr << ", " << actualStr << ")\n"
+				<< type << "(" << conditionStr << ")\n"
 				<< "  Expected: \"" << expected << "\"\n"
 				<< "  Actual:   \"" << actual << "\"\n";
 
-			logAssertion(ASSERT_FAILED, message.str());			
+			result.message = message.str();
+			logAssertion(result);
+			logAssertion(false, message.str());
 			maybeRaiseOnAssertion(file, line, message.str());
 		}
 
 		template<typename T, typename U>
-		void handleAssertNotEqual(const T &expected, const U &actual, const char *expectedStr, const char *actualStr, const char *file, int line)
+		void handleAssertNotEqual(const T &expected, const U &actual, const char *type, const char *conditionStr, const char *file, int line)
 		{
+			AssertionResult result(expected == actual, type, conditionStr, file, line);
 			std::ostringstream message;
 
 			if(expected != actual)
 			{
-				message << "ASSERT_NOT_EQUAL(" << expectedStr << ", " << actualStr << ") passed.";
-				logAssertion(ASSERT_PASSED, message.str());
+				message << type << "(" << conditionStr << ") passed.";
+				logAssertion(true, message.str());
 				return;
 			}
 
 			message << "Assertion failed at " << file << ":" << line
-				<< ": ASSERT_NOT_EQUAL(" << expectedStr << ", " << actualStr << ")\n"
-				<< "\"" << actualStr << "\" should not have been " << expected << "\n";
+				<< type << "(" << conditionStr << ")\n"
+				<< "\"" << expected << "\" should not have been " << expected << "\n";
 
-			logAssertion(ASSERT_FAILED, message.str());			
+			result.message = message.str();
+			logAssertion(result);
+			logAssertion(false, message.str());			
 			maybeRaiseOnAssertion(file, line, message.str());
 		}
 
 		// C-string specialization for string comparisons
-		void handleAssertNotEqual(const char* expected, const char* actual, const char* expectedStr, const char* actualStr, const char* file, int line)
+		void handleAssertNotEqual(const char* expected, const char* actual, const char* type, const char* conditionStr, const char* file, int line)
 		{
+			AssertionResult result(expected == actual, type, conditionStr, file, line);
 			std::ostringstream message;
 
-			if(expected != actual)
+			if (expected != nullptr && actual != nullptr && strcmp(expected, actual) != 0
+			    || expected == nullptr && actual == nullptr)
 			{
-				message << "ASSERT_NOT_EQUAL(" << expectedStr << ", " << actualStr << ") passed.";
-				logAssertion(ASSERT_PASSED, message.str());
+				message << type << "(" << conditionStr << ") passed.";
+				logAssertion(true, message.str());
 				return;
 			}
 
 			message << "Assertion failed at " << file << ":" << line
-				<< ": ASSERT_NOT_EQUAL(" << expectedStr << ", " << actualStr << ")\n"
-				<< "\"" << actualStr << "\" should not have been " << expected << "\n";
+				<< type << "(" << conditionStr << ")\n"
+				<< "  Expected: \"" << expected << "\"\n"
+				<< "  Actual:   \"" << actual << "\"\n";
 
-			logAssertion(ASSERT_FAILED, message.str());			
+			result.message = message.str();
+			logAssertion(result);
+			logAssertion(false, message.str());
 			maybeRaiseOnAssertion(file, line, message.str());
 		}
 
@@ -375,11 +396,66 @@ namespace partest
 			printTestTree(*m_testTree);
 		}
 
-		void printLogs(LogLevel maxLevel)
+		std::vector<LogEntry> aggregateLogs(TestFrame *frame, LogLevel maxLevel, unsigned depth = 1)
 		{
+			std::vector<LogEntry> entries;
+
+			for(const LogEntry &entry : frame->getLogs())
+			{
+				if(entry.level <= maxLevel)
+				{
+					entries.push_back(entry);
+				}
+			}
+
+			//Incomplete
+		}
+
+		void printLogs(LogLevel maxLevel = INFO, unsigned maxDepth = 1)
+		{
+			printLogs(m_testTree.get(), maxLevel, maxDepth, 0);
+		}
+
+		void printLogs(TestFrame *frame, LogLevel maxLevel = INFO, unsigned maxDepth = 1, unsigned depth = 0)
+		{
+			std::vector<LogEntry> entries;
+
+			for(const LogEntry &entry : frame->getLogs())
+			{
+				std::cout << entry.message << std::endl;
+
+				if(depth < maxDepth && entry.type == PARTEST_LOG_SUBTEST && entry.testFrameID != 0)
+				{
+					auto subtest = frame->subtestsBegin();
+
+					while(subtest != frame->subtestsEnd())
+					{
+						if((*subtest)->frameID() == entry.testFrameID)
+						{
+							printLogs(*subtest, maxLevel, maxDepth, depth + 1);
+							break;
+						}
+						subtest++;
+					}
+				}
+			}
+		}
+
+		void aggregateLogs(LogLevel maxLevel, unsigned depth = 1)
+		{
+			std::vector<LogEntry> entries;
+
 			TestFrame *frame = m_testTree.get();
 
+			for(const LogEntry &entry : frame->getLogs())
+			{
+				if(entry.level <= maxLevel)
+				{
+					entries.push_back(entry);
+				}
+			}
 
+			//Incomplete
 		}
 	};
 } // namespace partest

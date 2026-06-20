@@ -44,5 +44,8 @@
     <ClInclude Include="source\partestexceptions.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="source\partestassert.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
