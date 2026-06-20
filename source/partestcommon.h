@@ -77,8 +77,10 @@ C++20	Allowed mutation of *this, virtual, new/delete, try/catch. Modifying objec
 #if PARTEST_CPP_VERSION >= 17
     #include <string_view>
 	#define PARTEST_STRING_PARAM std::string_view
+	#define PARTEST_STRING_PARAM_TO_STRING(PARTEST_STRING_PARAM) std::string(PARTEST_STRING_PARAM)
 #else
 	#define PARTEST_STRING_PARAM const std::string&
+	#define PARTEST_STRING_PARAM_TO_STRING(PARTEST_STRING_PARAM) (PARTEST_STRING_PARAM)	
 #endif
 
 namespace partest
