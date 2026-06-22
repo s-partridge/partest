@@ -412,7 +412,7 @@ namespace partest
 	/**
 	* Default flag constants for easy reference
 	*/
-	// Enable all flags
+	// Disable all flags
 	PARTEST_CONSTEXPR_11 const TestFlags TEST_FLAGS_DISABLED = TestFlags(FlagState::DISABLED, FlagState::DISABLED, FlagState::DISABLED, FlagState::DISABLED);
 	// Inherit all flags from parent test
 	PARTEST_CONSTEXPR_11 const TestFlags TEST_FLAGS_INHERIT = TestFlags(FlagState::INHERIT, FlagState::INHERIT, FlagState::INHERIT, FlagState::INHERIT);

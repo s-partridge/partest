@@ -308,7 +308,7 @@ namespace partest
 		template<typename T, typename U>
 		void handleAssertNotEqual(const T &expected, const U &actual, const char *type, const char *conditionStr, const char *file, int line)
 		{
-			AssertionResult result(expected == actual, type, conditionStr, file, line);
+			AssertionResult result(expected != actual, type, conditionStr, file, line);
 			std::ostringstream message;
 
 			if(expected != actual)
@@ -331,7 +331,7 @@ namespace partest
 		// C-string specialization for string comparisons
 		void handleAssertNotEqual(const char* expected, const char* actual, const char* type, const char* conditionStr, const char* file, int line)
 		{
-			AssertionResult result(expected == actual, type, conditionStr, file, line);
+			AssertionResult result(expected != actual, type, conditionStr, file, line);
 			std::ostringstream message;
 
 			if (expected != nullptr && actual != nullptr && strcmp(expected, actual) != 0

@@ -128,7 +128,7 @@ namespace partest
 		if(value == nullptr)
 			return "<nullptr>";
 		else
-		return std::string(value);
+			return std::string(value);
 	}
 
 	/**
