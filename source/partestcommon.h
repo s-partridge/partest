@@ -164,9 +164,9 @@ namespace partest
 		}
 		else if constexpr(traits::is_streamable<T>::value)
 		{
-			std::ostream out;
+			std::ostringstream out;
 			out << value;
-			return out.rdbuf()->str();
+			return out.str();
 		}
 		else
 		{
@@ -178,30 +178,29 @@ namespace partest
 	/**
 	* Convert a value to string if possible
 	* Try to use std::to_string if available, otherwise fall back to streaming to std::ostream
-	* Single function using if constexpr for C++17 and later
 	* 
 	* @param value The value to convert to string
 	* @return The string representation of the value, or a placeholder if not convertible
 	*/
-	template <typename T, typename = typename std::enable_if<traits::has_to_string<T>::value>::type>
-	std::string maybeStringify(const T& value)
+	template <typename T>
+	typename std::enable_if<traits::has_to_string<T>::value, std::string>::type
+	maybeStringify(const T& value)
 	{
-		using std::to_string;
-		return to_string(value);
+		return std::to_string(value);
 	}
 
 	/**
 	* Convert a value to string if possible
 	* Try to use std::to_string if available, otherwise fall back to streaming to std::ostream
-	* Single function using if constexpr for C++17 and later
 	* 
 	* @param value The value to convert to string
 	* @return The string representation of the value, or a placeholder if not convertible
 	*/
-	template <typename T, typename = typename std::enable_if<!traits::has_to_string<T>::value && traits::is_streamable<T>::value>::type>
-	std::string maybeStringify(const T& value)
+	template <typename T>
+	typename std::enable_if<!traits::has_to_string<T>::value && traits::is_streamable<T>::value, std::string>::type
+	maybeStringify(const T& value)
 	{
-		std::ostream out;
+		std::ostringstream out;
 		out << value;
 		return out.str();
 	}
@@ -209,13 +208,13 @@ namespace partest
 	/**
 	* Convert a value to string if possible
 	* Try to use std::to_string if available, otherwise fall back to streaming to std::ostream
-	* Single function using if constexpr for C++17 and later
 	* 
 	* @param value The value to convert to string
 	* @return The string representation of the value, or a placeholder if not convertible
 	*/
-	template <typename T, typename = typename std::enable_if<!traits::has_to_string<T>::value && !traits::is_streamable<T>::value>::type>
-	std::string maybeStringify(const T& value)
+	template <typename T>
+	typename std::enable_if<!traits::has_to_string<T>::value && !traits::is_streamable<T>::value, std::string>::type
+	maybeStringify(const T& value)
 	{
 		return std::string("<unprintable type: " + typeid(T).name() + ">");
 	}
