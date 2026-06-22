@@ -382,21 +382,20 @@ namespace partest
 		switch(state)
 		{
 		case INHERIT:
-			stateString = "INHERIT";
+			out << "INHERIT";
 			break;
 		case ENABLED:
-			stateString = "ENABLED";
+			out << "ENABLED";
 			break;
 		case DISABLED:
-			stateString = "DISABLED";
+			out << "DISABLED";
 			break;
 		case MASKED:
-			stateString = "MASKED";
+			out << "MASKED";
 			break;
 		default:
-			stateString = "INVALID FLAG VALUE";
+			out << "INVALID FLAG VALUE";
 		}
-		out << stateString;
 		return out;
 	}
 
