@@ -191,6 +191,14 @@ namespace partest
 		}
 
 		/**
+		* Check if the current test should raise an assertion failure based on its status and flags. Used in ASSERT macros.
+		* 
+		* @param result Object containing the evaluated result of an assertion
+		* @throws AssertionFailure if the current test has failed and stopOnFail is enabled.
+		*/
+		inline void maybeRaiseOnAssertion(const AssertionResult &result) { maybeRaiseOnAssertion(result.file.c_str(), result.line, result.condition); }
+
+		/**
 		* Recursively print the test tree starting from the given frame, with indentation based on depth.
 		* @param frame The TestFrame to start printing from.
 		* @param depth The current depth in the tree, used for indentation. Default is 0.
@@ -222,28 +230,24 @@ namespace partest
 		// Assertions //
 		////////////////
 		template<typename T>
-		void handleAssertTrue(const T &condition, const char *type, const char *conditionStr, const char *file, int line)
+		void handleAssertBoolean(const T &condition, bool assertTrue, const char *type, const char *conditionStr, const char *file, int line)
 		{
-			AssertionResult result(condition, ASSERT_TRUE_STR, conditionStr, file, line);
+			bool passed = (condition == assertTrue);
+			AssertionResult result(passed, type, conditionStr, file, line);
 			std::ostringstream message;
 
-			if(condition)
+			if(passed)
 			{
 				message << type << "(" << conditionStr << ") passed.";
-				result.message = message.str();
-
-				logAssertion(result);
-				logAssertion(true, message.str());
-				return;
 			}
-
-			message << "Assertion failed at " << file << ":" << line
-				<< ": ASSERT_TRUE(" << conditionStr << ") was false.\n";
-			
+			else
+			{
+				message << "Assertion failed at " << file << ":" << line
+					<< ": " << type << "(" << conditionStr << ") was " << (assertTrue ? "false\n" : "true.\n");
+			}
 			result.message = message.str();
-			logAssertion(result);
-			logAssertion(false, message.str());			
-			maybeRaiseOnAssertion(file, line, message.str());
+
+			commitAssertion(result);
 		}
 
 		/**
@@ -257,102 +261,116 @@ namespace partest
 		template <typename T, typename U>
 		void handleAssertEqual(const T &expected, const U &actual, const char *type, const char *conditionStr, const char *file, int line)
 		{
-			AssertionResult result(expected == actual, type, conditionStr, file, line);
+			bool passed = (expected == actual);
+			AssertionResult result(passed, type, conditionStr, file, line);
 			std::ostringstream message;
 
-			if(expected == actual)
+			if(passed)
 			{
 				message << type << "(" << conditionStr << ") passed.";
-				logAssertion(true, message.str());
-				return;
 			}
-			message << "Assertion failed at " << file << ":" << line
-				<< ": " << type << "(" << conditionStr << ")\n"
-				<< "  Expected: " << maybeStringify(expected) << "\n"
-				<< "  Actual:   " << maybeStringify(actual) << "\n";
-
-			// Write the message to the AssertionResult for logging
-			result.message = message.str();
-			// Store the assertion result
-			logAssertion(result);
-			// Old style log for compatibility, for now
-			logAssertion(false, message.str());			
-			maybeRaiseOnAssertion(file, line, message.str());
+			else
+			{
+				message << "Assertion failed at " << file << ":" << line
+					<< ": " << type << "(" << conditionStr << ")\n"
+					<< "  Expected: " << maybeStringify(expected) << "\n"
+					<< "  Actual:   " << maybeStringify(actual) << "\n";
+			}
+ 			// Write the message to the AssertionResult for logging
+ 			result.message = message.str();
+			commitAssertion(result);
 		}
 
 		// C-string specialization for string comparisons
 		void handleAssertEqual(const char* expected, const char* actual, const char *type, const char *conditionStr, const char* file, int line)
 		{
-			AssertionResult result(expected == actual, type, conditionStr, file, line);
+			bool passed = (expected != nullptr && actual != nullptr && strcmp(expected, actual) == 0
+			    || expected == nullptr && actual == nullptr);
+
+			AssertionResult result(passed, type, conditionStr, file, line);
 			std::ostringstream message;
 
-			if (expected != nullptr && actual != nullptr && strcmp(expected, actual) == 0
-			    || expected == nullptr && actual == nullptr)
+			if (passed)
 			{
 				message << type << "(" << conditionStr << ") passed.";
-				logAssertion(true, message.str());
-				return;
 			}
-
-			message << "Assertion failed at " << file << ":" << line
-				<< type << "(" << conditionStr << ")\n"
-				<< "  Expected: \"" << expected << "\"\n"
-				<< "  Actual:   \"" << actual << "\"\n";
-
+			else
+			{
+				message << "Assertion failed at " << file << ":" << line
+					<< type << "(" << conditionStr << ")\n"
+					<< "  Expected: \"" << expected << "\"\n"
+					<< "  Actual:   \"" << actual << "\"\n";
+			}
+			
 			result.message = message.str();
-			logAssertion(result);
-			logAssertion(false, message.str());
-			maybeRaiseOnAssertion(file, line, message.str());
+			commitAssertion(result);
 		}
 
 		template<typename T, typename U>
 		void handleAssertNotEqual(const T &expected, const U &actual, const char *type, const char *conditionStr, const char *file, int line)
 		{
-			AssertionResult result(expected != actual, type, conditionStr, file, line);
+			bool passed = (expected != actual);
+			AssertionResult result(passed, type, conditionStr, file, line);
 			std::ostringstream message;
 
-			if(expected != actual)
+			if(passed)
 			{
 				message << type << "(" << conditionStr << ") passed.";
-				logAssertion(true, message.str());
-				return;
+			}
+			else
+			{
+				message << "Assertion failed at " << file << ":" << line
+					<< type << "(" << conditionStr << ")\n"
+					<< "\"" << expected << "\" should not have been " << expected << "\n";
 			}
 
-			message << "Assertion failed at " << file << ":" << line
-				<< type << "(" << conditionStr << ")\n"
-				<< "\"" << expected << "\" should not have been " << expected << "\n";
-
 			result.message = message.str();
-			logAssertion(result);
-			logAssertion(false, message.str());			
-			maybeRaiseOnAssertion(file, line, message.str());
+			commitAssertion(result);
 		}
 
 		// C-string specialization for string comparisons
 		void handleAssertNotEqual(const char* expected, const char* actual, const char* type, const char* conditionStr, const char* file, int line)
 		{
-			AssertionResult result(expected != actual, type, conditionStr, file, line);
+			bool passed = (expected != nullptr && actual != nullptr && strcmp(expected, actual) != 0
+			    || expected == nullptr && actual == nullptr);
+
+			AssertionResult result(passed, type, conditionStr, file, line);
 			std::ostringstream message;
 
-			if (expected != nullptr && actual != nullptr && strcmp(expected, actual) != 0
-			    || expected == nullptr && actual == nullptr)
+			if(passed)
 			{
 				message << type << "(" << conditionStr << ") passed.";
-				logAssertion(true, message.str());
-				return;
+			}
+			else
+			{
+				message << "Assertion failed at " << file << ":" << line
+					<< type << "(" << conditionStr << ")\n"
+					<< "  Expected: \"" << expected << "\"\n"
+					<< "  Actual:   \"" << actual << "\"\n";
 			}
 
-			message << "Assertion failed at " << file << ":" << line
-				<< type << "(" << conditionStr << ")\n"
-				<< "  Expected: \"" << expected << "\"\n"
-				<< "  Actual:   \"" << actual << "\"\n";
-
 			result.message = message.str();
-			logAssertion(result);
-			logAssertion(false, message.str());
-			maybeRaiseOnAssertion(file, line, message.str());
+			commitAssertion(result);
 		}
 
+		/**
+		* Process an evaluated assertion. Log it and raise an exception if necessary.
+		* 
+		* @param result Output of an evaluated assertion. AssertionResults should be produced by assertion handlers.
+		* @throws AssertionFailure if the assertion result did not pass and stopOnFail is enabled.
+		*/
+		void commitAssertion(const AssertionResult &result)
+		{
+			
+ 			// Store the assertion result
+ 			logAssertion(result);
+			// Old style log for compatibility, for now
+			logAssertion(result.passed, result.message);
+
+			// On failure, allow an exception to be raised if the current test frame is configured to do so.
+			if(!result.passed)
+				maybeRaiseOnAssertion(result.file.c_str(), result.line, result.condition);
+		}
 
 	public:
 		PartestBase(PARTEST_STRING_PARAM name, PARTEST_STRING_PARAM description, const TestFlags &flags = TestFlags::defaultDisabled())

@@ -10,7 +10,8 @@
 /**
 * Basic assertion macro for use within tests. Must be called within a TestFrame context.
 */
-#define ASSERT_TRUE(condition) handleAssertTrue((condition), ASSERT_TRUE_STR, #condition, __FILE__, __LINE__)
+#define ASSERT_TRUE(condition) handleAssertBoolean((condition), true, ASSERT_TRUE_STR, #condition, __FILE__, __LINE__)
+#define ASSERT_FALSE(condition) handleAssertBoolean((condition), false, ASSERT_FALSE_STR, #condition, __FILE__, __LINE__)
 
 /**
 * Basic assertion macros for equality checks. Must be called within a TestFrame context.
@@ -22,6 +23,7 @@
 * Stringified names for each assert type, used for filtering test results
 */
 #define ASSERT_TRUE_STR "ASSERT_TRUE"
+#define ASSERT_FALSE_STR "ASSERT_FALSE"
 #define ASSERT_EQUAL_STR "ASSERT_EQUAL"
 #define ASSERT_NOT_EQUAL_STR "ASSERT_NOT_EQUAL"
 
