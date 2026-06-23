@@ -331,8 +331,9 @@ namespace partest
 		// C-string specialization for string comparisons
 		void handleAssertNotEqual(const char* expected, const char* actual, const char* type, const char* conditionStr, const char* file, int line)
 		{
-			bool passed = (expected != nullptr && actual != nullptr && strcmp(expected, actual) != 0
-			    || expected == nullptr && actual == nullptr);
+			bool passed = (expected != nullptr && actual != nullptr && strcmp(expected, actual) != 0)
+			    || (expected == nullptr && actual != nullptr)
+				|| (expected != nullptr && actual == nullptr);
 
 			AssertionResult result(passed, type, conditionStr, file, line);
 			std::ostringstream message;
