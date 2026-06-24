@@ -20,12 +20,35 @@
 #define ASSERT_NOT_EQUAL(expected, actual) handleAssertNotEqual((expected), (actual), ASSERT_NOT_EQUAL_STR, #expected ", " #actual, __FILE__, __LINE__)
 
 /**
+* Assertion macros for approximate equality checks. Must be called within a TestFrame context.
+*/
+// #define ASSERT_APPROX_EQUAL(expected, actual, tolerance) handleAssertApproxEqual((expected), (actual), (tolerance), ASSERT_APPROX_EQUAL_STR, #expected ", " #actual ", " #tolerance, __FILE__, __LINE__)
+// #define ASSERT_APPROX_NOT_EQUAL(expected, actual, tolerance) handleAssertApproxNotEqual((expected), (actual), (tolerance), ASSERT_APPROX_NOT_EQUAL_STR, #expected ", " #actual ", " #tolerance, __FILE__, __LINE__)
+
+/**
+* Assertion macros for relational checks. Must be called within a TestFrame context.
+*/
+#define ASSERT_GREATER(lhs, rhs) handleAssertTrue((lhs) > (rhs), ASSERT_GREATER_STR, #lhs " > " #rhs, __FILE__, __LINE__)
+#define ASSERT_LESS(lhs, rhs) handleAssertTrue((lhs) < (rhs), ASSERT_LESS_STR, #lhs " < " #rhs, __FILE__, __LINE__)
+#define ASSERT_GREATER_EQUAL(lhs, rhs) handleAssertTrue((lhs) >= (rhs), ASSERT_GREATER_EQUAL_STR, #lhs " >= " #rhs, __FILE__, __LINE__)
+#define ASSERT_LESS_EQUAL(lhs, rhs) handleAssertTrue((lhs) <= (rhs), ASSERT_LESS_EQUAL_STR, #lhs " <= " #rhs, __FILE__, __LINE__)
+
+/**
 * Stringified names for each assert type, used for filtering test results
 */
 #define ASSERT_TRUE_STR "ASSERT_TRUE"
 #define ASSERT_FALSE_STR "ASSERT_FALSE"
 #define ASSERT_EQUAL_STR "ASSERT_EQUAL"
 #define ASSERT_NOT_EQUAL_STR "ASSERT_NOT_EQUAL"
+
+
+#define ASSERT_APPROX_EQUAL_STR "ASSERT_APPROX_EQUAL"
+#define ASSERT_APPROX_NOT_EQUAL_STR "ASSERT_APPROX_NOT_EQUAL"
+
+#define ASSERT_GREATER_STR "ASSERT_GREATER"
+#define ASSERT_LESS_STR "ASSERT_LESS"
+#define ASSERT_GREATER_EQUAL_STR "ASSERT_GREATER_EQUAL"
+#define ASSERT_LESS_EQUAL_STR "ASSERT_LESS_EQUAL"
 
 #define ASSERT_META_EXPECTED "expected"
 #define ASSERT_META_ACTUAL "actual"
