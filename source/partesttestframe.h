@@ -121,9 +121,17 @@ namespace partest
 			state = TestState::defaultState();
 		}
 
-		void updateStatus(TestStatus status) noexcept { state.updateStatus(status); }
-		void updateResult(TestResult result) noexcept { state.updateResult(result); }
+		PARTEST_CONSTEXPR_14 void updateStatus(TestStatus status) noexcept { state.updateStatus(status); }
+		PARTEST_CONSTEXPR_14 void updateResult(TestResult result) noexcept { state.updateResult(result); }
+		PARTEST_CONSTEXPR_11 TestStatus getStatus() const noexcept { return state.getStatus(); }
+		PARTEST_CONSTEXPR_11 TestResult getResult() const noexcept { return state.getResult(); }
 
+		/**
+		* Check whether this test frame descends from `other`
+		* 
+		* @param other potential ancestor of this test frame
+		* @return true if `other` is an ancestor of this, false otherwise
+		*/
 		bool isDescendentOf(const TestFrame *other) const noexcept
 		{
 			const TestFrame *current = m_parent;
@@ -138,6 +146,12 @@ namespace partest
 			return false;
 		}
 
+		/**
+		* Check whether this test frame is an ancestor of `other`
+		* 
+		* @param other potential ancestor of this test frame
+		* @return true if `other` is an ancestor of this, false otherwise
+		*/
 		bool isAncestorOf(const TestFrame *other) const noexcept
 		{
 			return other != nullptr && other->isDescendentOf(this);
@@ -240,6 +254,51 @@ namespace partest
 			}
 
 			return m_parent;
+		}
+
+		/**
+		* Count the total number of subtests that failed at a specific tree depth.
+		* 
+		* @param depth Subtest depth to drill down to, from the current test frame
+		* @returns Number of tests below this one that failed at specified depth
+		*/
+		unsigned getTestFailureCount(unsigned depth = 1) const
+		{
+			// Only evaluate this frame's result if we're at evaluation depth, or if no subtests exist.
+			if(depth == 0 || m_subtests.empty())
+				return getResult() == TestResult::FAILED ? 1 : 0;
+			
+			unsigned failureCount = 0;
+
+			for(TestFrame *subtest : m_subtests)
+			{
+				failureCount += subtest->getTestFailureCount(depth - 1);
+			}
+
+			return failureCount;
+		}
+
+		/**
+		* Count the total number of assertions that failed in this frame's subtest tree
+		* 
+		* @returns Sum total of all assertions that failed for this frame and all of its descendants
+		*/
+		unsigned getAssertionFailureCount() const
+		{
+			unsigned failureCount = 0;
+
+			for(const AssertionResult &result : m_assertions)
+			{
+				if(!result.passed)
+					++failureCount;
+			}
+
+			for(TestFrame *subtest : m_subtests)
+			{
+				failureCount += subtest->getAssertionFailureCount();
+			}
+
+			return failureCount;
 		}
 
 		/**

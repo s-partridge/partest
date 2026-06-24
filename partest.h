@@ -9,6 +9,11 @@
 
 namespace partest
 {
+	inline partest::PartestRunner &testRunner()
+	{
+		return partest::PartestRunner::getInstance();
+	}
+
 	/**
 	* Add a test class to the global test runner.
 	* 
@@ -16,7 +21,7 @@ namespace partest
 	*/
 	void addTestClass(std::unique_ptr<partest::PartestBase> test)
 	{
-		partest::PartestRunner::getInstance().addTest(std::move(test));
+		testRunner().addTest(std::move(test));
 	}
 
 	/**
@@ -24,7 +29,7 @@ namespace partest
 	*/
 	void runAllTests()
 	{
-		partest::PartestRunner::getInstance().runAllTests();
+		testRunner().runAllTests();
 	}
 
 	/**
@@ -32,7 +37,7 @@ namespace partest
 	*/
 	void runTestClassWithName(PARTEST_STRING_PARAM name)
 	{
-		partest::PartestRunner::getInstance().runTestWithName(name);
+		testRunner().runTestWithName(name);
 	}
 
 	/**
@@ -40,12 +45,17 @@ namespace partest
 	*/
 	void displayAllTests()
 	{
-		partest::PartestRunner::getInstance().printAllTestTrees();
+		testRunner().printAllTestTrees();
 	}
 
-	partest::PartestRunner &testRunner()
+	unsigned getTopLevelFailures()
 	{
-		return partest::PartestRunner::getInstance();
+		return testRunner().getTopLevelFailures();
+	}
+
+	unsigned getAssertionFailureCount()
+	{
+		return testRunner().getAllAssertionFailures();
 	}
 };
 

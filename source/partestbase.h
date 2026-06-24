@@ -476,6 +476,20 @@ namespace partest
 
 			//Incomplete
 		}
+
+		unsigned getTestFailureCount(unsigned depth = 1) const
+		{
+			const TestFrame *frame = m_testTree.get();
+
+			return frame->getTestFailureCount(depth);
+		}
+
+		unsigned getAssertionFailureCount() const
+		{
+			const TestFrame *frame = m_testTree.get();
+
+			return frame->getAssertionFailureCount();
+		}
 	};
 } // namespace partest
 

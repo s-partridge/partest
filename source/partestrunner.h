@@ -81,7 +81,7 @@ namespace partest
 
 		void printAllTestTrees() const
 		{
-			for(PartestBase *test: m_tests)
+			for(PartestBase *test : m_tests)
 			{
 				test->printLogs(partest::INFO, 10);
 			}
@@ -89,6 +89,28 @@ namespace partest
 			{
 				test->printTestTree();
 			}*/
+		}
+
+		unsigned getTopLevelFailures() const
+		{
+			unsigned failureCount = 0;
+			for(PartestBase *test : m_tests)
+			{
+				failureCount += test->getTestFailureCount();
+			}
+
+			return failureCount;
+		}
+
+		unsigned getAllAssertionFailures()
+		{
+			unsigned failureCount = 0;
+			for(PartestBase *test : m_tests)
+			{
+				failureCount += test->getAssertionFailureCount();
+			}
+
+			return failureCount;
 		}
 	};
 };

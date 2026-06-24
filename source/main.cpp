@@ -167,6 +167,7 @@ int main()
 	partest::addTestClass(std::make_unique<TestTest>());
 	partest::runAllTests();
 	partest::displayAllTests();
+	unsigned result = partest::getTopLevelFailures();
 
-	return 0;
+	return result;
 }
