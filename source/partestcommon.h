@@ -75,7 +75,7 @@ C++20	Allowed mutation of *this, virtual, new/delete, try/catch. Modifying objec
 #endif
 
 #include <string>
-#include <ostream>
+#include <sstream>
 
 // Use std::string_view for C++17 and later, const std::string& for C++11 and C++14
 #if PARTEST_CPP_VERSION >= 17
