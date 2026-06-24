@@ -295,7 +295,7 @@ namespace partest
 		case RUNNING:
 			statusString = "RUNNING";
 			break;
-		case PASSED:
+		case COMPLETED:
 			statusString = "COMPLETED";
 			break;
 		case ABORTED:
