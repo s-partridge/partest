@@ -86,16 +86,21 @@ namespace partest
 		static PARTEST_CONSTEXPR_11 TestFlags defaultMasked() noexcept { return TestFlags(MASKED, MASKED, MASKED, MASKED); }
 
 		/**
+		* Get a TestFlags instance with skip = true, all other flags set to DISABLED
+		*/
+		static PARTEST_CONSTEXPR_11 TestFlags defaultSkip() noexcept { return TestFlags(ENABLED, DISABLED, DISABLED, DISABLED); }
+
+		/**
 		* Default copy assignment operator.
 		*/
-		PARTEST_CONSTEXPR_20 TestFlags &operator=(const TestFlags &other) noexcept = default;
+		PARTEST_CONSTEXPR_14 TestFlags &operator=(const TestFlags &other) noexcept = default;
 
 		/**
 		* Set flags from another TestFlags instance, ignoring MASKED values
 		* 
 		* @param other The TestFlags instance to copy flags from. Expects MASKED values to be ignored.
 		*/
-		PARTEST_CONSTEXPR_20 void setFlags(const TestFlags &other) noexcept
+		PARTEST_CONSTEXPR_14 void setFlags(const TestFlags &other) noexcept
 		{
 			if(other.skip != MASKED)
 				skip = other.skip;
@@ -151,7 +156,7 @@ namespace partest
 		/**
 		* Get a TestInfo instance with default (empty) values
 		*/
-		static PARTEST_CONSTEXPR_20 TestInfo defaultInfo() { return TestInfo("", ""); }
+		static PARTEST_CONSTEXPR_20 TestInfo defaultInfo() { return TestInfo(); }
 	};
 
 	/**
@@ -180,13 +185,13 @@ namespace partest
 		/**
 		* 
 		*/
-		PARTEST_CONSTEXPR_20 void updateStatus(const TestStatus &status) noexcept { m_status = status; }
+		PARTEST_CONSTEXPR_14 void updateStatus(const TestStatus &status) noexcept { m_status = status; }
 
 		/**
 		* Update the test result based on a new assertion result.
 		* @param assertResult The result of the new assertion to incorporate into the test result.
 		*/
-		PARTEST_CONSTEXPR_20 void updateResult(const TestResult &assertResult) noexcept
+		PARTEST_CONSTEXPR_14 void updateResult(const TestResult &assertResult) noexcept
 		{
 			switch(assertResult)
 			{
@@ -218,7 +223,7 @@ namespace partest
 		friend std::ostream &operator<<(std::ostream &out, const TestState &state);
 	};
 
-	PARTEST_CONSTEXPR_20 std::string to_string(const TestStatus &status)
+	PARTEST_CONSTEXPR_14 const char* to_string(const TestStatus &status)
 	{
 		switch(status)
 		{
@@ -237,7 +242,7 @@ namespace partest
 		}
 	}
 
-	PARTEST_CONSTEXPR_20 std::string to_string(const TestResult &result)
+	PARTEST_CONSTEXPR_14 const char* to_string(const TestResult &result)
 	{
 		switch(result)
 		{
@@ -412,12 +417,12 @@ namespace partest
 	* Default flag constants for easy reference
 	*/
 	// Disable all flags
-	PARTEST_CONSTEXPR_11 const TestFlags TEST_FLAGS_DISABLED = TestFlags(FlagState::DISABLED, FlagState::DISABLED, FlagState::DISABLED, FlagState::DISABLED);
+	PARTEST_CONSTEXPR_11 const TestFlags TEST_FLAGS_DISABLED = TestFlags::defaultDisabled();
 	// Inherit all flags from parent test
-	PARTEST_CONSTEXPR_11 const TestFlags TEST_FLAGS_INHERIT = TestFlags(FlagState::INHERIT, FlagState::INHERIT, FlagState::INHERIT, FlagState::INHERIT);
+	PARTEST_CONSTEXPR_11 const TestFlags TEST_FLAGS_INHERIT = TestFlags::defaultInherit();
 	// Mask all flags (used for internal purposes)
-	PARTEST_CONSTEXPR_11 const TestFlags TEST_FLAGS_MASKED = TestFlags(FlagState::MASKED, FlagState::MASKED, FlagState::MASKED, FlagState::MASKED);
+	PARTEST_CONSTEXPR_11 const TestFlags TEST_FLAGS_MASKED = TestFlags::defaultMasked();
 	// Set flags to skip the test
-	PARTEST_CONSTEXPR_11 const TestFlags TEST_FLAGS_SKIP = TestFlags(FlagState::ENABLED, FlagState::INHERIT, FlagState::INHERIT, FlagState::INHERIT);
+	PARTEST_CONSTEXPR_11 const TestFlags TEST_FLAGS_SKIP = TestFlags::defaultSkip();
 }
 #endif // PARTESTTYPES_H
