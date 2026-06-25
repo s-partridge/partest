@@ -7,7 +7,7 @@ on:
     branches: [master]
 
 jobs:
-  build-g++:
+  build-gcc:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
