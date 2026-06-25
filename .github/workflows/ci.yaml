@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  build-g++:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            compiler: g++-11
+            configs: [dbg-c11_x64, dbg-c14_x64, dbg-c17_x64]
+            
+          - os: ubuntu-24.04
+            compiler: g++-12
+            configs: [dbg-c11_x64, dbg-c14_x64, dbg-c17_x64, dbg-c20_x64]
+            
+          - os: ubuntu-24.04
+            compiler: g++-13
+            configs: [dbg-c11_x64, dbg-c14_x64, dbg-c17_x64, dbg-c20_x64]
+
+          - os: ubuntu-24.04
+            compiler: g++-14
+            configs: [dbg-c11_x64, dbg-c14_x64, dbg-c17_x64, dbg-c20_x64]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install GCC
+        run: sudo apt-get install -y ${{ matrix.compiler }}
+
+      - name: Build GCC
+        run: |
+          for config in ${{ join(matrix.configs, ' ') }}; do
+            make config=$config CXX=${{ matrix.compiler }}
+          done
+            
+  build-clang:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            package: clang-11
+            compiler: clang++-11
+            configs: [dbg-c11_x64, dbg-c14_x64, dbg-c17_x64, dbg-c20_x64]
+
+          - os: ubuntu-22.04
+            package: clang-12
+            compiler: clang++-12
+            configs: [dbg-c11_x64, dbg-c14_x64, dbg-c17_x64, dbg-c20_x64]
+
+          - os: ubuntu-24.04
+            package: clang-18
+            compiler: clang++-18  
+            configs: [dbg-c11_x64, dbg-c14_x64, dbg-c17_x64, dbg-c20_x64]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Clang
+        run: |
+          sudo apt-get install ${{ matrix.package }} -y
+
+      - name: Build Clang
+        run: |
+          for config in ${{ join(matrix.configs, ' ') }}; do
+            make config=$config CXX=${{ matrix.compiler }}
+          done
+
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set Up MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Build All Debug
+        run: | 
+          msbuild build\partest.vcxproj /p:Configuration=dbg-c14 /p:Platform=Win32
+          msbuild build\partest.vcxproj /p:Configuration=dbg-c14 /p:Platform=x64
+          msbuild build\partest.vcxproj /p:Configuration=dbg-c17 /p:Platform=Win32
+          msbuild build\partest.vcxproj /p:Configuration=dbg-c17 /p:Platform=x64
+          msbuild build\partest.vcxproj /p:Configuration=dbg-c20 /p:Platform=Win32
+          msbuild build\partest.vcxproj /p:Configuration=dbg-c20 /p:Platform=x64
