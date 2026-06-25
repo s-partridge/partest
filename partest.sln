@@ -1,55 +1,50 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.14.36109.1
-MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "partest", "partest.vcxproj", "{E2B965E4-FBE5-D132-F108-5C3857D11266}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "partest", "build\partest.vcxproj", "{28D9CE9B-94B8-4D37-9DD0-D80D092FB498}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
-		D-14 - Debug C++14|x64 = D-14 - Debug C++14|x64
-		D-14 - Debug C++14|x86 = D-14 - Debug C++14|x86
-		D-17 - Debug C++17|x64 = D-17 - Debug C++17|x64
-		D-17 - Debug C++17|x86 = D-17 - Debug C++17|x86
-		D-20 - Debug C++20|x64 = D-20 - Debug C++20|x64
-		D-20 - Debug C++20|x86 = D-20 - Debug C++20|x86
-		R-14 - Release C++14|x64 = R-14 - Release C++14|x64
-		R-14 - Release C++14|x86 = R-14 - Release C++14|x86
-		R-17 - Release C++17|x64 = R-17 - Release C++17|x64
-		R-17 - Release C++17|x86 = R-17 - Release C++17|x86
-		R-20 - Release C++20|x64 = R-20 - Release C++20|x64
-		R-20 - Release C++20|x86 = R-20 - Release C++20|x86
+		dbg-c14|Win32 = dbg-c14|Win32
+		dbg-c14|x64 = dbg-c14|x64
+		dbg-c17|Win32 = dbg-c17|Win32
+		dbg-c17|x64 = dbg-c17|x64
+		dbg-c20|Win32 = dbg-c20|Win32
+		dbg-c20|x64 = dbg-c20|x64
+		rel-c14|Win32 = rel-c14|Win32
+		rel-c14|x64 = rel-c14|x64
+		rel-c17|Win32 = rel-c17|Win32
+		rel-c17|x64 = rel-c17|x64
+		rel-c20|Win32 = rel-c20|Win32
+		rel-c20|x64 = rel-c20|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{E2B965E4-FBE5-D132-F108-5C3857D11266}.D-14 - Debug C++14|x64.ActiveCfg = D-14 - Debug C++14|x64
-		{E2B965E4-FBE5-D132-F108-5C3857D11266}.D-14 - Debug C++14|x64.Build.0 = D-14 - Debug C++14|x64
-		{E2B965E4-FBE5-D132-F108-5C3857D11266}.D-14 - Debug C++14|x86.ActiveCfg = D-14 - Debug C++14|Win32
-		{E2B965E4-FBE5-D132-F108-5C3857D11266}.D-14 - Debug C++14|x86.Build.0 = D-14 - Debug C++14|Win32
-		{E2B965E4-FBE5-D132-F108-5C3857D11266}.D-17 - Debug C++17|x64.ActiveCfg = D-17 - Debug C++17|x64
-		{E2B965E4-FBE5-D132-F108-5C3857D11266}.D-17 - Debug C++17|x64.Build.0 = D-17 - Debug C++17|x64
-		{E2B965E4-FBE5-D132-F108-5C3857D11266}.D-17 - Debug C++17|x86.ActiveCfg = D-17 - Debug C++17|Win32
-		{E2B965E4-FBE5-D132-F108-5C3857D11266}.D-17 - Debug C++17|x86.Build.0 = D-17 - Debug C++17|Win32
-		{E2B965E4-FBE5-D132-F108-5C3857D11266}.D-20 - Debug C++20|x64.ActiveCfg = D-20 - Debug C++20|x64
-		{E2B965E4-FBE5-D132-F108-5C3857D11266}.D-20 - Debug C++20|x64.Build.0 = D-20 - Debug C++20|x64
-		{E2B965E4-FBE5-D132-F108-5C3857D11266}.D-20 - Debug C++20|x86.ActiveCfg = D-20 - Debug C++20|Win32
-		{E2B965E4-FBE5-D132-F108-5C3857D11266}.D-20 - Debug C++20|x86.Build.0 = D-20 - Debug C++20|Win32
-		{E2B965E4-FBE5-D132-F108-5C3857D11266}.R-14 - Release C++14|x64.ActiveCfg = R-14 - Release C++14|x64
-		{E2B965E4-FBE5-D132-F108-5C3857D11266}.R-14 - Release C++14|x64.Build.0 = R-14 - Release C++14|x64
-		{E2B965E4-FBE5-D132-F108-5C3857D11266}.R-14 - Release C++14|x86.ActiveCfg = R-14 - Release C++14|Win32
-		{E2B965E4-FBE5-D132-F108-5C3857D11266}.R-14 - Release C++14|x86.Build.0 = R-14 - Release C++14|Win32
-		{E2B965E4-FBE5-D132-F108-5C3857D11266}.R-17 - Release C++17|x64.ActiveCfg = R-17 - Release C++17|x64
-		{E2B965E4-FBE5-D132-F108-5C3857D11266}.R-17 - Release C++17|x64.Build.0 = R-17 - Release C++17|x64
-		{E2B965E4-FBE5-D132-F108-5C3857D11266}.R-17 - Release C++17|x86.ActiveCfg = R-17 - Release C++17|Win32
-		{E2B965E4-FBE5-D132-F108-5C3857D11266}.R-17 - Release C++17|x86.Build.0 = R-17 - Release C++17|Win32
-		{E2B965E4-FBE5-D132-F108-5C3857D11266}.R-20 - Release C++20|x64.ActiveCfg = D-14 - Debug C++14|x64
-		{E2B965E4-FBE5-D132-F108-5C3857D11266}.R-20 - Release C++20|x64.Build.0 = D-14 - Debug C++14|x64
-		{E2B965E4-FBE5-D132-F108-5C3857D11266}.R-20 - Release C++20|x86.ActiveCfg = R-20 - Release C++20|Win32
-		{E2B965E4-FBE5-D132-F108-5C3857D11266}.R-20 - Release C++20|x86.Build.0 = R-20 - Release C++20|Win32
+		{28D9CE9B-94B8-4D37-9DD0-D80D092FB498}.dbg-c14|Win32.ActiveCfg = dbg-c14|Win32
+		{28D9CE9B-94B8-4D37-9DD0-D80D092FB498}.dbg-c14|Win32.Build.0 = dbg-c14|Win32
+		{28D9CE9B-94B8-4D37-9DD0-D80D092FB498}.dbg-c14|x64.ActiveCfg = dbg-c14|x64
+		{28D9CE9B-94B8-4D37-9DD0-D80D092FB498}.dbg-c14|x64.Build.0 = dbg-c14|x64
+		{28D9CE9B-94B8-4D37-9DD0-D80D092FB498}.dbg-c17|Win32.ActiveCfg = dbg-c17|Win32
+		{28D9CE9B-94B8-4D37-9DD0-D80D092FB498}.dbg-c17|Win32.Build.0 = dbg-c17|Win32
+		{28D9CE9B-94B8-4D37-9DD0-D80D092FB498}.dbg-c17|x64.ActiveCfg = dbg-c17|x64
+		{28D9CE9B-94B8-4D37-9DD0-D80D092FB498}.dbg-c17|x64.Build.0 = dbg-c17|x64
+		{28D9CE9B-94B8-4D37-9DD0-D80D092FB498}.dbg-c20|Win32.ActiveCfg = dbg-c20|Win32
+		{28D9CE9B-94B8-4D37-9DD0-D80D092FB498}.dbg-c20|Win32.Build.0 = dbg-c20|Win32
+		{28D9CE9B-94B8-4D37-9DD0-D80D092FB498}.dbg-c20|x64.ActiveCfg = dbg-c20|x64
+		{28D9CE9B-94B8-4D37-9DD0-D80D092FB498}.dbg-c20|x64.Build.0 = dbg-c20|x64
+		{28D9CE9B-94B8-4D37-9DD0-D80D092FB498}.rel-c14|Win32.ActiveCfg = rel-c14|Win32
+		{28D9CE9B-94B8-4D37-9DD0-D80D092FB498}.rel-c14|Win32.Build.0 = rel-c14|Win32
+		{28D9CE9B-94B8-4D37-9DD0-D80D092FB498}.rel-c14|x64.ActiveCfg = rel-c14|x64
+		{28D9CE9B-94B8-4D37-9DD0-D80D092FB498}.rel-c14|x64.Build.0 = rel-c14|x64
+		{28D9CE9B-94B8-4D37-9DD0-D80D092FB498}.rel-c17|Win32.ActiveCfg = rel-c17|Win32
+		{28D9CE9B-94B8-4D37-9DD0-D80D092FB498}.rel-c17|Win32.Build.0 = rel-c17|Win32
+		{28D9CE9B-94B8-4D37-9DD0-D80D092FB498}.rel-c17|x64.ActiveCfg = rel-c17|x64
+		{28D9CE9B-94B8-4D37-9DD0-D80D092FB498}.rel-c17|x64.Build.0 = rel-c17|x64
+		{28D9CE9B-94B8-4D37-9DD0-D80D092FB498}.rel-c20|Win32.ActiveCfg = rel-c20|Win32
+		{28D9CE9B-94B8-4D37-9DD0-D80D092FB498}.rel-c20|Win32.Build.0 = rel-c20|Win32
+		{28D9CE9B-94B8-4D37-9DD0-D80D092FB498}.rel-c20|x64.ActiveCfg = rel-c20|x64
+		{28D9CE9B-94B8-4D37-9DD0-D80D092FB498}.rel-c20|x64.Build.0 = rel-c20|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
-	EndGlobalSection
-	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {0684E5E9-C132-4306-BA23-FCEB6F63B196}
 	EndGlobalSection
 EndGlobal
