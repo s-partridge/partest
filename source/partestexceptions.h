@@ -2,6 +2,7 @@
 #define PARTESTEXCEPTIONS_H
 
 #include <stdexcept>
+#include <string>
 #include "partestcommon.h"
 
 namespace partest

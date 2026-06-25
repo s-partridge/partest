@@ -31,7 +31,7 @@ namespace partest
 		* @return the next value for frameCount
 		*/
 		static unsigned int getNextFrameID() noexcept {
-			static std::atomic<unsigned int> frameCount = 0;
+			static std::atomic<unsigned int> frameCount(0);
 			return frameCount++;
 		}
 

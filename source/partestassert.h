@@ -67,7 +67,8 @@ namespace partest
 		* @return the next value for assertCount
 		*/
 		static unsigned int getNextAssertID() noexcept {
-			static std::atomic<unsigned int> assertCount = 0;
+		
+			static std::atomic<unsigned int> assertCount(0);
 			return assertCount++;
 		}
 
