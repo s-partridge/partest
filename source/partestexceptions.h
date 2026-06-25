@@ -13,7 +13,7 @@ namespace partest
 	*/
 	class AssertionFailure : public std::runtime_error
 	{
-		const char *m_file;
+		std::string m_file;
 		int m_line;
 	public:
 		/**
@@ -24,19 +24,19 @@ namespace partest
 		* @param message A message describing the assertion failure.
 		*/
 	#if PARTEST_CPP_VERSION >= 17
-		AssertionFailure(const char *file, int line, std::string_view message) : AssertionFailure(file, line, std::string(message)) {}
+		AssertionFailure(PARTEST_STRING_PARAM file, int line, std::string_view message) : AssertionFailure(file, line, std::string(message)) {}
 	#endif
 
-		AssertionFailure(const char *file, int line, const std::string &message) : AssertionFailure(file, line, message.c_str()) {}
+		AssertionFailure(PARTEST_STRING_PARAM file, int line, const std::string &message) : AssertionFailure(file, line, message.c_str()) {}
 
-		AssertionFailure(const char *file, int line, const char *message) : std::runtime_error(message), m_file(file), m_line(line) {}
+		AssertionFailure(PARTEST_STRING_PARAM file, int line, const char *message) : std::runtime_error(message), m_file(file), m_line(line) {}
 
 		/**
 		* Get the file where the assertion failed.
 		* 
 		* @return The file name as a C-style string.
 		*/
-		const char *file() const noexcept { return m_file; }
+		const char *file() const noexcept { return m_file.c_str(); }
 		
 		/**
 		* Get the line number where the assertion failed.
