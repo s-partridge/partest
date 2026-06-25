@@ -50,9 +50,3 @@ x86/
 
 # Clang/GCC
 *.out
-
-# CMake (if used)
-build/
-CMakeCache.txt
-CMakeFiles/
-cmake_install.cmake
