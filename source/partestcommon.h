@@ -39,6 +39,7 @@
 
 
 // Includes required regardless of C++ version
+#include <memory>
 #include <string>
 #include <sstream>
 
@@ -56,7 +57,6 @@
 #if PARTEST_CPP_VERSION >= 17
 #include <string_view>
 #endif
-
 
 /**
 * constexpr usage by C++ standard version
@@ -106,6 +106,20 @@ C++20	Allowed mutation of *this, virtual, new/delete, try/catch. Modifying objec
 
 namespace partest
 {
+	/**
+	* UNIQUE POINTERS
+	* std::make_unique is not available in C++11. This is equivalent to the version provided in C++14 and later.
+	*/
+#if PARTEST_CPP_VERSION >= 14
+	using std::make_unique;
+#else
+	template<typename T, typename... Args>
+	std::unique_ptr<T> make_unique(Args&&... args)
+	{
+		return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
+	}
+#endif
+
 	namespace traits
 	{
 		// Import std::to_string into this namespace for ADL

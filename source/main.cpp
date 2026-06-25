@@ -164,7 +164,7 @@ int main()
 {
 	std::cout << "Partest framework initialized." << std::endl;
 	
-	partest::addTestClass(std::make_unique<TestTest>());
+	partest::addTestClass(partest::make_unique<TestTest>());
 	partest::runAllTests();
 	partest::displayAllTests();
 	unsigned result = partest::getTopLevelFailures();
