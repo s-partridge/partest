@@ -103,7 +103,7 @@ namespace partest
 				runTest(*test);
 
 				// If the test failed and stopOnFail is enabled, stop executing further tests
-				if(m_currentFrame->state.getResult() == FAILED && m_currentFrame->getEffectiveFlags().stopOnFail == ENABLED)
+				if(m_currentFrame->getEffectiveFlags().stopOnFail == ENABLED && m_currentFrame->hasFailures())
 				{
 					std::cout << "Stopping further tests due to failure in test '" << m_currentFrame->metadata.name << "' with stopOnFail enabled." << std::endl;
 					break;
@@ -184,7 +184,7 @@ namespace partest
 		*/
 		void maybeRaiseOnAssertion(const char *file, int line, PARTEST_STRING_PARAM condition)
 		{
-			if(m_currentFrame->getEffectiveFlags().stopOnFail == ENABLED && (m_currentFrame->state.getResult() == FAILED || m_currentFrame->state.getResult() == MIXED))
+			if(m_currentFrame->getEffectiveFlags().stopOnFail == ENABLED && (m_currentFrame->hasFailures()))
 			{
 				throw AssertionFailure(file, line, condition);
 			}

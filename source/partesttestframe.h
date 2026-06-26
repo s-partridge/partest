@@ -245,16 +245,16 @@ namespace partest
 			// If effective flags indicate the test should be skipped, do nothing and return immediately
 			if(getEffectiveFlags().skip == DISABLED)
 			{
-				if(state.getStatus() != ABORTED)
+				if(getStatus() != ABORTED)
 					updateStatus(COMPLETED);
 
 				if(m_parent != nullptr)
 				{
-					std::string logString = "Finished: " + metadata.name + "; Results: " + to_string(state.getResult());
+					std::string logString = "Finished: " + metadata.name + "; Results: " + to_string(getResult());
 					log(INFO, PARTEST_LOG_TEST, logString);
 
 					//m_parent->log("Finalizing subtest " + metadata.name, this);
-					m_parent->state.updateResult(state.getResult());
+					m_parent->updateResult(getResult());
 				}
 
 				if(m_testTeardown != nullptr)
@@ -276,7 +276,7 @@ namespace partest
 		{
 			// Only evaluate this frame's result if we're at evaluation depth, or if no subtests exist.
 			if(depth == 0 || m_subtests.empty())
-				return getResult() == TestResult::FAILED ? 1 : 0;
+				return hasFailures() ? 1 : 0;
 			
 			unsigned failureCount = 0;
 
