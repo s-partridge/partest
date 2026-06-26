@@ -60,6 +60,7 @@ namespace partest
 	private:
 		std::map<std::string, std::string> m_metadata; // Custom metadata associated with this assertion result
 	public:
+		using MetadataIterator = std::map<std::string, std::string>::const_iterator;
 
 		/**
 		* Get a globally incrementing counter. Used internally to assign IDs to newly created test frames.
@@ -150,13 +151,16 @@ namespace partest
 		*/
 		std::string getMetadata(PARTEST_STRING_PARAM key) const
 		{
-			auto it = m_metadata.find(PARTEST_STRING_PARAM_TO_STRING(key));
+			MetadataIterator it = m_metadata.find(PARTEST_STRING_PARAM_TO_STRING(key));
 			if(it != m_metadata.end())
 			{
 				return it->second;
 			}
 			return "";
 		}
+
+		MetadataIterator metadataBegin() const noexcept { return m_metadata.cbegin(); }
+		MetadataIterator metadataEnd() const noexcept { return m_metadata.cend(); }
 	};
 }
 
