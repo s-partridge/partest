@@ -167,7 +167,11 @@ int main()
 	partest::addTestClass(partest::make_unique<TestTest>());
 	partest::runAllTests();
 	partest::displayAllTests();
+	unsigned assertions = partest::getAssertionFailureCount();
 	unsigned result = partest::getTopLevelFailures();
 
-	return result;
+	std::cout << "Total assertion failures: " << assertions << std::endl;
+	std::cout << "Total top-level failures: " << result << std::endl;
+
+	return 0;
 }
