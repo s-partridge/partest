@@ -126,6 +126,9 @@ namespace partest
 		PARTEST_CONSTEXPR_11 TestStatus getStatus() const noexcept { return state.getStatus(); }
 		PARTEST_CONSTEXPR_11 TestResult getResult() const noexcept { return state.getResult(); }
 
+		PARTEST_CONSTEXPR_11 bool hasFinishedRunning() const noexcept { return state.hasFinishedRunning(); }
+		PARTEST_CONSTEXPR_11 bool hasFailures() const noexcept { return state.hasFailures(); }
+
 		/**
 		* Check whether this test frame descends from `other`
 		* 

@@ -179,11 +179,35 @@ namespace partest
 		*/
 		static PARTEST_CONSTEXPR_11 TestState defaultState() noexcept { return TestState(AWAITING); }
 
+		/**
+		* Convenience function to get the current status of the test.
+		* 
+		* @return The current TestStatus of the test.
+		*/
 		PARTEST_CONSTEXPR_11 TestStatus getStatus() const noexcept { return m_status; }
+		/**
+		* Convenience function to get the current result of the test.
+		* 
+		* @return The current TestResult of the test.
+		*/
 		PARTEST_CONSTEXPR_11 TestResult getResult() const noexcept { return m_result; }
+		
+		/**
+		* Check whether the test has completed.
+		* 
+		* @return true if the test has completed, false otherwise.
+		*/
+		PARTEST_CONSTEXPR_11 bool hasFinishedRunning() const noexcept { return m_status == COMPLETED || m_status == ABORTED; }
+		/**
+		* Check whether the test has failed or has mixed results (some assertions passed, some failed).
+		* 
+		* @return true if the test has failed or has mixed results, false otherwise.
+		*/
+		PARTEST_CONSTEXPR_11 bool hasFailures() const noexcept { return m_result == FAILED || m_result == MIXED; }
 
 		/**
-		* 
+		* Update the test status.
+		* @param status The new status to set for the test.
 		*/
 		PARTEST_CONSTEXPR_14 void updateStatus(const TestStatus &status) noexcept { m_status = status; }
 
