@@ -225,6 +225,13 @@ namespace partest
 			{
 				updateStatus(RUNNING);
 				m_testFunction();
+
+				if(getResult() == NO_RESULT)
+				{
+					log(WARNING, PARTEST_LOG_TEST, "Warning: '" + metadata.name + "' completed without any assertions. Defaulting to PASSED.");
+					updateResult(PASSED);
+				}
+
 				updateStatus(COMPLETED);
 			}
 			else
