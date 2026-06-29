@@ -56,12 +56,7 @@ namespace partest
 		~TestFrame()
 		{
 			for(TestFrame *subtest : m_subtests)
-			{
-				if(subtest != nullptr)
-				{
-					delete subtest;
-				}
-			}
+				delete subtest;			
 		}
 
 		unsigned int frameID() const noexcept { return m_frameID; }
@@ -103,17 +98,14 @@ namespace partest
 		}
 
 		void clearLogs() noexcept { m_logs.clear(); }
-		void clearSubtests() 
+
+		void clearSubtests() noexcept 
 		{ 
 			for(TestFrame *subtest : m_subtests)
-			{
-				if(subtest != nullptr)
-				{
-					delete subtest;
-				}
-			}
-			m_subtests.clear(); 
+				delete subtest;
+			m_subtests.clear();
 		}
+
 		void clearAll() 
 		{ 
 			clearLogs(); 
