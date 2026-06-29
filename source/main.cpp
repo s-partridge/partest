@@ -31,8 +31,8 @@ public:
 			partest::TEST_FLAGS_INHERIT,
 			[this]() { return this->exampleNestedNestedTest(); });
 
-		flags.skip = partest::DISABLED;
-		flags.stopOnFail = partest::ENABLED;
+		flags.skip = partest::FlagState::Disabled;
+		flags.stopOnFail = partest::FlagState::Enabled;
 
 		addTest(partest::TestInfo("TestWithStopOnFail", "A test with stopOnFail enabled."),
 			flags,
@@ -88,7 +88,7 @@ public:
 		ASSERT_TRUE(true); // This assertion will pass
 	}
 
-	// This test should result in a MIXED status due to nested subtests
+	// This test should result in a Mixed status due to nested subtests
 	void exampleNestedNestedTest()
 	{
 		subtest(partest::TestInfo("NestedSubtest1", "A nested subtest that always passes."), partest::TEST_FLAGS_INHERIT, [this]()
@@ -120,7 +120,7 @@ public:
 	void exampleTestWithStopOnFail()
 	{
 		partest::TestFlags stopFlags = partest::TEST_FLAGS_INHERIT;
-		stopFlags.stopOnFail = partest::FlagState::ENABLED;
+		stopFlags.stopOnFail = partest::FlagState::Enabled;
 
 		subtest(partest::TestInfo("Subtest1", "A subtest that checks if 1 + 1 == 2."), stopFlags, [&]()
 		{
@@ -136,7 +136,7 @@ public:
 				ASSERT_TRUE(2 + 2 == 5);
 			});
 
-			// This assertion will pass, if it is hit, which it shouldn't be if stopOnFail is ENABLED
+			// This assertion will pass, if it is hit, which it shouldn't be if stopOnFail is Enabled
 			std::cout << "Error: This assertion should not run if stopOnFail is ENABLED and a previous assertion failed." << std::endl;
 			ASSERT_TRUE(2 + 2 == 4);
 		});
@@ -144,7 +144,7 @@ public:
 		subtest(partest::TestInfo("Subtest3", "A subtest that checks if 3 + 3 == 6."), stopFlags, [&]()
 		{
 			std::cout << "Error: This subtest should not run if stopOnFail is ENABLED and a previous assertion failed." << std::endl;
-			// This assertion will pass, but may not be reached if stopOnFail is ENABLED in Subtest2
+			// This assertion will pass, but may not be reached if stopOnFail is Enabled in Subtest2
 			ASSERT_TRUE(3 + 3 == 6);
 		});
 	}

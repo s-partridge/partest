@@ -1,5 +1,5 @@
-#ifndef PARTESTTYPES_H
-#define PARTESTTYPES_H
+#ifndef PARTEST_TYPES_H
+#define PARTEST_TYPES_H
 
 #include <iostream>
 #include <string>
@@ -12,50 +12,50 @@ namespace partest
 	/**
 	* Enum type representing the state of a test.
 	*
-	* AWAITING - The test has not yet started.
-	* RUNNING - The test is currently running.
-	* COMPLETED - The test has completed successfully.
-	* ABORTED - The test was aborted due to an error or failure.
+	* Awaiting - The test has not yet started.
+	* Running - The test is currently running.
+	* Completed - The test has completed successfully.
+	* Aborted - The test was aborted due to an error or failure.
 	*/
-	enum TestStatus : uint8_t
+	enum class TestStatus : uint8_t
 	{
-		AWAITING = 0,
-		RUNNING,
-		COMPLETED,
-		ABORTED,
-		SKIPPED
+		Awaiting = 0,
+		Running,
+		Completed,
+		Aborted,
+		Skipped
 	};
 
 	/**
 	* Enum type representing the result of a test.
 	* 
-	* NO_RESULT - The test has not yet finished, or was skipped.
-	* FAILED - The test failed.
-	* PASSED - The test passed.
-	* MIXED - The test had mixed results (some assertions passed, some failed).
+	* NoResult - The test has not yet finished, or was skipped.
+	* Failed - The test failed.
+	* Passed - The test passed.
+	* Mixed - The test had mixed results (some assertions passed, some failed).
 	*/
-	enum TestResult : uint8_t
+	enum class TestResult : uint8_t
 	{
-		NO_RESULT = 0,
-		FAILED,
-		PASSED,
-		MIXED
+		NoResult = 0,
+		Failed,
+		Passed,
+		Mixed
 	};
 
 	/**
 	* Enum type representing the state of a flag.
 	* 
-	* INHERIT - The flag state is inherited from a higher level (e.g., global or suite level).
-	* ENABLED - The flag is explicitly enabled.
-	* DISABLED - The flag is explicitly disabled.
-	* MASKED - The flag state is not changed (used for internal purposes).
+	* Inherit - The flag state is inherited from a higher level (e.g., global or suite level).
+	* Enabled - The flag is explicitly enabled.
+	* Disabled - The flag is explicitly disabled.
+	* Masked - The flag state is not changed (used for internal purposes).
 	*/
-	enum FlagState : uint8_t
+	enum class FlagState : uint8_t
 	{
-		DISABLED = 0,
-		ENABLED,
-		INHERIT,
-		MASKED
+		Disabled = 0,
+		Enabled,
+		Inherit,
+		Masked
 	};
 
 	/**
@@ -68,27 +68,27 @@ namespace partest
 		FlagState stopSubtestOnFail : 2; // Whether to stop subtest execution on failure
 		FlagState verbose : 2; // Whether to run the test in verbose mode
 
-		PARTEST_CONSTEXPR_11 TestFlags() noexcept : skip(DISABLED), stopOnFail(INHERIT), stopSubtestOnFail(INHERIT), verbose(INHERIT) {}
+		PARTEST_CONSTEXPR_11 TestFlags() noexcept : skip(FlagState::Disabled), stopOnFail(FlagState::Inherit), stopSubtestOnFail(FlagState::Inherit), verbose(FlagState::Inherit) {}
 		PARTEST_CONSTEXPR_11 TestFlags(FlagState skip, FlagState stopOnFail, FlagState stopSubtestOnFail, FlagState verbose) noexcept : skip(skip), stopOnFail(stopOnFail), stopSubtestOnFail(stopSubtestOnFail), verbose(verbose) {}
 
 		/**
-		* Get a TestFlags instance with all flags set to DISABLED
+		* Get a TestFlags instance with all flags set to Disabled
 		*/
-		static PARTEST_CONSTEXPR_11 TestFlags defaultDisabled() noexcept { return TestFlags(DISABLED, DISABLED, DISABLED, DISABLED); }
+		static PARTEST_CONSTEXPR_11 TestFlags defaultDisabled() noexcept { return TestFlags(FlagState::Disabled, FlagState::Disabled, FlagState::Disabled, FlagState::Disabled); }
 		/**
-		* Get a TestFlags instance with all flags set to INHERIT
+		* Get a TestFlags instance with all flags set to Inherit
 		*/
-		static PARTEST_CONSTEXPR_11 TestFlags defaultInherit() noexcept { return TestFlags(INHERIT, INHERIT, INHERIT, INHERIT); }
-		
-		/**
-		* Get a TestFlags instance with all flags set to MASKED. Used for internal purposes.
-		*/
-		static PARTEST_CONSTEXPR_11 TestFlags defaultMasked() noexcept { return TestFlags(MASKED, MASKED, MASKED, MASKED); }
+		static PARTEST_CONSTEXPR_11 TestFlags defaultInherit() noexcept { return TestFlags(FlagState::Inherit, FlagState::Inherit, FlagState::Inherit, FlagState::Inherit); }
 
 		/**
-		* Get a TestFlags instance with skip = true, all other flags set to DISABLED
+		* Get a TestFlags instance with all flags set to Masked. Used for internal purposes.
 		*/
-		static PARTEST_CONSTEXPR_11 TestFlags defaultSkip() noexcept { return TestFlags(ENABLED, DISABLED, DISABLED, DISABLED); }
+		static PARTEST_CONSTEXPR_11 TestFlags defaultMasked() noexcept { return TestFlags(FlagState::Masked, FlagState::Masked, FlagState::Masked, FlagState::Masked); }
+
+		/**
+		* Get a TestFlags instance with skip = true, all other flags set to Disabled
+		*/
+		static PARTEST_CONSTEXPR_11 TestFlags defaultSkip() noexcept { return TestFlags(FlagState::Enabled, FlagState::Disabled, FlagState::Disabled, FlagState::Disabled); }
 
 		/**
 		* Default copy assignment operator.
@@ -96,50 +96,50 @@ namespace partest
 		PARTEST_CONSTEXPR_14 TestFlags &operator=(const TestFlags &other) noexcept = default;
 
 		/**
-		* Set flags from another TestFlags instance, ignoring MASKED values
+		* Set flags from another TestFlags instance, ignoring Masked values
 		* 
-		* @param other The TestFlags instance to copy flags from. Expects MASKED values to be ignored.
+		* @param other The TestFlags instance to copy flags from. Expects Masked values to be ignored.
 		*/
 		PARTEST_CONSTEXPR_14 void setFlags(const TestFlags &other) noexcept
 		{
-			if(other.skip != MASKED)
+			if(other.skip != FlagState::Masked)
 				skip = other.skip;
-			if(other.stopOnFail != MASKED)
+			if(other.stopOnFail != FlagState::Masked)
 				stopOnFail = other.stopOnFail;
-			if(other.stopSubtestOnFail != MASKED)
+			if(other.stopSubtestOnFail != FlagState::Masked)
 				stopSubtestOnFail = other.stopSubtestOnFail;
-			if(other.verbose != MASKED)
+			if(other.verbose != FlagState::Masked)
 				verbose = other.verbose;
 		}
 
 		/**
-		* Get effective flags by resolving INHERIT values from parent flags
-		* If a flag is set to INHERIT, it takes the value from the parentFlags instance.
+		* Get effective flags by resolving Inherit values from parent flags
+		* If a flag is set to Inherit, it takes the value from the parentFlags instance.
 		* 
 		* @param parentFlags The parent TestFlags instance to inherit from
-		* @return A new TestFlags instance with all INHERIT values resolved
+		* @return A new TestFlags instance with all Inherit values resolved
 		*/
 		PARTEST_CONSTEXPR_14 TestFlags mergeWithParentFlags(const TestFlags &parentFlags) const noexcept
 		{
 			// Start with a copy of the current flags
 			TestFlags effectiveFlags = *this;
-			if(effectiveFlags.skip == INHERIT)
+			if(effectiveFlags.skip == FlagState::Inherit)
 				effectiveFlags.skip = parentFlags.skip;
-			if(effectiveFlags.stopOnFail == INHERIT)
+			if(effectiveFlags.stopOnFail == FlagState::Inherit)
 				effectiveFlags.stopOnFail = parentFlags.stopOnFail;
-			if(effectiveFlags.stopSubtestOnFail == INHERIT)
+			if(effectiveFlags.stopSubtestOnFail == FlagState::Inherit)
 				effectiveFlags.stopSubtestOnFail = parentFlags.stopSubtestOnFail;
-			if(effectiveFlags.verbose == INHERIT)
+			if(effectiveFlags.verbose == FlagState::Inherit)
 				effectiveFlags.verbose = parentFlags.verbose;
 			return effectiveFlags;
 		}
 
 		/**
-		* Check if all flags are resolved (i.e., none are set to INHERIT or MASKED)
+		* Check if all flags are resolved (i.e., none are set to Inherit or Masked)
 		*/
 		PARTEST_CONSTEXPR_11 bool isResolved() const noexcept
 		{
-			return skip < INHERIT && stopOnFail < INHERIT && stopSubtestOnFail < INHERIT && verbose < INHERIT;
+			return skip < FlagState::Inherit && stopOnFail < FlagState::Inherit && stopSubtestOnFail < FlagState::Inherit && verbose < FlagState::Inherit;
 		}
 	};
 
@@ -171,13 +171,13 @@ namespace partest
 		TestResult m_result; // Result of the test
 	public:
 		// Constructors
-		PARTEST_CONSTEXPR_11 TestState() noexcept : m_status(AWAITING), m_result(NO_RESULT) {}
-		PARTEST_CONSTEXPR_11 TestState(TestStatus status) noexcept : m_status(status), m_result(NO_RESULT) {}
+		PARTEST_CONSTEXPR_11 TestState() noexcept : m_status(TestStatus::Awaiting), m_result(TestResult::NoResult) {}
+		PARTEST_CONSTEXPR_11 TestState(TestStatus status) noexcept : m_status(status), m_result(TestResult::NoResult) {}
 
 		/**
-		* Get a TestResult instance with default values (AWAITING status and empty message)
+		* Get a TestResult instance with default values (Awaiting status and empty message)
 		*/
-		static PARTEST_CONSTEXPR_11 TestState defaultState() noexcept { return TestState(AWAITING); }
+		static PARTEST_CONSTEXPR_11 TestState defaultState() noexcept { return TestState(TestStatus::Awaiting); }
 
 		/**
 		* Convenience function to get the current status of the test.
@@ -197,13 +197,13 @@ namespace partest
 		* 
 		* @return true if the test has completed, false otherwise.
 		*/
-		PARTEST_CONSTEXPR_11 bool hasFinishedRunning() const noexcept { return m_status == COMPLETED || m_status == ABORTED; }
+		PARTEST_CONSTEXPR_11 bool hasFinishedRunning() const noexcept { return m_status == TestStatus::Completed || m_status == TestStatus::Aborted; }
 		/**
 		* Check whether the test has failed or has mixed results (some assertions passed, some failed).
 		* 
 		* @return true if the test has failed or has mixed results, false otherwise.
 		*/
-		PARTEST_CONSTEXPR_11 bool hasFailures() const noexcept { return m_result == FAILED || m_result == MIXED; }
+		PARTEST_CONSTEXPR_11 bool hasFailures() const noexcept { return m_result == TestResult::Failed || m_result == TestResult::Mixed; }
 
 		/**
 		* Update the test status.
@@ -219,28 +219,28 @@ namespace partest
 		{
 			switch(assertResult)
 			{
-			case NO_RESULT:
-				m_result = NO_RESULT;
+			case TestResult::NoResult:
+				m_result = TestResult::NoResult;
 				break;
-			case PASSED:
-				if(m_result == NO_RESULT)
-					m_result = PASSED;
-				else if(m_result == FAILED)
-					m_result = MIXED;
-				// MIXED remains unchanged
+			case TestResult::Passed:
+				if(m_result == TestResult::NoResult)
+					m_result = TestResult::Passed;
+				else if(m_result == TestResult::Failed)
+					m_result = TestResult::Mixed;
+				// Mixed remains unchanged
 				break;
-			case FAILED:
-				if(m_result == NO_RESULT)
-					m_result = FAILED;
-				else if(m_result == PASSED)
-					m_result = MIXED;
-				// MIXED remains unchanged
+			case TestResult::Failed:
+				if(m_result == TestResult::NoResult)
+					m_result = TestResult::Failed;
+				else if(m_result == TestResult::Passed)
+					m_result = TestResult::Mixed;
+				// Mixed remains unchanged
 				break;
-			case MIXED:
-				m_result = MIXED;
+			case TestResult::Mixed:
+				m_result = TestResult::Mixed;
 				break;
 			default:
-				m_result = NO_RESULT;
+				m_result = TestResult::NoResult;
 			}
 		}
 
@@ -251,15 +251,15 @@ namespace partest
 	{
 		switch(status)
 		{
-		case AWAITING:
+		case TestStatus::Awaiting:
 			return "AWAITING";
-		case RUNNING:
+		case TestStatus::Running:
 			return "RUNNING";
-		case COMPLETED:
+		case TestStatus::Completed:
 			return "COMPLETED";
-		case ABORTED:
+		case TestStatus::Aborted:
 			return "ABORTED";
-		case SKIPPED:
+		case TestStatus::Skipped:
 			return "SKIPPED";
 		default:
 			return "INVALID STATUS VALUE";
@@ -270,13 +270,13 @@ namespace partest
 	{
 		switch(result)
 		{
-		case NO_RESULT:
+		case TestResult::NoResult:
 			return "NO_RESULT";
-		case PASSED:
+		case TestResult::Passed:
 			return "PASSED";
-		case FAILED:
+		case TestResult::Failed:
 			return "FAILED";
-		case MIXED:
+		case TestResult::Mixed:
 			return "MIXED";
 		default:
 			return "INVALID RESULT VALUE";
@@ -291,17 +291,17 @@ namespace partest
 		std::string statusString;
 		in >> statusString;
 		if(statusString == "AWAITING")
-			status = AWAITING;
+			status = TestStatus::Awaiting;
 		else if(statusString == "RUNNING")
-			status = RUNNING;
+			status = TestStatus::Running;
 		else if(statusString == "COMPLETED")
-			status = COMPLETED;
+			status = TestStatus::Completed;
 		else if(statusString == "ABORTED")
-			status = ABORTED;
+			status = TestStatus::Aborted;
 		else if(statusString == "SKIPPED")
-			status = SKIPPED;
+			status = TestStatus::Skipped;
 		else
-			status = AWAITING; // Default to AWAITING for unknown strings
+			status = TestStatus::Awaiting; // Default to Awaiting for unknown strings
 		return in;
 	}
 
@@ -313,19 +313,19 @@ namespace partest
 		std::string statusString;
 		switch(status)
 		{
-		case AWAITING:
+		case TestStatus::Awaiting:
 			statusString = "AWAITING";
 			break;
-		case RUNNING:
+		case TestStatus::Running:
 			statusString = "RUNNING";
 			break;
-		case COMPLETED:
+		case TestStatus::Completed:
 			statusString = "COMPLETED";
 			break;
-		case ABORTED:
+		case TestStatus::Aborted:
 			statusString = "ABORTED";
 			break;
-		case SKIPPED:
+		case TestStatus::Skipped:
 			statusString = "SKIPPED";
 			break;
 		default:
@@ -343,15 +343,15 @@ namespace partest
 		std::string statusString;
 		in >> statusString;
 		if(statusString	== "NO_RESULT")
-			result = NO_RESULT;
+			result = TestResult::NoResult;
 		else if(statusString == "PASSED")
-			result = PASSED;
+			result = TestResult::Passed;
 		else if(statusString == "FAILED")
-			result = FAILED;
+			result = TestResult::Failed;
 		else if(statusString == "MIXED")
-			result = MIXED;
+			result = TestResult::Mixed;
 		else
-			result = NO_RESULT; // Default to NO_RESULT for unknown strings
+			result = TestResult::NoResult; // Default to NoResult for unknown strings
 		return in;
 	}
 
@@ -363,16 +363,16 @@ namespace partest
 		std::string statusString;
 		switch(result)
 		{
-		case NO_RESULT:
+		case TestResult::NoResult:
 			statusString = "NO_RESULT";
 			break;
-		case PASSED:
+		case TestResult::Passed:
 			statusString = "PASSED";
 			break;
-		case FAILED:
+		case TestResult::Failed:
 			statusString = "FAILED";
 			break;
-		case MIXED:
+		case TestResult::Mixed:
 			statusString = "MIXED";
 			break;
 		default:
@@ -390,15 +390,15 @@ namespace partest
 		std::string stateString;
 		in >> stateString;
 		if(stateString == "INHERIT")
-			state = INHERIT;
+			state = FlagState::Inherit;
 		else if(stateString == "ENABLED")
-			state = ENABLED;
+			state = FlagState::Enabled;
 		else if(stateString == "DISABLED")
-			state = DISABLED;
+			state = FlagState::Disabled;
 		else if(stateString == "MASKED")
-			state = MASKED;
+			state = FlagState::Masked;
 		else
-			state = INHERIT; // Default to INHERIT for unknown strings
+			state = FlagState::Inherit; // Default to Inherit for unknown strings
 		return in;
 	}
 
@@ -410,16 +410,16 @@ namespace partest
 		std::string stateString;
 		switch(state)
 		{
-		case INHERIT:
+		case FlagState::Inherit:
 			out << "INHERIT";
 			break;
-		case ENABLED:
+		case FlagState::Enabled:
 			out << "ENABLED";
 			break;
-		case DISABLED:
+		case FlagState::Disabled:
 			out << "DISABLED";
 			break;
-		case MASKED:
+		case FlagState::Masked:
 			out << "MASKED";
 			break;
 		default:

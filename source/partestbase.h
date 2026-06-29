@@ -1,10 +1,12 @@
+// File: partestbase.h
 // Author: Samuel Partridge
-// 
+//  
 // Partest is a lightweight C++ testing framework designed for simplicity and ease of use.
 // It allows developers to define and run tests with minimal boilerplate code, making it ideal for quick validation of code functionality.
 // Header-only implementation for easy integration into existing projects.
-#ifndef PARTESTBASE_H
-#define PARTESTBASE_H
+
+#ifndef PARTEST_BASE_H
+#define PARTEST_BASE_H
 
 #include <iostream>
 #include <string>
@@ -50,7 +52,7 @@ namespace partest
 				// A test returned early due to an assertion failure with stopOnFail enabled.
 				// Nothing special to do here, but this is necessary to prevent the exception from propagating further.
 
-				// Assertion failures indicate that the test has already been marked as FAILED, so no additional action is needed here.
+				// Assertion failures indicate that the test has already been marked as Failed, so no additional action is needed here.
 				#pragma warning(suppress:4101) 
 				catch(const partest::AssertionFailure &e)
 				{
@@ -59,30 +61,30 @@ namespace partest
 					if(e.file() != "" && e.line() != 0)
 						resultStream << "At: " << e.file() << ":" << e.line() << std::endl;
 
-					m_currentFrame->log(PARTEST_LOG_LEVEL_INFO, PARTEST_LOG_TYPE_TEST, resultStream.str());
+					m_currentFrame->log(LogLevel::Info, PARTEST_LOG_TYPE_TEST, resultStream.str());
 				}
 
 				catch(const std::exception &e)
 				{
 					// An unexpected exception occurred during test execution.
 					// Mark the test as aborted and log a generic message.
-					m_currentFrame->updateStatus(ABORTED);
+					m_currentFrame->updateStatus(TestStatus::Aborted);
 					// Ensure that the test result was set. A generic exception indicates test failure.
-					m_currentFrame->updateResult(FAILED);
+					m_currentFrame->updateResult(TestResult::Failed);
 
 					resultStream << "Error: Unhandled exception in test '" << m_currentFrame->metadata.name << "': " << e.what() << std::endl;
-					m_currentFrame->log(PARTEST_LOG_LEVEL_INFO, PARTEST_LOG_TYPE_DEFAULT, resultStream.str());
+					m_currentFrame->log(LogLevel::Info, PARTEST_LOG_TYPE_DEFAULT, resultStream.str());
 				}
 				catch(...)
 				{
 					// An unknown exception occurred during test execution.
 					// Mark the test as aborted and log a generic message.
-					m_currentFrame->updateStatus(ABORTED);
+					m_currentFrame->updateStatus(TestStatus::Aborted);
 					// Ensure that the test result was set. A generic exception indicates test failure.
-					m_currentFrame->updateResult(FAILED);
+					m_currentFrame->updateResult(TestResult::Failed);
 
 					resultStream << "Error: Unknown exception in test '" << m_currentFrame->metadata.name << "'." << std::endl;
-					m_currentFrame->log(PARTEST_LOG_LEVEL_ERROR, PARTEST_LOG_TYPE_DEFAULT, resultStream.str());
+					m_currentFrame->log(LogLevel::Error, PARTEST_LOG_TYPE_DEFAULT, resultStream.str());
 				}
 
 				m_currentFrame->finalizeTest();
@@ -103,7 +105,7 @@ namespace partest
 				runTest(*test);
 
 				// If the test failed and stopOnFail is enabled, stop executing further tests
-				if(m_currentFrame->getEffectiveFlags().stopOnFail == ENABLED && m_currentFrame->hasFailures())
+				if(m_currentFrame->getEffectiveFlags().stopOnFail == FlagState::Enabled && m_currentFrame->hasFailures())
 				{
 					std::cout << "Stopping further tests due to failure in test '" << m_currentFrame->metadata.name << "' with stopOnFail enabled." << std::endl;
 					break;
@@ -164,14 +166,14 @@ namespace partest
 
 		void logAssertion(const AssertionResult &result)
 		{
-			m_currentFrame->updateResult(result.passed ? PASSED : FAILED);
+			m_currentFrame->updateResult(result.passed ? TestResult::Passed : TestResult::Failed);
 			m_currentFrame->logAssertion(result);
 		}
 
 		void logAssertion(bool passed, PARTEST_STRING_PARAM log)
 		{
-			m_currentFrame->updateResult(passed ? PASSED : FAILED);
-			m_currentFrame->log(PARTEST_LOG_LEVEL_INFO, PARTEST_LOG_TYPE_ASSERT, log);
+			m_currentFrame->updateResult(passed ? TestResult::Passed : TestResult::Failed);
+			m_currentFrame->log(LogLevel::Info, PARTEST_LOG_TYPE_ASSERT, log);
 		}
 
 		/**
@@ -184,7 +186,7 @@ namespace partest
 		*/
 		void maybeRaiseOnAssertion(const char *file, int line, PARTEST_STRING_PARAM condition)
 		{
-			if(m_currentFrame->getEffectiveFlags().stopOnFail == ENABLED && (m_currentFrame->hasFailures()))
+			if(m_currentFrame->getEffectiveFlags().stopOnFail == FlagState::Enabled && (m_currentFrame->hasFailures()))
 			{
 				throw AssertionFailure(file, line, condition);
 			}
@@ -430,12 +432,12 @@ namespace partest
 			//Incomplete
 		}
 
-		void printLogs(LogLevel maxLevel = PARTEST_LOG_LEVEL_INFO, unsigned maxDepth = 1)
+		void printLogs(LogLevel maxLevel = LogLevel::Info, unsigned maxDepth = 1)
 		{
 			printLogs(m_testTree.get(), maxLevel, maxDepth, 0);
 		}
 
-		void printLogs(TestFrame *frame, LogLevel maxLevel = PARTEST_LOG_LEVEL_INFO, unsigned maxDepth = 1, unsigned depth = 0)
+		void printLogs(TestFrame *frame, LogLevel maxLevel = LogLevel::Info, unsigned maxDepth = 1, unsigned depth = 0)
 		{
 			std::vector<LogEntry> entries;
 

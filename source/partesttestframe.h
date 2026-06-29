@@ -1,5 +1,5 @@
-#ifndef PARTESTTESTFRAME_H
-#define PARTESTTESTFRAME_H
+#ifndef PARTEST_TESTFRAME_H
+#define PARTEST_TESTFRAME_H
 
 #include <vector>
 #include <memory>
@@ -75,7 +75,7 @@ namespace partest
 
 		void logSubtestTransition(PARTEST_STRING_PARAM message, const TestFrame *frame)
 		{
-			LogEntry logEntry(Info, PARTEST_LOG_TYPE_SUBTEST, message);
+			LogEntry logEntry(LogLevel::Info, PARTEST_LOG_TYPE_SUBTEST, message);
 			logEntry.testFrameID = frame != nullptr ? frame->frameID() : 0;
 			log(logEntry);
 		}
@@ -186,10 +186,9 @@ namespace partest
 		bool initializeTest()
 		{
 			// If effective flags indicate the test should be skipped, do nothing and return immediately
-			if(getEffectiveFlags().skip == ENABLED)
+			if(getEffectiveFlags().skip == FlagState::Enabled)
 			{
-				
-				updateStatus(SKIPPED);
+				updateStatus(TestStatus::Skipped);
 				return false;
 			}
 			else
@@ -215,16 +214,16 @@ namespace partest
 		{
 			if(m_testFunction != nullptr)
 			{
-				updateStatus(RUNNING);
+				updateStatus(TestStatus::Running);
 				m_testFunction();
 
-				if(getResult() == NO_RESULT)
+				if(getResult() == TestResult::NoResult)
 				{
 					log(LogLevel::Warning, PARTEST_LOG_TYPE_TEST, "Warning: '" + metadata.name + "' completed without any assertions. Defaulting to PASSED.");
-					updateResult(PASSED);
+					updateResult(TestResult::Passed);
 				}
 
-				updateStatus(COMPLETED);
+				updateStatus(TestStatus::Completed);
 			}
 			else
 			{
@@ -235,10 +234,10 @@ namespace partest
 		TestFrame *finalizeTest()
 		{
 			// If effective flags indicate the test should be skipped, do nothing and return immediately
-			if(getEffectiveFlags().skip == DISABLED)
+			if(getEffectiveFlags().skip == FlagState::Disabled)
 			{
-				if(getStatus() != ABORTED)
-					updateStatus(COMPLETED);
+				if(getStatus() != TestStatus::Aborted)
+					updateStatus(TestStatus::Completed);
 
 				if(m_parent != nullptr)
 				{
@@ -304,7 +303,7 @@ namespace partest
 		}
 
 		/**
-		* Get the effective flags for this test frame, resolving any INHERIT values from parent frames.
+		* Get the effective flags for this test frame, resolving any Inherit values from parent frames.
 		* 
 		* @return The effective TestFlags for this test frame.
 		*/

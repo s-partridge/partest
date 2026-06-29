@@ -1,5 +1,5 @@
-#ifndef PARTESTEXCEPTIONS_H
-#define PARTESTEXCEPTIONS_H
+#ifndef PARTEST_EXCEPTIONS_H
+#define PARTEST_EXCEPTIONS_H
 
 #include <stdexcept>
 #include <string>

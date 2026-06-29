@@ -1,5 +1,5 @@
-#ifndef PARTESTLOG_H
-#define PARTESTLOG_H
+#ifndef PARTEST_LOG_H
+#define PARTEST_LOG_H
 
 #include <string>
 #include <chrono>

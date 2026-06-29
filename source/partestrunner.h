@@ -1,5 +1,5 @@
-#ifndef PARTESTRUNNER_H
-#define PARTESTRUNNER_H
+#ifndef PARTEST_RUNNER_H
+#define PARTEST_RUNNER_H
 
 #include <vector>
 

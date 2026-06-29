@@ -1,5 +1,5 @@
-#ifndef PARTESTASSERT_H
-#define PARTESTASSERT_H
+#ifndef PARTEST_ASSERT_H
+#define PARTEST_ASSERT_H
 
 #include <atomic>
 #include <map>
