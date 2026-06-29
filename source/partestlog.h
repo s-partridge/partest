@@ -6,22 +6,22 @@
 #include "partestcommon.h"
 
 // For logs from assert statements, used internally
-#define PARTEST_LOG_ASSERT "Assertion"
+#define PARTEST_LOG_TYPE_ASSERT "Assertion"
 // For general test and subtest-level logs
-#define PARTEST_LOG_TEST "Test"
+#define PARTEST_LOG_TYPE_TEST "Test"
 // For general test and subtest-level logs
-#define PARTEST_LOG_SUBTEST "Subtest"
+#define PARTEST_LOG_TYPE_SUBTEST "Subtest"
 // For all other logs
-#define PARTEST_LOG_DEFAULT "Default"
+#define PARTEST_LOG_TYPE_DEFAULT "Default"
 
 namespace partest
 {
-	enum LogLevel : uint8_t
+	enum class LogLevel : uint8_t
 	{
-		ERROR = 0,
-		WARNING,
-		INFO,
-		DEBUG
+		Error = 0,
+		Warning,
+		Info,
+		Debug
 	};
 
 	struct LogEntry
@@ -31,7 +31,7 @@ namespace partest
 		std::string message;
 		unsigned int testFrameID;
 
-		LogEntry() : LogEntry(INFO, PARTEST_LOG_DEFAULT, "") { }
+		LogEntry() : LogEntry(LogLevel::Info, PARTEST_LOG_TYPE_DEFAULT, "") { }
 		LogEntry(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message, unsigned int testFrameID = 0) : level(level),  type(type), message(message), testFrameID(testFrameID) {}
 	};
 }

@@ -75,7 +75,7 @@ namespace partest
 
 		void logSubtestTransition(PARTEST_STRING_PARAM message, const TestFrame *frame)
 		{
-			LogEntry logEntry(LogLevel::INFO, PARTEST_LOG_SUBTEST, message);
+			LogEntry logEntry(Info, PARTEST_LOG_TYPE_SUBTEST, message);
 			logEntry.testFrameID = frame != nullptr ? frame->frameID() : 0;
 			log(logEntry);
 		}
@@ -220,7 +220,7 @@ namespace partest
 
 				if(getResult() == NO_RESULT)
 				{
-					log(WARNING, PARTEST_LOG_TEST, "Warning: '" + metadata.name + "' completed without any assertions. Defaulting to PASSED.");
+					log(LogLevel::Warning, PARTEST_LOG_TYPE_TEST, "Warning: '" + metadata.name + "' completed without any assertions. Defaulting to PASSED.");
 					updateResult(PASSED);
 				}
 
@@ -243,7 +243,7 @@ namespace partest
 				if(m_parent != nullptr)
 				{
 					std::string logString = "Finished: " + metadata.name + "; Results: " + to_string(getResult());
-					log(INFO, PARTEST_LOG_TEST, logString);
+					log(LogLevel::Info, PARTEST_LOG_TYPE_TEST, logString);
 
 					//m_parent->log("Finalizing subtest " + metadata.name, this);
 					m_parent->updateResult(getResult());

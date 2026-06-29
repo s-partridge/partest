@@ -59,7 +59,7 @@ namespace partest
 					if(e.file() != "" && e.line() != 0)
 						resultStream << "At: " << e.file() << ":" << e.line() << std::endl;
 
-					m_currentFrame->log(LogLevel::INFO, PARTEST_LOG_TEST, resultStream.str());
+					m_currentFrame->log(PARTEST_LOG_LEVEL_INFO, PARTEST_LOG_TYPE_TEST, resultStream.str());
 				}
 
 				catch(const std::exception &e)
@@ -71,7 +71,7 @@ namespace partest
 					m_currentFrame->updateResult(FAILED);
 
 					resultStream << "Error: Unhandled exception in test '" << m_currentFrame->metadata.name << "': " << e.what() << std::endl;
-					m_currentFrame->log(LogLevel::ERROR, PARTEST_LOG_DEFAULT, resultStream.str());
+					m_currentFrame->log(PARTEST_LOG_LEVEL_INFO, PARTEST_LOG_TYPE_DEFAULT, resultStream.str());
 				}
 				catch(...)
 				{
@@ -82,7 +82,7 @@ namespace partest
 					m_currentFrame->updateResult(FAILED);
 
 					resultStream << "Error: Unknown exception in test '" << m_currentFrame->metadata.name << "'." << std::endl;
-					m_currentFrame->log(LogLevel::ERROR, PARTEST_LOG_DEFAULT, resultStream.str());
+					m_currentFrame->log(PARTEST_LOG_LEVEL_ERROR, PARTEST_LOG_TYPE_DEFAULT, resultStream.str());
 				}
 
 				m_currentFrame->finalizeTest();
@@ -171,7 +171,7 @@ namespace partest
 		void logAssertion(bool passed, PARTEST_STRING_PARAM log)
 		{
 			m_currentFrame->updateResult(passed ? PASSED : FAILED);
-			m_currentFrame->log(LogLevel::INFO, PARTEST_LOG_ASSERT, log);
+			m_currentFrame->log(PARTEST_LOG_LEVEL_INFO, PARTEST_LOG_TYPE_ASSERT, log);
 		}
 
 		/**
@@ -430,12 +430,12 @@ namespace partest
 			//Incomplete
 		}
 
-		void printLogs(LogLevel maxLevel = INFO, unsigned maxDepth = 1)
+		void printLogs(LogLevel maxLevel = PARTEST_LOG_LEVEL_INFO, unsigned maxDepth = 1)
 		{
 			printLogs(m_testTree.get(), maxLevel, maxDepth, 0);
 		}
 
-		void printLogs(TestFrame *frame, LogLevel maxLevel = INFO, unsigned maxDepth = 1, unsigned depth = 0)
+		void printLogs(TestFrame *frame, LogLevel maxLevel = PARTEST_LOG_LEVEL_INFO, unsigned maxDepth = 1, unsigned depth = 0)
 		{
 			std::vector<LogEntry> entries;
 
@@ -443,7 +443,7 @@ namespace partest
 			{
 				std::cout << entry.message << std::endl;
 
-				if(depth < maxDepth && entry.type == PARTEST_LOG_SUBTEST && entry.testFrameID != 0)
+				if(depth < maxDepth && entry.type == PARTEST_LOG_TYPE_SUBTEST && entry.testFrameID != 0)
 				{
 					auto subtest = frame->subtestsBegin();
 

@@ -83,7 +83,7 @@ namespace partest
 		{
 			for(PartestBase *test : m_tests)
 			{
-				test->printLogs(partest::INFO, 10);
+				test->printLogs(LogLevel::Info, 10);
 			}
 		/*	for(PartestBase *test : m_tests)
 			{
