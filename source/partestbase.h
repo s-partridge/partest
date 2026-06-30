@@ -164,16 +164,36 @@ namespace partest
 		*/
 		TestFlags getCurrentFlags() const { return m_currentFrame->getEffectiveFlags(); }
 
+		/**
+		* Log an assertion result.
+		* @param result The assertion result to log.
+		*/
 		void logAssertion(const AssertionResult &result)
 		{
 			m_currentFrame->updateResult(result.passed ? TestResult::Passed : TestResult::Failed);
 			m_currentFrame->logAssertion(result);
 		}
 
+		/**
+		* Log an assertion result.
+		* @param passed Whether the assertion passed or failed.
+		* @param log The log message to associate with the assertion result.
+		*/
 		void logAssertion(bool passed, PARTEST_STRING_PARAM log)
 		{
 			m_currentFrame->updateResult(passed ? TestResult::Passed : TestResult::Failed);
 			m_currentFrame->log(LogLevel::Info, PARTEST_LOG_TYPE_ASSERT, log);
+		}
+
+		/**
+		* Log a message.
+		* @param level The log level.
+		* @param type The log type.
+		* @param message The log message.
+		*/
+		void addLog(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message)
+		{
+			m_currentFrame->log(level, type, message);
 		}
 
 		/**
