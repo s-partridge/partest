@@ -1,11 +1,29 @@
 #ifndef PARTEST_COMMON_H
 #define PARTEST_COMMON_H
 
-#define PARTEST_VERSION_MAJOR 0
-#define PARTEST_VERSION_MINOR 2
-#define PARTEST_VERSION_PATCH 1
+// Macro pair to stringify a macro value. The first macro is needed to ensure that the argument is expanded before stringification.
+#define PARTEST_STRINGIFY_HELPER(x) #x
+#define PARTEST_STRINGIFY_MACRO(x) PARTEST_STRINGIFY_HELPER(x)
 
-#define PARTEST_VERSION_STRING "0.2.1"
+#define _PARTEST_VERSION_MAJOR 0
+#define _PARTEST_VERSION_MINOR 2
+#define _PARTEST_VERSION_PATCH 2
+
+// Expand the version numbers into a string literal
+// This requires first converting the numbers to string literals, then concatenating them
+
+constexpr auto PARTEST_VERSION_MAJOR = _PARTEST_VERSION_MAJOR;
+constexpr auto PARTEST_VERSION_MINOR = _PARTEST_VERSION_MINOR;
+constexpr auto PARTEST_VERSION_PATCH = _PARTEST_VERSION_PATCH;
+
+static constexpr const char* PARTEST_VERSION_STRING = 
+    PARTEST_STRINGIFY_MACRO(_PARTEST_VERSION_MAJOR) "." 
+    PARTEST_STRINGIFY_MACRO(_PARTEST_VERSION_MINOR) "." 
+    PARTEST_STRINGIFY_MACRO(_PARTEST_VERSION_PATCH);
+
+#undef _PARTEST_VERSION_MAJOR
+#undef _PARTEST_VERSION_MINOR
+#undef _PARTEST_VERSION_PATCH
 
 #if defined(_MSVC_LANG)
     // _MSVC_LANG is the definitive way to check for MSVC.
@@ -17,7 +35,7 @@
     #elif _MSVC_LANG >= 201402L
         #define PARTEST_CPP_VERSION 14
 	#else
-		// Default to 11 for older MSVC versions.
+		// Default to 11 (Should only be possible with very old versions of MSVC, but just in case)
 		#define PARTEST_CPP_VERSION 11
     #endif
 #elif defined(__cplusplus)
