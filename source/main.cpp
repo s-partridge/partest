@@ -8,55 +8,58 @@
 class TestTest : public partest::PartestBase
 {
 public:
-	TestTest() : PartestBase("TestTest", "A test class to test the partest framework itself.")
+	TestTest() : PartestBase("TestTest", "Validation class for the Partest framework.")
 	{		
 		// Example of adding a test
-		partest::TestInfo metadata("ExampleTest", "An example test that always passes.");
-		
-		partest::TestFlags flags = partest::TEST_FLAGS_SKIP;
+		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
 
-		addTest(metadata, flags, [this]() { return this->exampleTest(3); });
-		addTest(metadata, flags, [this]() { return this->exampleTest(6); });
+		addTest(partest::TestInfo("AssertValidation", "Validate that all assert macros are working correctly."),
+			flags,
+			[this]() { return this->assertValidation(); });
 
 		addTest(partest::TestInfo("FailingTest", "A test that always fails."),
 			flags,
-			[this]() { return this->exampleFailingTest(); });
+			[this]() { return this->failingTest(); });
 		addTest(partest::TestInfo("MixedTest", "A test that has mixed results."),
 			flags,
-			[this]() { return this->exampleMixedTest(); });
+			[this]() { return this->mixedTest(); });
 		addTest(partest::TestInfo("PassedTest", "A test that always passes."),
 			flags,
-			[this]() { return this->examplePassedTest(); });
+			[this]() { return this->passedTest(); });
 		addTest(partest::TestInfo("NestedNestedTest", "A test with nested subtests."),
 			partest::TEST_FLAGS_INHERIT,
-			[this]() { return this->exampleNestedNestedTest(); });
+			[this]() { return this->nestedNestedTest(); });
+
+		partest::TestInfo metadata("ParameterizedTest", "Validate that parameters are passed correctly.");
+		flags = partest::TEST_FLAGS_SKIP;
+		addTest(metadata, flags, [this]() { return this->parameterizedTest(3); });
+		addTest(metadata, flags, [this]() { return this->parameterizedTest(6); });
 
 		flags.skip = partest::FlagState::Disabled;
 		flags.stopOnFail = partest::FlagState::Enabled;
 
 		addTest(partest::TestInfo("TestWithStopOnFail", "A test with stopOnFail enabled."),
 			flags,
-			[this]() { return this->exampleTestWithStopOnFail(); });
+			[this]() { return this->testWithStopOnFail(); });
 	}
 
-	void assertValidation()
+	void failingTest()
 	{
-		subtest(partest::TestInfo("Assert Pass", "All assertions should be true"), [&]()
-		{
-			ASSERT_TRUE(true);
-			ASSERT_EQUAL(1, 1);
-			ASSERT_NOT_EQUAL(1, 2);
-		});
-
-		subtest(partest::TestInfo("Assert Fail", "All assertions should be false"), [&]()
-		{
-			ASSERT_TRUE(false);
-			ASSERT_EQUAL(1, 2);
-			ASSERT_NOT_EQUAL(1, 1);
-		});
+		ASSERT_TRUE(false); // This assertion will fail
 	}
 
-	void exampleTest(int testValue)
+	void mixedTest()
+	{
+		ASSERT_TRUE(true);  // This assertion will pass
+		ASSERT_TRUE(false); // This assertion will fail
+	}
+
+	void passedTest()
+	{
+		ASSERT_TRUE(true); // This assertion will pass
+	}
+
+	void parameterizedTest(int testValue)
 	{
 		std::cout << "Running example test..." << std::endl;
 		subtest(partest::TestInfo("Subtest1", "A subtest that checks if testValue is 3."), [&]()
@@ -72,24 +75,55 @@ public:
 		});
 	}
 
-	void exampleFailingTest()
+	void assertValidation()
 	{
-		ASSERT_TRUE(false); // This assertion will fail
-	}
+		subtest(partest::TestInfo("Assert Pass", "All assertions should be true"), [&]()
+		{
+			subtest(partest::TestInfo("Self-check Pass", "This subtest checks whether assertions are working correctly."), [&]()
+			{
+				// This subtest is just a self-check to ensure that assertions are functioning as expected.
+				ASSERT_TRUE(true);
+				ASSERT_FALSE(false);
+				ASSERT_EQUAL(1, 1);
+				ASSERT_NOT_EQUAL(1, 2);
+				ASSERT_GREATER(2, 1);
+				ASSERT_GREATER_EQUAL(2, 1);
+				ASSERT_GREATER_EQUAL(2, 2);
+				ASSERT_LESS(1, 2);
+				ASSERT_LESS_EQUAL(1, 2);
+				ASSERT_LESS_EQUAL(2, 2);
+			});
 
-	void exampleMixedTest()
-	{
-		ASSERT_TRUE(true);  // This assertion will pass
-		ASSERT_TRUE(false); // This assertion will fail
-	}
+			// If no assertions fail, this subtest passed.
+			ASSERT_EQUAL(getCurrentFrame().getAssertionFailureCount(), 0); // Ensure that no assertions have failed in this subtest
+		});
 
-	void examplePassedTest()
-	{
-		ASSERT_TRUE(true); // This assertion will pass
+		subtest(partest::TestInfo("Assert Fail", "All assertions should be false"), [&]()
+		{
+			subtest(partest::TestInfo("Self-check Fail", "This subtest checks whether assertions are working correctly."), [&]()
+			{
+				// This subtest is just a self-check to ensure that assertions are functioning as expected.
+				ASSERT_TRUE(false);
+				ASSERT_FALSE(true);
+				ASSERT_EQUAL(1, 2);
+				ASSERT_NOT_EQUAL(1, 1);
+				ASSERT_GREATER(1, 2);
+				ASSERT_GREATER_EQUAL(1, 2);
+				ASSERT_LESS(2, 1);
+				ASSERT_LESS_EQUAL(2, 1);
+			});
+
+			// Hard-coded to the current number of assertions in this subtest.
+			// IMPORTANT: If you add or remove assertions in this subtest, you must update this value accordingly.
+			unsigned validationCount = 8;
+
+			// If any assertions fail, this subtest failed.
+			ASSERT_EQUAL(getCurrentFrame().getAssertionFailureCount(), validationCount); // Ensure that at least one assertion has failed in this subtest
+		});
 	}
 
 	// This test should result in a Mixed status due to nested subtests
-	void exampleNestedNestedTest()
+	void nestedNestedTest()
 	{
 		subtest(partest::TestInfo("NestedSubtest1", "A nested subtest that always passes."), partest::TEST_FLAGS_INHERIT, [this]()
 		{
@@ -117,7 +151,7 @@ public:
 		});
 	}
 
-	void exampleTestWithStopOnFail()
+	void testWithStopOnFail()
 	{
 		partest::TestFlags stopFlags = partest::TEST_FLAGS_INHERIT;
 		stopFlags.stopOnFail = partest::FlagState::Enabled;
