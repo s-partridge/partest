@@ -28,10 +28,10 @@
 /**
 * Assertion macros for relational checks. Must be called within a TestFrame context.
 */
-#define ASSERT_GREATER(lhs, rhs) handleAssertTrue((lhs) > (rhs), ASSERT_GREATER_STR, #lhs " > " #rhs, __FILE__, __LINE__)
-#define ASSERT_LESS(lhs, rhs) handleAssertTrue((lhs) < (rhs), ASSERT_LESS_STR, #lhs " < " #rhs, __FILE__, __LINE__)
-#define ASSERT_GREATER_EQUAL(lhs, rhs) handleAssertTrue((lhs) >= (rhs), ASSERT_GREATER_EQUAL_STR, #lhs " >= " #rhs, __FILE__, __LINE__)
-#define ASSERT_LESS_EQUAL(lhs, rhs) handleAssertTrue((lhs) <= (rhs), ASSERT_LESS_EQUAL_STR, #lhs " <= " #rhs, __FILE__, __LINE__)
+#define ASSERT_GREATER(lhs, rhs) handleAssertBoolean((lhs) > (rhs), true, ASSERT_GREATER_STR, #lhs " > " #rhs, __FILE__, __LINE__)
+#define ASSERT_LESS(lhs, rhs) handleAssertBoolean((lhs) < (rhs), true, ASSERT_LESS_STR, #lhs " < " #rhs, __FILE__, __LINE__)
+#define ASSERT_GREATER_EQUAL(lhs, rhs) handleAssertBoolean((lhs) >= (rhs), true, ASSERT_GREATER_EQUAL_STR, #lhs " >= " #rhs, __FILE__, __LINE__)
+#define ASSERT_LESS_EQUAL(lhs, rhs) handleAssertBoolean((lhs) <= (rhs), true, ASSERT_LESS_EQUAL_STR, #lhs " <= " #rhs, __FILE__, __LINE__)
 
 /**
 * Stringified names for each assert type, used for filtering test results
