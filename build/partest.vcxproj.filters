@@ -12,6 +12,9 @@
     <ClInclude Include="..\source\partestassert.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\source\partestassertresult.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="..\source\partestbase.h">
       <Filter>Header Files</Filter>
     </ClInclude>

@@ -43,6 +43,12 @@ public:
 			[this]() { return this->testWithStopOnFail(); });
 	}
 
+	void sampleTest()
+	{
+		addLog(partest::LogLevel::Debug, PARTEST_LOG_TYPE_TEST, "This is a sample log message.");
+		ASSERT_TRUE(true); // This assertion will pass
+	}
+
 	void failingTest()
 	{
 		ASSERT_TRUE(false); // This assertion will fail
@@ -61,7 +67,7 @@ public:
 
 	void parameterizedTest(int testValue)
 	{
-		std::cout << "Running example test..." << std::endl;
+		addLog(partest::LogLevel::Debug, PARTEST_LOG_TYPE_TEST, "Running example test...");
 		subtest(partest::TestInfo("Subtest1", "A subtest that checks if testValue is 3."), [&]()
 		{
 			// Subtest logic here
@@ -93,9 +99,9 @@ public:
 				ASSERT_LESS_EQUAL(1, 2);
 				ASSERT_LESS_EQUAL(2, 2);
 			});
-
+			unsigned failureCount = getCurrentFrame().getAssertionFailureCount();
 			// If no assertions fail, this subtest passed.
-			ASSERT_EQUAL(getCurrentFrame().getAssertionFailureCount(), 0); // Ensure that no assertions have failed in this subtest
+			ASSERT_EQUAL(failureCount, 0); // Ensure that no assertions have failed in this subtest
 		});
 
 		subtest(partest::TestInfo("Assert Fail", "All assertions should be false"), [&]()
@@ -116,9 +122,9 @@ public:
 			// Hard-coded to the current number of assertions in this subtest.
 			// IMPORTANT: If you add or remove assertions in this subtest, you must update this value accordingly.
 			unsigned validationCount = 8;
-
+			unsigned failureCount = getCurrentFrame().getAssertionFailureCount();
 			// If any assertions fail, this subtest failed.
-			ASSERT_EQUAL(getCurrentFrame().getAssertionFailureCount(), validationCount); // Ensure that at least one assertion has failed in this subtest
+			ASSERT_EQUAL(failureCount, validationCount); // Ensure that at least one assertion has failed in this subtest
 		});
 	}
 
@@ -185,12 +191,12 @@ public:
 
 	void setup() override
 	{
-		std::cout << "Setting up TestTest..." << std::endl;
+		addLog(partest::LogLevel::Debug, PARTEST_LOG_TYPE_TEST, "Setting up TestTest...");
 	}
 
 	void teardown() override
 	{
-		std::cout << "Tearing down TestTest..." << std::endl;
+		addLog(partest::LogLevel::Debug, PARTEST_LOG_TYPE_TEST, "Tearing down TestTest...");
 	}
 };
 
