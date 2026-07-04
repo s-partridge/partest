@@ -25,6 +25,8 @@ namespace partest
 		std::function<void()> m_testFunction = nullptr; // Test function associated with this frame
 		std::function<void()> m_testTeardown = nullptr; // Test function associated with this frame
 
+		unsigned int m_frameID;
+
 		/**
 		* Get a globally incrementing counter. Used internally to assign IDs to newly created test frames.
 		* 
@@ -35,9 +37,10 @@ namespace partest
 			return frameCount++;
 		}
 
-		unsigned int m_frameID;
-
 	public:
+		using TestFrameIter = std::vector<TestFrame *>::iterator;
+		using TestFrameConstIter = std::vector<TestFrame *>::const_iterator;
+
 		TestFrame() noexcept : flags(), metadata(), state(), m_frameID(getNextFrameID()) { }
 		TestFrame(const TestFlags &flags, const TestInfo &metadata, const TestState &result,
 				const std::function<void()> &testFunction = nullptr,
@@ -177,11 +180,11 @@ namespace partest
 		/**
 		* Iterator access for subtests
 		*/
-		std::vector<TestFrame *>::iterator subtestsBegin() noexcept { return m_subtests.begin(); }
-		std::vector<TestFrame *>::iterator subtestsEnd() noexcept { return m_subtests.end(); }
+		TestFrameIter subtestsBegin() noexcept { return m_subtests.begin(); }
+		TestFrameIter subtestsEnd() noexcept { return m_subtests.end(); }
 		size_t subtestCount() const noexcept { return m_subtests.size(); }
-		std::vector<TestFrame *>::const_iterator subtestsBegin() const noexcept{ return m_subtests.cbegin(); }
-		std::vector<TestFrame *>::const_iterator subtestsEnd() const noexcept { return m_subtests.cend(); }
+		TestFrameConstIter subtestsBegin() const noexcept{ return m_subtests.cbegin(); }
+		TestFrameConstIter subtestsEnd() const noexcept { return m_subtests.cend(); }
 
 		bool initializeTest()
 		{

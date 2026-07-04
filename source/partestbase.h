@@ -225,7 +225,7 @@ namespace partest
 		* @param frame The TestFrame to start printing from.
 		* @param depth The current depth in the tree, used for indentation. Default is 0.
 		*/
-		const void printTestTree(const TestFrame &frame, unsigned depth = 0) const
+		void printTestTree(const TestFrame &frame, unsigned depth = 0) const
 		{
 			std::string depthPrefix = std::string(depth, '\t');
 			std::cout << depthPrefix << "Test '" << frame.metadata.name << ": " << frame.state << std::endl;

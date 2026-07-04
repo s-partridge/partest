@@ -13,21 +13,24 @@ namespace partest
 	{
 	private:
 		std::map<std::string, std::string> m_metadata; // Custom metadata associated with this assertion result
-	public:
-		using MetadataIterator = std::map<std::string, std::string>::const_iterator;
-
+		
+		unsigned int m_assertID; // Unique ID for this assertion result, used for tracking and filtering
 		/**
 		* Get a globally incrementing counter. Used internally to assign IDs to newly created test frames.
 		* 
 		* @return the next value for assertCount
 		*/
-		static unsigned int getNextAssertID() noexcept {
+		static unsigned int nextAssertID() noexcept {
 		
 			static std::atomic<unsigned int> assertCount(0);
 			return assertCount++;
 		}
 
-		unsigned int assertID;
+	public:
+		using MetadataConstIter = std::map<std::string, std::string>::const_iterator;
+
+		// Get the unique ID for this assertion result
+		unsigned int getAssertID() const { return m_assertID; }
 
 		// Whether the assertion passed or failed
 		bool passed;
@@ -73,7 +76,7 @@ namespace partest
 			PARTEST_STRING_PARAM message,
 			PARTEST_STRING_PARAM file,
 			int line)
-				: assertID(getNextAssertID()), passed(passed), assertType(assertType),
+				: m_assertID(nextAssertID()), passed(passed), assertType(assertType),
 				condition(condition), message(message), file(file), line(line) {}
 
 		virtual ~AssertionResult() = default;
@@ -105,7 +108,7 @@ namespace partest
 		*/
 		std::string getMetadata(PARTEST_STRING_PARAM key) const
 		{
-			MetadataIterator it = m_metadata.find(PARTEST_STRING_PARAM_TO_STRING(key));
+			MetadataConstIter it = m_metadata.find(PARTEST_STRING_PARAM_TO_STRING(key));
 			if(it != m_metadata.end())
 			{
 				return it->second;
@@ -113,8 +116,8 @@ namespace partest
 			return "";
 		}
 
-		MetadataIterator metadataBegin() const noexcept { return m_metadata.cbegin(); }
-		MetadataIterator metadataEnd() const noexcept { return m_metadata.cend(); }
+		MetadataConstIter metadataBegin() const noexcept { return m_metadata.cbegin(); }
+		MetadataConstIter metadataEnd() const noexcept { return m_metadata.cend(); }
 	};
 }
 #endif

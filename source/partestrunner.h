@@ -102,7 +102,7 @@ namespace partest
 			return failureCount;
 		}
 
-		unsigned getAllAssertionFailures()
+		unsigned getAllAssertionFailures() const
 		{
 			unsigned failureCount = 0;
 			for(PartestBase *test : m_tests)
