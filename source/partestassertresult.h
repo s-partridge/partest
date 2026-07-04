@@ -14,13 +14,13 @@ namespace partest
 	private:
 		std::map<std::string, std::string> m_metadata; // Custom metadata associated with this assertion result
 		
-		unsigned int m_assertID; // Unique ID for this assertion result, used for tracking and filtering
+		unsigned int m_id; // Unique ID for this assertion result, used for tracking and filtering
 		/**
 		* Get a globally incrementing counter. Used internally to assign IDs to newly created test frames.
 		* 
 		* @return the next value for assertCount
 		*/
-		static unsigned int nextAssertID() noexcept {
+		static unsigned int nextID() noexcept {
 		
 			static std::atomic<unsigned int> assertCount(0);
 			return assertCount++;
@@ -30,7 +30,7 @@ namespace partest
 		using MetadataConstIter = std::map<std::string, std::string>::const_iterator;
 
 		// Get the unique ID for this assertion result
-		unsigned int getAssertID() const { return m_assertID; }
+		unsigned int id() const { return m_id; }
 
 		// Whether the assertion passed or failed
 		bool passed;
@@ -76,7 +76,7 @@ namespace partest
 			PARTEST_STRING_PARAM message,
 			PARTEST_STRING_PARAM file,
 			int line)
-				: m_assertID(nextAssertID()), passed(passed), assertType(assertType),
+				: m_id(nextID()), passed(passed), assertType(assertType),
 				condition(condition), message(message), file(file), line(line) {}
 
 		virtual ~AssertionResult() = default;

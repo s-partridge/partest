@@ -343,7 +343,7 @@ namespace partest
 
 					while(subtest != frame->subtestsEnd())
 					{
-						if((*subtest)->frameID() == entry.testFrameID)
+						if((*subtest)->id() == entry.testFrameID)
 						{
 							printLogs(*subtest, maxLevel, maxDepth, depth + 1);
 							break;

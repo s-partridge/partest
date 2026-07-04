@@ -14,6 +14,18 @@ namespace partest
 {
 	class TestFrame
 	{		
+		unsigned int m_id;
+
+		/**
+		* Get a globally incrementing counter. Used internally to assign IDs to newly created test frames.
+		* 
+		* @return the next value for frameCount
+		*/
+		static unsigned int nextID() noexcept {
+			static std::atomic<unsigned int> frameCount(0);
+			return frameCount++;
+		}
+
 	protected:
 		std::vector<TestFrame *> m_subtests; // Vector of sub-tests
 		std::vector<LogEntry> m_logs; // Logs associated with this test frame
@@ -25,30 +37,18 @@ namespace partest
 		std::function<void()> m_testFunction = nullptr; // Test function associated with this frame
 		std::function<void()> m_testTeardown = nullptr; // Test function associated with this frame
 
-		unsigned int m_frameID;
-
-		/**
-		* Get a globally incrementing counter. Used internally to assign IDs to newly created test frames.
-		* 
-		* @return the next value for frameCount
-		*/
-		static unsigned int getNextFrameID() noexcept {
-			static std::atomic<unsigned int> frameCount(0);
-			return frameCount++;
-		}
-
 	public:
 		using TestFrameIter = std::vector<TestFrame *>::iterator;
 		using TestFrameConstIter = std::vector<TestFrame *>::const_iterator;
 
-		TestFrame() noexcept : flags(), metadata(), state(), m_frameID(getNextFrameID()) { }
+		TestFrame() noexcept : flags(), metadata(), state(), m_id(nextID()) { }
 		TestFrame(const TestFlags &flags, const TestInfo &metadata, const TestState &result,
 				const std::function<void()> &testFunction = nullptr,
 				const std::function<void()> &testSetup = nullptr,
 				const std::function<void()> &testTeardown = nullptr)
 			: flags(flags), metadata(metadata), state(result),
 				m_testFunction(testFunction), m_testSetup(testSetup), m_testTeardown(testTeardown),
-				m_frameID(getNextFrameID()) {}
+				m_id(nextID()) {}
 	
 		// Nothing should be moving or copying TestFrame instances. They exist as part of a tree structure managed by PartestBase.
 		TestFrame(const TestFrame &) = delete; // Disable copy constructor
@@ -62,7 +62,7 @@ namespace partest
 				delete subtest;			
 		}
 
-		unsigned int frameID() const noexcept { return m_frameID; }
+		unsigned int id() const noexcept { return m_id; }
 
 		TestInfo metadata; // Test metadata, including name and description
 		TestFlags flags; // Effective flags for this test frame
@@ -79,7 +79,7 @@ namespace partest
 		void logSubtestTransition(PARTEST_STRING_PARAM message, const TestFrame *frame)
 		{
 			LogEntry logEntry(LogLevel::Info, PARTEST_LOG_TYPE_SUBTEST, message);
-			logEntry.testFrameID = frame != nullptr ? frame->frameID() : 0;
+			logEntry.testFrameID = frame != nullptr ? frame->id() : 0;
 			log(logEntry);
 		}
 
