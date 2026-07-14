@@ -12,9 +12,9 @@
 // Expand the version numbers into a string literal
 // This requires first converting the numbers to string literals, then concatenating them
 
-constexpr auto PARTEST_VERSION_MAJOR = _PARTEST_VERSION_MAJOR;
-constexpr auto PARTEST_VERSION_MINOR = _PARTEST_VERSION_MINOR;
-constexpr auto PARTEST_VERSION_PATCH = _PARTEST_VERSION_PATCH;
+constexpr unsigned PARTEST_VERSION_MAJOR = _PARTEST_VERSION_MAJOR;
+constexpr unsigned PARTEST_VERSION_MINOR = _PARTEST_VERSION_MINOR;
+constexpr unsigned PARTEST_VERSION_PATCH = _PARTEST_VERSION_PATCH;
 
 static constexpr const char* PARTEST_VERSION_STRING = 
     PARTEST_STRINGIFY_MACRO(_PARTEST_VERSION_MAJOR) "." 

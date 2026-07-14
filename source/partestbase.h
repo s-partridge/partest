@@ -129,7 +129,7 @@ namespace partest
 		*/
 		void addTest(const TestInfo metadata, const TestFlags &flags, const std::function<void()> &testFunc, const std::function<void()> &setupFunc = nullptr, const std::function<void()> &teardownFunc = nullptr)
 		{
-			TestFrame *newFrame = m_testTree->addSubtest(partest::make_unique<TestFrame>(flags, metadata, TestState::defaultState(), testFunc, setupFunc, teardownFunc));
+			m_testTree->addSubtest(partest::make_unique<TestFrame>(flags, metadata, TestState::defaultState(), testFunc, setupFunc, teardownFunc));
 		}
 
 		template<PARTEST_ENABLE_IF_INVOCABLE(Func)>
