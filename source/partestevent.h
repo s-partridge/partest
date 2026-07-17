@@ -6,6 +6,13 @@
 #include "partestassertresult.h"
 #include "partestlog.h"
 
+PARTEST_CONSTEXPR_11 const char *EVENT_BEGIN_TEST = "EB";
+PARTEST_CONSTEXPR_11 const char *EVENT_END_TEST = "EE";
+PARTEST_CONSTEXPR_11 const char *EVENT_ASSERTION = "EA";
+PARTEST_CONSTEXPR_11 const char *EVENT_LOG = "EL";
+PARTEST_CONSTEXPR_11 const char *EVENT_PASSTHROUGH = "EP";
+PARTEST_CONSTEXPR_11 const char *EVENT_DIE = "ED";
+
 namespace partest
 {
 	/**
@@ -116,6 +123,17 @@ namespace partest
 
 		inline const std::string &getMessage() const noexcept { return m_message; }
 		inline std::thread::id getThreadId() const noexcept { return m_threadId; }
+	};
+
+	/**
+	* @class EventDie
+	* @brief Special event to kill the dispatcher thread and stop the reporting system.
+	*        This is used internally by the framework to signal that no more events will be generated.
+	*/
+	struct EventDie : public EventInterface
+	{
+		EventDie(unsigned testId, unsigned parentTestId)
+			: EventInterface(testId, parentTestId) {}
 	};
 }
 #endif
