@@ -40,22 +40,25 @@ namespace partest
 		void acquire()
 		{
 			std::unique_lock<std::mutex> lock(m_mutex);
-			assert(m_count >= 0 && m_count <= least_max_value && "Invariant violated: semaphore count is out of bounds.");
+			assert(m_count >= 0 && m_count <= least_max_value && "Precondition: Semaphore count must be non-negative and not exceed the maximum value.");
 
+			// Condition variable forces the use of unique_lock
 			m_cv.wait(lock, [this]() { return m_count > 0; });
-			assert(m_count <= least_max_value && "Invariant violated: semaphore count is out of bounds.");
+			assert(m_count >= 0 && m_count <= least_max_value && "Invariant violated: semaphore count is out of bounds.");
 			--m_count;
 		}
 
 		bool try_acquire()
 		{
-			std::unique_lock<std::mutex> lock(m_mutex);
-			assert(m_count >= 0 && m_count <= least_max_value && "Invariant violated: semaphore count is out of bounds.");
+			m_mutex.lock();
+			assert(m_count >= 0 && m_count <= least_max_value && "Precondition: Semaphore count must be non-negative and not exceed the maximum value.");
 			if (m_count > 0)
 			{
 				--m_count;
+				m_mutex.unlock();
 				return true;
 			}
+			m_mutex.unlock();
 			return false;
 		}
 
@@ -63,6 +66,9 @@ namespace partest
 		bool try_acquire_for(const std::chrono::duration<Rep, Period>& rel_time)
 		{
 			std::unique_lock<std::mutex> lock(m_mutex);
+			assert(m_count >= 0 && m_count <= least_max_value && "Precondition: Semaphore count must be non-negative and not exceed the maximum value.");
+
+			// Condition variable forces the use of unique_lock
 			bool success = m_cv.wait_for(lock, rel_time, [this]() { return m_count > 0; });
 			assert(m_count >= 0 && m_count <= least_max_value && "Invariant violated: semaphore count is out of bounds.");
 			if (success)
@@ -79,6 +85,9 @@ namespace partest
 			static_assert(std::chrono::is_clock_v<Clock>, "Precondition: Clock type required.");
 
 			std::unique_lock<std::mutex> lock(m_mutex);
+			assert(m_count >= 0 && m_count <= least_max_value && "Precondition: Semaphore count must be non-negative and not exceed the maximum value.");
+
+			// Condition variable forces the use of unique_lock
 			bool success = m_cv.wait_until(lock, abs_time, [this]() { return m_count > 0; });
 			assert(m_count >= 0 && m_count <= least_max_value && "Invariant violated: semaphore count is out of bounds.");
 			if (success)
