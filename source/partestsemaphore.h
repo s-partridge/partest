@@ -24,7 +24,7 @@ namespace partest
 			: m_count(desired)
 		{
 			// Ensure that the initial count does not exceed the maximum value
-			assert(desired <= least_max_value && "Initial count exceeds the maximum value of the semaphore.");
+			assert(desired >= 0 && desired <= least_max_value && "Precondition: Initial count must be non-negative and not exceed the maximum value.");
 		}
 		~CountingSemaphore() = default;
 
@@ -40,13 +40,17 @@ namespace partest
 		void acquire()
 		{
 			std::unique_lock<std::mutex> lock(m_mutex);
+			assert(m_count >= 0 && m_count <= least_max_value && "Invariant violated: semaphore count is out of bounds.");
+
 			m_cv.wait(lock, [this]() { return m_count > 0; });
+			assert(m_count <= least_max_value && "Invariant violated: semaphore count is out of bounds.");
 			--m_count;
 		}
 
 		bool try_acquire()
 		{
 			std::unique_lock<std::mutex> lock(m_mutex);
+			assert(m_count >= 0 && m_count <= least_max_value && "Invariant violated: semaphore count is out of bounds.");
 			if (m_count > 0)
 			{
 				--m_count;
@@ -59,7 +63,9 @@ namespace partest
 		bool try_acquire_for(const std::chrono::duration<Rep, Period>& rel_time)
 		{
 			std::unique_lock<std::mutex> lock(m_mutex);
-			if (m_cv.wait_for(lock, rel_time, [this]() { return m_count > 0; }))
+			bool success = m_cv.wait_for(lock, rel_time, [this]() { return m_count > 0; });
+			assert(m_count >= 0 && m_count <= least_max_value && "Invariant violated: semaphore count is out of bounds.");
+			if (success)
 			{
 				--m_count;
 				return true;
@@ -70,8 +76,12 @@ namespace partest
 		template<class Clock, class Duration>
 		bool try_acquire_until(const std::chrono::time_point<Clock, Duration>& abs_time)
 		{
+			static_assert(std::chrono::is_clock_v<Clock>, "Precondition: Clock type required.");
+
 			std::unique_lock<std::mutex> lock(m_mutex);
-			if (m_cv.wait_until(lock, abs_time, [this]() { return m_count > 0; }))
+			bool success = m_cv.wait_until(lock, abs_time, [this]() { return m_count > 0; });
+			assert(m_count >= 0 && m_count <= least_max_value && "Invariant violated: semaphore count is out of bounds.");
+			if (success)
 			{
 				--m_count;
 				return true;
@@ -85,8 +95,10 @@ namespace partest
 				return;
 
 			m_mutex.lock();
-			assert(m_count + n <= least_max_value && "Releasing would exceed the maximum value of the semaphore.");
+			assert(m_count >= 0 && m_count <= least_max_value && "Precondition: semaphore count is out of bounds.");
+			assert(n >= 0 && n <= least_max_value && "Precondition: release count is out of bounds.");
 			m_count += n;
+			assert(m_count >= 0 && m_count <= least_max_value && "Invariant violated: semaphore count + n is out of bounds.");
 			m_mutex.unlock();
 
 			if(n == 1)
