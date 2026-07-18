@@ -16,7 +16,7 @@ namespace partest
 		std::mutex m_mutex;
 		std::condition_variable m_cv;
 		std::ptrdiff_t m_count;
-
+		
 	public:
 		static_assert(least_max_value >= 0, "The maximum value of the semaphore must be non-negative.");
 
@@ -102,10 +102,10 @@ namespace partest
 		{
 			if(n <= 0)
 				return;
+			assert(n >= 0 && n <= least_max_value && "Precondition: release count is out of bounds.");
 
 			m_mutex.lock();
 			assert(m_count >= 0 && m_count <= least_max_value && "Precondition: semaphore count is out of bounds.");
-			assert(n >= 0 && n <= least_max_value && "Precondition: release count is out of bounds.");
 			m_count += n;
 			assert(m_count >= 0 && m_count <= least_max_value && "Invariant violated: semaphore count + n is out of bounds.");
 			m_mutex.unlock();
