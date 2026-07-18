@@ -21,13 +21,28 @@
     <ClInclude Include="..\source\partestcommon.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\source\partestdispatcher.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\partestevent.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\partesteventemitter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="..\source\partestexceptions.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\source\partestlog.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\source\partestreporter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="..\source\partestrunner.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\partestsemaphore.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\source\partesttestframe.h">

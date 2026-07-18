@@ -498,9 +498,14 @@
     <ClInclude Include="..\source\partestassertresult.h" />
     <ClInclude Include="..\source\partestbase.h" />
     <ClInclude Include="..\source\partestcommon.h" />
+    <ClInclude Include="..\source\partestdispatcher.h" />
+    <ClInclude Include="..\source\partestevent.h" />
+    <ClInclude Include="..\source\partesteventemitter.h" />
     <ClInclude Include="..\source\partestexceptions.h" />
     <ClInclude Include="..\source\partestlog.h" />
+    <ClInclude Include="..\source\partestreporter.h" />
     <ClInclude Include="..\source\partestrunner.h" />
+    <ClInclude Include="..\source\partestsemaphore.h" />
     <ClInclude Include="..\source\partesttestframe.h" />
     <ClInclude Include="..\source\partesttypes.h" />
   </ItemGroup>
