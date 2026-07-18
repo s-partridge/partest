@@ -3,19 +3,16 @@
 #include <iostream>
 #include <vector>
 
+#include "assertionTests.h"
 #include "../partest.h"
 
-class TestTest : public partest::PartestBase
+class PartestBaseTest : public partest::PartestBase
 {
 public:
-	TestTest() : PartestBase("TestTest", "Validation class for the Partest framework.")
+	PartestBaseTest() : PartestBase("PartestBaseTest", "Core validation for the Partest base class.")
 	{		
 		// Example of adding a test
 		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
-
-		addTest(partest::TestInfo("AssertValidation", "Validate that all assert macros are working correctly."),
-			flags,
-			[this]() { return this->assertValidation(); });
 
 		addTest(partest::TestInfo("FailingTest", "A test that always fails."),
 			flags,
@@ -78,53 +75,6 @@ public:
 		{
 			// Subtest logic here
 			ASSERT_TRUE(testValue == 6);
-		});
-	}
-
-	void assertValidation()
-	{
-		subtest(partest::TestInfo("Assert Pass", "All assertions should be true"), [&]()
-		{
-			subtest(partest::TestInfo("Self-check Pass", "This subtest checks whether assertions are working correctly."), [&]()
-			{
-				// This subtest is just a self-check to ensure that assertions are functioning as expected.
-				ASSERT_TRUE(true);
-				ASSERT_FALSE(false);
-				ASSERT_EQUAL(1, 1);
-				ASSERT_NOT_EQUAL(1, 2);
-				ASSERT_GREATER(2, 1);
-				ASSERT_GREATER_EQUAL(2, 1);
-				ASSERT_GREATER_EQUAL(2, 2);
-				ASSERT_LESS(1, 2);
-				ASSERT_LESS_EQUAL(1, 2);
-				ASSERT_LESS_EQUAL(2, 2);
-			});
-			unsigned failureCount = getCurrentFrame().getAssertionFailureCount();
-			// If no assertions fail, this subtest passed.
-			ASSERT_EQUAL(failureCount, 0); // Ensure that no assertions have failed in this subtest
-		});
-
-		subtest(partest::TestInfo("Assert Fail", "All assertions should be false"), [&]()
-		{
-			subtest(partest::TestInfo("Self-check Fail", "This subtest checks whether assertions are working correctly."), [&]()
-			{
-				// This subtest is just a self-check to ensure that assertions are functioning as expected.
-				ASSERT_TRUE(false);
-				ASSERT_FALSE(true);
-				ASSERT_EQUAL(1, 2);
-				ASSERT_NOT_EQUAL(1, 1);
-				ASSERT_GREATER(1, 2);
-				ASSERT_GREATER_EQUAL(1, 2);
-				ASSERT_LESS(2, 1);
-				ASSERT_LESS_EQUAL(2, 1);
-			});
-
-			// Hard-coded to the current number of assertions in this subtest.
-			// IMPORTANT: If you add or remove assertions in this subtest, you must update this value accordingly.
-			unsigned validationCount = 8;
-			unsigned failureCount = getCurrentFrame().getAssertionFailureCount();
-			// If any assertions fail, this subtest failed.
-			ASSERT_EQUAL(failureCount, validationCount); // Ensure that at least one assertion has failed in this subtest
 		});
 	}
 
@@ -191,12 +141,12 @@ public:
 
 	void setup() override
 	{
-		addLog(partest::LogLevel::Debug, PARTEST_LOG_TYPE_TEST, "Setting up TestTest...");
+		addLog(partest::LogLevel::Debug, PARTEST_LOG_TYPE_TEST, "Setting up PartestBaseTest...");
 	}
 
 	void teardown() override
 	{
-		addLog(partest::LogLevel::Debug, PARTEST_LOG_TYPE_TEST, "Tearing down TestTest...");
+		addLog(partest::LogLevel::Debug, PARTEST_LOG_TYPE_TEST, "Tearing down PartestBaseTest...");
 	}
 };
 
@@ -204,7 +154,9 @@ int main()
 {
 	std::cout << "Partest framework initialized." << std::endl;
 	
-	partest::addTestClass(partest::make_unique<TestTest>());
+	partest::addTestClass(partest::make_unique<PartestBaseTest>());
+	partest::addTestClass(partest::make_unique<AssertionTest>());
+
 	partest::runAllTests();
 	partest::displayAllTests();
 	unsigned assertions = partest::getAssertionFailureCount();

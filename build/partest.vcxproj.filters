@@ -1,11 +1,11 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Source Files">
-      <UniqueIdentifier>{E9C7FDCE-D52A-8D73-7EB0-C5296AF258F6}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Header Files">
       <UniqueIdentifier>{21EB8090-0D4E-1035-B6D3-48EBA215DCB7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Framework Tests">
+      <UniqueIdentifier>{A6DD103F-1269-7E03-1B7A-01F88784DA03}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -51,10 +51,13 @@
     <ClInclude Include="..\source\partesttypes.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\tests\assertionTests.h">
+      <Filter>Framework Tests</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\source\main.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="..\tests\main.cpp">
+      <Filter>Framework Tests</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
