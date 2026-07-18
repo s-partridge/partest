@@ -2,6 +2,7 @@
 #define PARTEST_EVENT_H
 
 #include <chrono>
+#include <thread>
 #include "partesttypes.h"
 #include "partestassertresult.h"
 #include "partestlog.h"
@@ -38,6 +39,9 @@ namespace partest
 		inline unsigned getParentTestId() const noexcept { return m_parentTestId; }
 		inline std::chrono::steady_clock::time_point getTimestamp() const noexcept { return m_timestamp; }
 	};
+
+	// Type alias for an event pair, which consists of an event type string and a unique pointer to an EventInterface object. This allows for easy management of events in the dispatcher.
+	using EventPair = std::pair<std::string, std::unique_ptr<EventInterface>>;
 
 	/**
 	* @class EventBeginTest
