@@ -24,10 +24,10 @@ namespace partest
 		std::mutex m_reportersMutex;
 		counting_semaphore<> m_eventSemaphore;
 
-		std::atomic<bool>m_dispatching = true; // Flag to indicate whether the dispatcher is currently dispatching events
+		std::atomic<bool>m_dispatching; // Flag to indicate whether the dispatcher is currently dispatching events
 
 	public:
-		EventDispatcher() = default;
+		EventDispatcher() : m_dispatching(true) {};
 		// Delete copy and move constructors and assignment operators
 		EventDispatcher(const EventDispatcher&) = delete;
 		EventDispatcher(EventDispatcher&&) = delete;
@@ -49,7 +49,7 @@ namespace partest
 
 		bool isDispatching() const noexcept
 		{
-			return m_dispatching.load();
+			return m_dispatching;
 		}
 
 		EventPair popEventUnsafe() noexcept

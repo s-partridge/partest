@@ -62,11 +62,9 @@ public:
 	// Validate acquire and release functionality in a multithreaded context.
 	void acquireParallel()
 	{
-		partest::counting_semaphore<> sem(0);
-
 		std::thread semThread;
-
-		std::atomic<int> counter = 0;
+		partest::counting_semaphore<> sem(0);
+		std::atomic<int> counter(0);
 
 		semThread = std::thread([this, &sem, &counter] {
 			acquireSemHelper(sem, counter, 1);
@@ -80,9 +78,9 @@ public:
 	// Mock a work queue to validate concurrent acquire/release over two threads
 	void acquireParallelAsQueue(unsigned iterations = 10000)
 	{
-		partest::counting_semaphore<> sem(0);
-		std::atomic<int> counter = 0;
 		std::thread producerThread, consumerThread;
+		partest::counting_semaphore<> sem(0);
+		std::atomic<int> counter(0);
 
 		producerThread = std::thread([&] { releaseSemHelper(sem, iterations); });
 		consumerThread = std::thread([&] { acquireSemHelper(sem, counter, iterations); });
@@ -110,8 +108,8 @@ public:
 			std::thread forThread, untilThread;
 			partest::counting_semaphore<> forSem(0);
 			partest::counting_semaphore<> untilSem(0);
-			std::atomic<bool> acquiredFor = false;
-			std::atomic<bool> acquiredUntil = false;
+			std::atomic<bool> acquiredFor(false);
+			std::atomic<bool> acquiredUntil(false);
 
 			forThread = std::thread([&](){
 				acquiredFor = forSem.try_acquire_for(durationSuccess);
@@ -140,8 +138,8 @@ public:
 			std::thread forThread, untilThread;
 			partest::counting_semaphore<> forSem(0);
 			partest::counting_semaphore<> untilSem(0);
-			std::atomic<bool> acquiredFor = false;
-			std::atomic<bool> acquiredUntil = false;
+			std::atomic<bool> acquiredFor(false);
+			std::atomic<bool> acquiredUntil(false);
 
 			forThread = std::thread([&](){
 				acquiredFor = forSem.try_acquire_for(durationFailure);
@@ -170,8 +168,8 @@ public:
 			std::thread forThread, untilThread;
 			partest::counting_semaphore<> forSem(0);
 			partest::counting_semaphore<> untilSem(0);
-			std::atomic<bool> acquiredFor = false;
-			std::atomic<bool> acquiredUntil = false;
+			std::atomic<bool> acquiredFor(false);
+			std::atomic<bool> acquiredUntil(false);
 
 			forThread = std::thread([&](){
 				acquiredFor = forSem.try_acquire_for(durationError);
@@ -199,7 +197,7 @@ public:
 		{
 			std::thread forThread;
 			partest::counting_semaphore<> forSem(0);
-			std::atomic<bool> acquiredFor = false;
+			std::atomic<bool> acquiredFor(false);
 
 			forSem.release();
 
@@ -218,7 +216,7 @@ public:
 		{
 			std::thread forThread;
 			partest::counting_semaphore<> forSem(0);
-			std::atomic<bool> acquiredFor = false;
+			std::atomic<bool> acquiredFor(false);
 
 			forThread = std::thread([&](){
 				acquiredFor = forSem.try_acquire_for(durationZero);
@@ -241,7 +239,7 @@ public:
 		//std::vector<partest::counting_semaphore<1>> finishedFlags;
 		
 		partest::counting_semaphore<> sem(0);
-		std::atomic<int> counter = 0;
+		std::atomic<int> counter(0);
 
 		for(unsigned x = 0; x < threadsPerChannel; ++x)
 		{
