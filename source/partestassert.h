@@ -4,6 +4,7 @@
 #include <atomic>
 #include <map>
 #include <string>
+#include <cstring>
 
 #include "partestcommon.h"
 #include "partestassertresult.h"
@@ -113,7 +114,7 @@ namespace partest
 	// C-string specialization for string comparisons
 	AssertionResult handleAssertEqual(const char* expected, const char* actual, const char *type, const char *conditionStr, const char* file, int line)
 	{
-		bool passed = (expected != nullptr && actual != nullptr && strcmp(expected, actual) == 0
+		bool passed = (expected != nullptr && actual != nullptr && std::strcmp(expected, actual) == 0
 			|| expected == nullptr && actual == nullptr);
 
 		AssertionResult result(passed, type, conditionStr, file, line);
@@ -168,7 +169,7 @@ namespace partest
 	// C-string specialization for string comparisons
 	AssertionResult handleAssertNotEqual(const char* expected, const char* actual, const char* type, const char* conditionStr, const char* file, int line)
 	{
-		bool passed = (expected != nullptr && actual != nullptr && strcmp(expected, actual) != 0)
+		bool passed = (expected != nullptr && actual != nullptr && std::strcmp(expected, actual) != 0)
 			|| (expected == nullptr && actual != nullptr)
 			|| (expected != nullptr && actual == nullptr);
 
