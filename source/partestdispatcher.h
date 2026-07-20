@@ -53,9 +53,9 @@ namespace partest
 			m_eventQueue.emplace(EVENT_DIE, std::make_unique<EventDie>(0, 0)); // Push an EventDie to signal the dispatcher to stop
 		}
 
-		virtual bool pushEvent(const std::string &eventType, std::unique_ptr<EventInterface> event) = 0;
-
 		virtual void registerReporter(EventReporterInterface *reporter) = 0;
+
+		virtual bool pushEvent(const std::string &eventType, std::unique_ptr<EventInterface> event) = 0;
 
 		virtual void dispatchEvents() = 0;
 	};
@@ -66,6 +66,11 @@ namespace partest
 		SerialEventDispatcher(bool dispatching = true) : EventDispatcherInterface(dispatching) {}
 		~SerialEventDispatcher() override = default;
 
+		void registerReporter(EventReporterInterface *reporter) override
+		{
+			m_reporters.push_back(reporter);
+		}
+
 		bool pushEvent(const std::string &eventType, std::unique_ptr<EventInterface> event) override
 		{
 			if(!isDispatching())
@@ -73,11 +78,6 @@ namespace partest
 
 			m_eventQueue.emplace(eventType, std::move(event));
 			dispatchEvents();
-		}
-
-		void registerReporter(EventReporterInterface *reporter) override
-		{
-			m_reporters.push_back(reporter);
 		}
 
 		void dispatchEvents() override
@@ -97,35 +97,36 @@ namespace partest
 		}
 	};
 
-	class EventDispatcher
+	class ConcurrentEventDispatcher : EventDispatcherInterface
 	{
-		// Owning queue of events. Each event is a pair of event type string and a pointer to an EventInterface object.
-		std::queue<EventPair> m_eventQueue;
-		// Non-owning vector of reporter interfaces. These are the subscribers that will receive events from the dispatcher.
-		std::vector<EventReporterInterface *> m_reporters;
 		std::mutex m_queueMutex;
 		std::mutex m_reportersMutex;
 		counting_semaphore<> m_eventSemaphore;
 
-		std::atomic<bool> m_dispatching; // True until killDispatcher is called
+	public:
+		ConcurrentEventDispatcher(bool dispatching = true) : EventDispatcherInterface(dispatching) {}
+		// Delete copy and move constructors and assignment operators
+		ConcurrentEventDispatcher(const ConcurrentEventDispatcher&) = delete;
+		ConcurrentEventDispatcher(ConcurrentEventDispatcher&&) = delete;
+		ConcurrentEventDispatcher& operator=(const ConcurrentEventDispatcher&) = delete;
+		ConcurrentEventDispatcher& operator=(ConcurrentEventDispatcher&&) = delete;
+		~ConcurrentEventDispatcher() override = default;
 
-		EventPair popEventUnsafe() noexcept
+		void killDispatcher() override
 		{
-			EventPair eventPair = std::move(m_eventQueue.front());
-			m_eventQueue.pop();
-			return eventPair;
+			std::lock_guard<std::mutex> lock(m_queueMutex);
+			m_dispatching = false; // Stop accepting new events
+			m_eventQueue.emplace(EVENT_DIE, std::make_unique<EventDie>(0, 0)); // Push an EventDie to signal the dispatcher to stop
+			m_eventSemaphore.release(); // Release the semaphore to unblock
 		}
 
-	public:
-		EventDispatcher() : m_dispatching(true) {};
-		// Delete copy and move constructors and assignment operators
-		EventDispatcher(const EventDispatcher&) = delete;
-		EventDispatcher(EventDispatcher&&) = delete;
-		EventDispatcher& operator=(const EventDispatcher&) = delete;
-		EventDispatcher& operator=(EventDispatcher&&) = delete;
-		~EventDispatcher() = default;
+		void registerReporter(EventReporterInterface *reporter) override
+		{
+			std::lock_guard<std::mutex> lock(m_reportersMutex);
+			m_reporters.push_back(reporter);
+		}
 
-		bool pushEvent(const std::string &eventType, std::unique_ptr<EventInterface> event)
+		bool pushEvent(const std::string &eventType, std::unique_ptr<EventInterface> event) override
 		{
 			std::lock_guard<std::mutex> lock(m_queueMutex);
 			if(!m_dispatching)
@@ -137,29 +138,10 @@ namespace partest
 			return true;
 		}
 
-		bool isDispatching() const noexcept
-		{
-			return m_dispatching;
-		}
-
-		void registerReporter(EventReporterInterface *reporter)
-		{
-			std::lock_guard<std::mutex> lock(m_reportersMutex);
-			m_reporters.push_back(reporter);
-		}
-
-		void killDispatcher()
-		{
-			std::lock_guard<std::mutex> lock(m_queueMutex);
-			m_dispatching = false; // Stop accepting new events
-			m_eventQueue.emplace(EVENT_DIE, std::make_unique<EventDie>(0, 0)); // Push an EventDie to signal the dispatcher to stop
-			m_eventSemaphore.release(); // Release the semaphore to unblock
-		}
-
 		/**
 		* Block and process events until an EventDie is received. This function will dispatch events to all registered reporters.
 		*/
-		void dispatchEvents()
+		void dispatchEvents() override
 		{
 			// Block until the queue is not empty. Use semaphore to wait for events to be pushed.
 			while(true)
