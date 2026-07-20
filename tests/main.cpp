@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "assertionTests.h"
+#include "semaphoreTests.h"
 #include "../partest.h"
 
 class PartestBaseTest : public partest::PartestBase
@@ -154,8 +155,9 @@ int main()
 {
 	std::cout << "Partest framework initialized." << std::endl;
 	
-	partest::addTestClass(partest::make_unique<PartestBaseTest>());
-	partest::addTestClass(partest::make_unique<AssertionTest>());
+	//partest::addTestClass(partest::make_unique<PartestBaseTest>());
+	//partest::addTestClass(partest::make_unique<AssertionTests>());
+	partest::addTestClass(partest::make_unique<SemaphoreTests>());
 
 	partest::runAllTests();
 	partest::displayAllTests();

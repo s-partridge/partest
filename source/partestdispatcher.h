@@ -22,7 +22,7 @@ namespace partest
 		std::vector<EventReporterInterface *> m_reporters;
 		std::mutex m_queueMutex;
 		std::mutex m_reportersMutex;
-		CountingSemaphore<> m_eventSemaphore;
+		counting_semaphore<> m_eventSemaphore;
 
 		std::atomic<bool>m_dispatching = true; // Flag to indicate whether the dispatcher is currently dispatching events
 

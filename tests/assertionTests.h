@@ -3,10 +3,10 @@
 #include "partestassert.h"
 #include "partestbase.h"
 
-class AssertionTest : public partest::PartestBase
+class AssertionTests : public partest::PartestBase
 {
 public:
-	AssertionTest() : PartestBase("AssertionTest", "Validation class for the Partest framework.")
+	AssertionTests() : PartestBase("AssertionTests", "Validation class for the Partest framework.")
 	{		
 		// Example of adding a test
 		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
