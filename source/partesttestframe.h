@@ -118,11 +118,11 @@ namespace partest
 
 		PARTEST_CONSTEXPR_14 void updateStatus(TestStatus status) noexcept { state.updateStatus(status); }
 		PARTEST_CONSTEXPR_14 void updateResult(TestResult result) noexcept { state.updateResult(result); }
-		PARTEST_CONSTEXPR_11 TestStatus getStatus() const noexcept { return state.getStatus(); }
-		PARTEST_CONSTEXPR_11 TestResult getResult() const noexcept { return state.getResult(); }
+		PARTEST_CONSTEXPR_14 TestStatus getStatus() const noexcept { return state.getStatus(); }
+		PARTEST_CONSTEXPR_14 TestResult getResult() const noexcept { return state.getResult(); }
 
-		PARTEST_CONSTEXPR_11 bool hasFinishedRunning() const noexcept { return state.hasFinishedRunning(); }
-		PARTEST_CONSTEXPR_11 bool hasFailures() const noexcept { return state.hasFailures(); }
+		PARTEST_CONSTEXPR_14 bool hasFinishedRunning() const noexcept { return state.hasFinishedRunning(); }
+		PARTEST_CONSTEXPR_14 bool hasFailures() const noexcept { return state.hasFailures(); }
 
 		/**
 		* Check whether this test frame descends from `other`
