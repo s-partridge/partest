@@ -6,6 +6,11 @@
 
 namespace partest
 {
+	struct EmitterConfig
+	{
+		EventDispatcherInterface *dispatcher;
+	};
+
 	class EventEmitter
 	{
 		// Non-owning pointer to the event dispatcher. This is used to push events to the dispatcher.
@@ -17,41 +22,48 @@ namespace partest
 		}
 
 		// Emit an event to the event queue. This function is called by the test framework when an event occurs.
-		void emitEvent(PARTEST_STRING_PARAM eventType, std::unique_ptr<EventInterface> event)
+		bool emitEvent(PARTEST_STRING_PARAM eventType, std::unique_ptr<EventInterface> event)
 		{
 			if (shouldEmit())
 			{
-				m_dispatcher->pushEvent(PARTEST_STRING_PARAM_TO_STRING(eventType), std::move(event));
+				return m_dispatcher->pushEvent(PARTEST_STRING_PARAM_TO_STRING(eventType), std::move(event));
 			}
+			
+			return false;
 		}
 
 	public:
 		explicit EventEmitter(EventDispatcherInterface *dispatcher = nullptr) : m_dispatcher(dispatcher) {}
 		~EventEmitter() = default;
 
-		void emitBeginTest(unsigned testId, unsigned parentTestId, PARTEST_STRING_PARAM testName)
+		void setConfiguration(const EmitterConfig &emitterConfig)
 		{
-			emitEvent(EVENT_BEGIN_TEST, partest::make_unique<EventBeginTest>(testId, parentTestId, testName));
+			m_dispatcher = emitterConfig.dispatcher;
 		}
 
-		void emitEndTest(unsigned testId, unsigned parentTestId, PARTEST_STRING_PARAM testName, TestResult result)
+		bool emitBeginTest(unsigned testId, unsigned parentTestId, PARTEST_STRING_PARAM testName)
 		{
-			emitEvent(EVENT_END_TEST, partest::make_unique<EventEndTest>(testId, parentTestId, testName, result));
+			return emitEvent(EVENT_BEGIN_TEST, partest::make_unique<EventBeginTest>(testId, parentTestId, testName));
 		}
 
-		void emitAssertion(unsigned testId, unsigned parentTestId, const AssertionResult &assertionResult)
+		bool emitEndTest(unsigned testId, unsigned parentTestId, PARTEST_STRING_PARAM testName, TestResult result)
 		{
-			emitEvent(EVENT_ASSERTION, partest::make_unique<EventAssertion>(testId, parentTestId, assertionResult));
+			return emitEvent(EVENT_END_TEST, partest::make_unique<EventEndTest>(testId, parentTestId, testName, result));
 		}
 
-		void emitLog(unsigned testId, unsigned parentTestId, const LogEntry &logEntry)
+		bool emitAssertion(unsigned testId, unsigned parentTestId, const AssertionResult &assertionResult)
 		{
-			emitEvent(EVENT_LOG, partest::make_unique<EventLog>(testId, parentTestId, logEntry));
+			return emitEvent(EVENT_ASSERTION, partest::make_unique<EventAssertion>(testId, parentTestId, assertionResult));
 		}
 
-		void emitPassthrough(unsigned testId, unsigned parentTestId, PARTEST_STRING_PARAM message)
+		bool emitLog(unsigned testId, unsigned parentTestId, const LogEntry &logEntry)
 		{
-			emitEvent(EVENT_PASSTHROUGH, partest::make_unique<EventPassthrough>(testId, parentTestId, message));
+			return emitEvent(EVENT_LOG, partest::make_unique<EventLog>(testId, parentTestId, logEntry));
+		}
+
+		bool emitPassthrough(unsigned testId, unsigned parentTestId, PARTEST_STRING_PARAM message)
+		{
+			return emitEvent(EVENT_PASSTHROUGH, partest::make_unique<EventPassthrough>(testId, parentTestId, message));
 		}
 	};
 }
