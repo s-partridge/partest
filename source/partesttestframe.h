@@ -67,6 +67,7 @@ namespace partest
 		}
 
 		unsigned int id() const noexcept { return m_id; }
+		unsigned int parentId() const noexcept { return (m_parent != nullptr ? m_parent->m_id : NO_TEST_ID); }
 
 		TestInfo metadata; // Test metadata, including name and description
 		TestFlags flags; // Effective flags for this test frame
@@ -87,8 +88,16 @@ namespace partest
 			log(logEntry);
 		}
 
-		void log(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message) { m_logs.push_back(LogEntry(level, type, message)); }
-		void log(const LogEntry &level) { m_logs.push_back(level); }
+		void log(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message)
+		{
+			m_logs.push_back(LogEntry(level, type, message));
+		}
+
+		void log(const LogEntry &level)
+		{
+			m_logs.push_back(level);
+		}
+
 		const std::vector<LogEntry> &getLogs() const noexcept { return m_logs; }
 
 		void logAssertion(const AssertionResult &result)
@@ -208,6 +217,7 @@ namespace partest
 				{
 					m_testSetup();
 				}
+
 				return true;
 			}
 		}
@@ -222,7 +232,10 @@ namespace partest
 			if(m_testFunction != nullptr)
 			{
 				updateStatus(TestStatus::Running);
+				
+				m_eventEmitter->emitBeginTest(id(), parentId(), metadata.name);
 				m_testFunction();
+				m_eventEmitter->emitEndTest(id(), parentId(), metadata.name, getResult());
 
 				if(getResult() == TestResult::NoResult)
 				{
