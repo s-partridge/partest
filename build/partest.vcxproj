@@ -509,8 +509,8 @@
     <ClInclude Include="..\source\partesttestframe.h" />
     <ClInclude Include="..\source\partesttypes.h" />
     <ClInclude Include="..\tests\assertionTests.h" />
+    <ClInclude Include="..\tests\dispatcherTests.h" />
     <ClInclude Include="..\tests\semaphoreTests.h" />
-    <ClInclude Include="..\test\dispatcherTests.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\tests\main.cpp" />

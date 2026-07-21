@@ -54,10 +54,10 @@
     <ClInclude Include="..\tests\assertionTests.h">
       <Filter>Framework Tests</Filter>
     </ClInclude>
-    <ClInclude Include="..\tests\semaphoreTests.h">
+    <ClInclude Include="..\tests\dispatcherTests.h">
       <Filter>Framework Tests</Filter>
     </ClInclude>
-    <ClInclude Include="..\test\dispatcherTests.h">
+    <ClInclude Include="..\tests\semaphoreTests.h">
       <Filter>Framework Tests</Filter>
     </ClInclude>
   </ItemGroup>

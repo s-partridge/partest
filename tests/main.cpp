@@ -5,6 +5,7 @@
 
 #include "assertionTests.h"
 #include "semaphoreTests.h"
+#include "dispatcherTests.h"
 #include "../partest.h"
 
 class PartestBaseTest : public partest::PartestBase
@@ -158,6 +159,7 @@ int main()
 	//partest::addTestClass(partest::make_unique<PartestBaseTest>());
 	//partest::addTestClass(partest::make_unique<AssertionTests>());
 	partest::addTestClass(partest::make_unique<SemaphoreTests>());
+	partest::addTestClass(partest::make_unique<DispatcherTests>());
 
 	partest::runAllTests();
 	partest::displayAllTests();
