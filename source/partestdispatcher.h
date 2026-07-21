@@ -60,7 +60,7 @@ namespace partest
 		virtual void dispatchEvents() = 0;
 	};
 
-	class SerialEventDispatcher : EventDispatcherInterface
+	class SerialEventDispatcher : public EventDispatcherInterface
 	{
 	public:
 		SerialEventDispatcher(bool dispatching = true) : EventDispatcherInterface(dispatching) {}
@@ -97,7 +97,7 @@ namespace partest
 		}
 	};
 
-	class ConcurrentEventDispatcher : EventDispatcherInterface
+	class ConcurrentEventDispatcher : public EventDispatcherInterface
 	{
 		std::mutex m_queueMutex;
 		std::mutex m_reportersMutex;

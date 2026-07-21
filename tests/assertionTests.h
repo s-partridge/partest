@@ -1,4 +1,5 @@
-// Entry point for testing the partest framework
+#ifndef ASSERTION_TESTS_H
+#define ASSERTION_TESTS_H
 
 #include "partestassert.h"
 #include "partestbase.h"
@@ -64,3 +65,5 @@ public:
 		ASSERT_EQUAL(failureCount, validationCount); // Ensure that at least one assertion has failed in this subtest
 	}
 };
+
+#endif
