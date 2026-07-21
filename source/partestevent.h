@@ -25,20 +25,35 @@ namespace partest
 	*/
 	struct EventInterface
 	{
+		unsigned m_eventId;
 		unsigned m_testId;
 		unsigned m_parentTestId;
 		std::chrono::steady_clock::time_point m_timestamp;
 
+		static unsigned int nextID() noexcept {
+		
+			static std::atomic<unsigned> eventCount(0);
+			return eventCount++;
+		}
+
 	public:
 		EventInterface(unsigned testId, unsigned parentTestId)
-			: m_testId(testId), m_parentTestId(parentTestId), m_timestamp(std::chrono::steady_clock::now()) {}
+			: m_eventId(nextID()), m_testId(testId), m_parentTestId(parentTestId), m_timestamp(std::chrono::steady_clock::now()) {}
 
 		virtual ~EventInterface() = default;
 		virtual std::unique_ptr<EventInterface> clone() const = 0;
 
+		inline unsigned getEventId() const noexcept { return m_eventId; }
 		inline unsigned getTestId() const noexcept { return m_testId; }
 		inline unsigned getParentTestId() const noexcept { return m_parentTestId; }
 		inline std::chrono::steady_clock::time_point getTimestamp() const noexcept { return m_timestamp; }
+
+		bool operator==(const EventInterface &rhs) const noexcept
+		{
+			return m_eventId == rhs.m_eventId;
+		}
+
+		bool operator!=(const EventInterface &rhs) const noexcept { return !(*this == rhs); }
 	};
 
 	// Type alias for an event pair, which consists of an event type string and a unique pointer to an EventInterface object. This allows for easy management of events in the dispatcher.
