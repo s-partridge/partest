@@ -7,7 +7,7 @@
 
 #include <partest/eventdispatcher.h>
 #include <partest/eventreporter.h>
-#include <partest/partestbase.h>
+#include <partest/testbase.h>
 
 class MockReporter : public partest::EventReporterInterface
 {
@@ -59,7 +59,7 @@ public:
 	void clearLogs() { m_logs.clear(); }
 };
 
-class DispatcherTests : public partest::PartestBase
+class DispatcherTests : public partest::TestBase
 {
 	std::unique_ptr<partest::EventDispatcherInterface> m_dispatcher;
 	std::vector<MockReporter> m_reporters;
@@ -135,7 +135,7 @@ class DispatcherTests : public partest::PartestBase
 	}
 
 public:
-	DispatcherTests() : PartestBase("DispatcherTests", "Tests for the EventDispatcher classes.")
+	DispatcherTests() : TestBase("DispatcherTests", "Tests for the EventDispatcher classes.")
 	{
 		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
 		unsigned serialReporters = 2;

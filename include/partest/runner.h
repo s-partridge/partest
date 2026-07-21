@@ -6,14 +6,14 @@
 
 #include <partest/eventdispatcher.h>
 #include <partest/simplelogger.h>
-#include <partest/partestbase.h>
+#include <partest/testbase.h>
 
 namespace partest
 {
 	class PartestRunner
 	{
 	private:
-		std::vector<PartestBase *> m_tests; // Vector of tests to run
+		std::vector<TestBase *> m_tests; // Vector of tests to run
 		EventDispatcherInterface *m_dispatcher;
 		SimpleLogger m_logger;
 		bool m_concurrent;
@@ -40,7 +40,7 @@ namespace partest
 
 		~PartestRunner()
 		{
-			for(PartestBase *test : m_tests)
+			for(TestBase *test : m_tests)
 			{
 				delete test;
 			}
@@ -61,9 +61,9 @@ namespace partest
 		/**
 		* Add a test to the runner.
 		* 
-		* @param test A pointer to the PartestBase instance representing the test to add.
+		* @param test A pointer to the TestBase instance representing the test to add.
 		*/
-		void addTest(std::unique_ptr<PartestBase> test)
+		void addTest(std::unique_ptr<TestBase> test)
 		{
 			test->configureEventEmitter({m_dispatcher});
 			m_tests.push_back(test.release());
@@ -78,7 +78,7 @@ namespace partest
 			if(m_concurrent)
 				dispatcherThread = std::thread([this]() { this->m_dispatcher->dispatchEvents(); });
 
-			for(PartestBase *test : m_tests)
+			for(TestBase *test : m_tests)
 			{
 				test->run();
 			}
@@ -101,7 +101,7 @@ namespace partest
 				dispatcherThread = std::thread([this]() { this->m_dispatcher->dispatchEvents(); });
 
 			bool ran = false;
-			for(PartestBase *test : m_tests)
+			for(TestBase *test : m_tests)
 			{
 				if(test->getName() == name)
 				{
@@ -120,11 +120,11 @@ namespace partest
 
 		void printAllTestTrees() const
 		{
-			for(PartestBase *test : m_tests)
+			for(TestBase *test : m_tests)
 			{
 				test->printLogs(LogLevel::Info, 10);
 			}
-		/*	for(PartestBase *test : m_tests)
+		/*	for(TestBase *test : m_tests)
 			{
 				test->printTestTree();
 			}*/
@@ -133,7 +133,7 @@ namespace partest
 		unsigned getTopLevelFailures() const
 		{
 			unsigned failureCount = 0;
-			for(PartestBase *test : m_tests)
+			for(TestBase *test : m_tests)
 			{
 				failureCount += test->getTestFailureCount();
 			}
@@ -144,7 +144,7 @@ namespace partest
 		unsigned getAllAssertionFailures() const
 		{
 			unsigned failureCount = 0;
-			for(PartestBase *test : m_tests)
+			for(TestBase *test : m_tests)
 			{
 				failureCount += test->getAssertionFailureCount();
 			}

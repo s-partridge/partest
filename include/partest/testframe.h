@@ -54,7 +54,7 @@ namespace partest
 				m_testFunction(testFunction), m_testSetup(testSetup), m_testTeardown(testTeardown),
 				m_id(nextID()) {}
 	
-		// Nothing should be moving or copying TestFrame instances. They exist as part of a tree structure managed by PartestBase.
+		// Nothing should be moving or copying TestFrame instances. They exist as part of a tree structure managed by TestBase.
 		TestFrame(const TestFrame &) = delete; // Disable copy constructor
 		TestFrame &operator=(const TestFrame &) = delete; // Disable copy assignment
 		TestFrame(TestFrame &&) = delete; // Disable move constructor

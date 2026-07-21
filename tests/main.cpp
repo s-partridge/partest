@@ -3,15 +3,15 @@
 #include <iostream>
 #include <vector>
 
-#include <partest/partest.h>
+#include <partest/bootstrap.h>
 #include "assertionTests.h"
 #include "semaphoreTests.h"
 #include "dispatcherTests.h"
 
-class PartestBaseTest : public partest::PartestBase
+class PartestBaseTest : public partest::TestBase
 {
 public:
-	PartestBaseTest() : PartestBase("PartestBaseTest", "Core validation for the Partest base class.")
+	PartestBaseTest() : TestBase("PartestBaseTest", "Core validation for the Partest base class.")
 	{		
 		// Example of adding a test
 		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;

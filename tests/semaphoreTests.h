@@ -6,14 +6,14 @@
 #include <chrono>
 #include <thread>
 
-#include <partest/partestbase.h>
+#include <partest/testbase.h>
 #include <partest/semaphore.h>
 #include <partest/assert.h>
 
-class SemaphoreTests : public partest::PartestBase
+class SemaphoreTests : public partest::TestBase
 {
 public:
-	SemaphoreTests() : PartestBase("SemaphoreTests", "Tests for the Semaphore class.")
+	SemaphoreTests() : TestBase("SemaphoreTests", "Tests for the Semaphore class.")
 	{
 		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
 

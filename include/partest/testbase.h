@@ -29,7 +29,7 @@ namespace partest
 	/**
 	* Base class for all partest tests.
 	*/
-	class PartestBase
+	class TestBase
 	{
 	private:
 		std::unique_ptr<TestFrame> m_testTree; // Dynamically growing tree of test frames
@@ -268,7 +268,7 @@ namespace partest
 		}
 
 	public:
-		PartestBase(PARTEST_STRING_PARAM name, PARTEST_STRING_PARAM description,
+		TestBase(PARTEST_STRING_PARAM name, PARTEST_STRING_PARAM description,
 			const TestFlags &flags = TEST_FLAGS_DISABLED)
 		{
 			// Initialize the root test frame. This frame is not associated with any specific test but serves as the root of the test tree.
@@ -281,12 +281,12 @@ namespace partest
 
 			m_currentFrame = nullptr; // No current frame until tests are run
 		}
-		virtual ~PartestBase() = default;
+		virtual ~TestBase() = default;
 
-		PartestBase(const PartestBase &) = delete; // Disable copy constructor
-		PartestBase &operator=(const PartestBase &) = delete; // Disable copy assignment
-		PartestBase(PartestBase &&) = delete; // Disable move constructor
-		PartestBase &operator=(PartestBase &&) = delete; // Disable move assignment
+		TestBase(const TestBase &) = delete; // Disable copy constructor
+		TestBase &operator=(const TestBase &) = delete; // Disable copy assignment
+		TestBase(TestBase &&) = delete; // Disable move constructor
+		TestBase &operator=(TestBase &&) = delete; // Disable move assignment
 
 		void configureEventEmitter(const EmitterConfig &emitterConfig) { m_eventEmitter.setConfiguration(emitterConfig); }
 

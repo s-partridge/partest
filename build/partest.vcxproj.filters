@@ -36,10 +36,10 @@
     <ClInclude Include="..\include\partest\log.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\partest\partest.h">
+    <ClInclude Include="..\include\partest\bootstrap.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\partest\partestbase.h">
+    <ClInclude Include="..\include\partest\testbase.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\include\partest\runner.h">

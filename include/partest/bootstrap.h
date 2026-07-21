@@ -4,7 +4,7 @@
 // Public interface for the Partest testing framework
 
 #include <partest/common.h>
-#include <partest/partestbase.h>
+#include <partest/testbase.h>
 #include <partest/runner.h>
 
 namespace partest
@@ -17,9 +17,9 @@ namespace partest
 	/**
 	* Add a test class to the global test runner.
 	* 
-	* @param test A unique pointer to the PartestBase instance representing the test class to add.
+	* @param test A unique pointer to the TestBase instance representing the test class to add.
 	*/
-	void addTestClass(std::unique_ptr<partest::PartestBase> test)
+	void addTestClass(std::unique_ptr<partest::TestBase> test)
 	{
 		testRunner().addTest(std::move(test));
 	}

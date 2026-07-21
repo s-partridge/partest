@@ -503,8 +503,8 @@
     <ClInclude Include="..\include\partest\eventreporter.h" />
     <ClInclude Include="..\include\partest\exceptions.h" />
     <ClInclude Include="..\include\partest\log.h" />
-    <ClInclude Include="..\include\partest\partest.h" />
-    <ClInclude Include="..\include\partest\partestbase.h" />
+    <ClInclude Include="..\include\partest\bootstrap.h" />
+    <ClInclude Include="..\include\partest\testbase.h" />
     <ClInclude Include="..\include\partest\runner.h" />
     <ClInclude Include="..\include\partest\semaphore.h" />
     <ClInclude Include="..\include\partest\simplelogger.h" />

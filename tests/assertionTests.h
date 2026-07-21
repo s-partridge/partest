@@ -2,12 +2,12 @@
 #define ASSERTION_TESTS_H
 
 #include <partest/assert.h>
-#include <partest/partestbase.h>
+#include <partest/testbase.h>
 
-class AssertionTests : public partest::PartestBase
+class AssertionTests : public partest::TestBase
 {
 public:
-	AssertionTests() : PartestBase("AssertionTests", "Validation class for the Partest framework.")
+	AssertionTests() : TestBase("AssertionTests", "Validation class for the Partest framework.")
 	{		
 		// Example of adding a test
 		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
