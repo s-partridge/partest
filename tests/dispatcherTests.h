@@ -1,6 +1,7 @@
 #ifndef DISPATCHER_TESTS_H
 #define DISPATCHER_TESTS_H
 
+#include <thread>
 #include <memory>
 
 #include "partestdispatcher.h"
@@ -95,10 +96,25 @@ class DispatcherTests : public partest::PartestBase
 		clearReporting();
 	}
 
-	void setUpConcurrent()
+	void setUpConcurrent(unsigned threadCount)
 	{
 		m_dispatcher = partest::make_unique<partest::ConcurrentEventDispatcher>();
-		initializeReporting(6);
+		initializeReporting(threadCount);
+
+		// Initialize a series of events to pass to the logger.
+		for(unsigned x = 0; x < threadCount; ++x)
+		{
+			// Begin test
+			mirrorLog(EVENT_BEGIN_TEST, partest::makeEventBeginTest(x, 0, "Validation"));
+			// Assert fail
+			mirrorLog(EVENT_ASSERTION, partest::makeEventAssertion(x, 0, partest::AssertionResult()));
+			// End test
+			mirrorLog(EVENT_END_TEST, partest::makeEventBeginTest(x, 0, "Validation"));
+			// Passthrough log
+			mirrorLog(EVENT_PASSTHROUGH, partest::makeEventPassthrough(x, 0, "Log from user code"));
+			// Normal log
+			mirrorLog(EVENT_LOG, partest::makeEventLog(x, 0, partest::LogEntry(partest::LogLevel::Info, PARTEST_LOG_TYPE_DEFAULT, "Framework log from test code", x)));
+		}
 	}
 
 	void tearDownConcurrent()
@@ -123,12 +139,19 @@ public:
 	DispatcherTests() : PartestBase("DispatcherTests", "Tests for the EventDispatcher classes.")
 	{
 		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
+		unsigned threadCount = 6;
 
 		addTest(partest::TestInfo("Test Serial Dispatcher", "Validate that dispatcher passes all events intact to reporters, in sequential order."),
 			flags,
 			[this]() { return this->SerialDispatcherPassesAllEvents(); },
 			[this]() { return this->setUpSerial(); },
 			[this]() { return this->tearDownSerial(); }
+		);
+		addTest(partest::TestInfo("Test Concurrent Dispatcher", "Validate that dispatcher passes all events intact to reporters, and that order is identical between all reporters"),
+			flags,
+			[this, threadCount]() { return this->concurrentDispatcherPassesAllEvents(threadCount); },
+			[this, threadCount]() { return this->setUpConcurrent(threadCount); },
+			[this]() { return this->tearDownConcurrent(); }
 		);
 	}
 
@@ -150,11 +173,115 @@ public:
 
 		dispatcher->killDispatcher();
 
+		bool success = dispatcher->pushEvent(EVENT_ASSERTION, partest::makeEventAssertion(2, 0, partest::AssertionResult()));
+		// A dead dispatcher should refuse any new events.
+		ASSERT_FALSE(success);
+
+		unsigned invalidEvents = 0;
+		// Skip comparing DIE events, since those don't originate from our log list
+		for(unsigned x = 0; x < m_logs.size() - 1; ++x)
+		{
+			const partest::EventInterface &lhs = *(m_logs[x].second.get());
+
+			for(MockReporter &reporter: m_reporters)
+			{
+				const partest::EventInterface &rhs = *(reporter.logs()[x].second.get());
+
+				if(lhs != rhs)
+					++invalidEvents;
+			}
+		}
+		// All events should be identical across every firstReporter and the local reference log
+		ASSERT_EQUAL(invalidEvents, 0);
+
 		for(MockReporter &reporter: m_reporters)
 		{
 			ASSERT_EQUAL(m_logs.size(), reporter.logs().size());
 			ASSERT_TRUE(reporter.logs().back().first == EVENT_DIE);
 		}
+	}
+
+	void concurrentDispatcherPassesAllEvents(unsigned threadCount)
+	{
+		partest::EventDispatcherInterface *dispatcher = m_dispatcher.get();
+		for(MockReporter &reporter: m_reporters)
+			dispatcher->registerReporter(&reporter);
+
+		std::vector<std::thread> producerThreads;
+
+		std::thread dispatcherThread = std::thread([dispatcher]() { dispatcher->dispatchEvents(); });
+
+		size_t eventCount = m_logs.size();
+		unsigned eventsPerThread = eventCount / threadCount;
+
+		for(unsigned x = 0; x < threadCount; ++x)
+		{
+			unsigned lower = x * eventsPerThread;
+			unsigned upper = (x + 1) * eventsPerThread;
+
+			std::thread producerThread = std::thread([this, dispatcher,lower, upper]() {
+
+				for(unsigned x = lower; x < upper; ++x)
+				{
+					dispatcher->pushEvent(m_logs[x].first, m_logs[x].second->clone());
+				}
+			});
+
+			producerThreads.push_back(std::move(producerThread));
+		}
+
+		for(unsigned x = 0; x < threadCount; ++x)
+		{
+			producerThreads[x].join();
+		}
+		dispatcher->killDispatcher();
+		// Ensure no events propagate after death
+		bool success = dispatcher->pushEvent(EVENT_ASSERTION, partest::makeEventAssertion(2, 0, partest::AssertionResult()));
+
+		ASSERT_FALSE(success);
+
+		dispatcherThread.join();
+
+		success = dispatcher->pushEvent(EVENT_ASSERTION, partest::makeEventAssertion(2, 0, partest::AssertionResult()));
+		// Ensure no events propagate after join.
+		// This should be impossible because no thread is running the dispatchEvents() call.
+		ASSERT_FALSE(success);
+
+		unsigned uncopiedEvents = 0;
+		// Check that all the events from m_logs were propagated to one reporter
+		const MockReporter &firstReporter = m_reporters.front();
+		for(const partest::EventPair &evt: m_logs)
+		{
+			std::find(firstReporter.logs().cbegin(), firstReporter.logs().cend(), evt);
+		}
+		ASSERT_EQUAL(uncopiedEvents, 0);
+		// Last event should always be the kill event
+		ASSERT_EQUAL(firstReporter.logs().back().first, EVENT_DIE);
+
+		unsigned invalidEventCounts = 0;
+		// Ensure all reporters have the correct number of events (eventCount + DIE)
+		for(const MockReporter &reporter: m_reporters)
+		{
+			if(reporter.logs().size() != eventCount + 1)
+				++invalidEventCounts;
+		}
+		ASSERT_EQUAL(invalidEventCounts, 0);
+
+		unsigned invalidEvents = 0;
+ 		// Check that all reporters contain identical event logs and event order
+		for(unsigned logIdx = 0; logIdx < firstReporter.logs().size(); ++logIdx)
+		{
+			const partest::EventInterface &lhs = *(firstReporter.logs()[logIdx].second.get());
+
+			for(unsigned reporterIdx = 1; reporterIdx < m_reporters.size(); ++reporterIdx)
+			{
+				const partest::EventInterface &rhs = *(m_reporters[reporterIdx].logs()[logIdx].second.get());
+
+				if(lhs != rhs)
+					++invalidEvents;
+			}
+		}
+		ASSERT_EQUAL(invalidEvents, 0);
 	}
 };
 
