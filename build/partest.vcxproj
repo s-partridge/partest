@@ -506,6 +506,7 @@
     <ClInclude Include="..\source\partestreporter.h" />
     <ClInclude Include="..\source\partestrunner.h" />
     <ClInclude Include="..\source\partestsemaphore.h" />
+    <ClInclude Include="..\source\partestsimplelogger.h" />
     <ClInclude Include="..\source\partesttestframe.h" />
     <ClInclude Include="..\source\partesttypes.h" />
     <ClInclude Include="..\tests\assertionTests.h" />

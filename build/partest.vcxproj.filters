@@ -60,6 +60,9 @@
     <ClInclude Include="..\tests\semaphoreTests.h">
       <Filter>Framework Tests</Filter>
     </ClInclude>
+    <ClInclude Include="..\source\partestsimplelogger.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\tests\main.cpp">
