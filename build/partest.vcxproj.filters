@@ -57,6 +57,9 @@
     <ClInclude Include="..\tests\semaphoreTests.h">
       <Filter>Framework Tests</Filter>
     </ClInclude>
+    <ClInclude Include="..\test\dispatcherTests.h">
+      <Filter>Framework Tests</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\tests\main.cpp">
