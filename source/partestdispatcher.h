@@ -47,11 +47,7 @@ namespace partest
 			return m_dispatching;
 		}
 
-		virtual void killDispatcher()
-		{
-			m_dispatching = false;
-			m_eventQueue.emplace(EVENT_DIE, std::make_unique<EventDie>(0, 0)); // Push an EventDie to signal the dispatcher to stop
-		}
+		virtual void killDispatcher() = 0;
 
 		virtual void registerReporter(EventReporterInterface *reporter) = 0;
 
@@ -66,6 +62,12 @@ namespace partest
 		SerialEventDispatcher(bool dispatching = true) : EventDispatcherInterface(dispatching) {}
 		~SerialEventDispatcher() override = default;
 
+		void killDispatcher() override
+		{
+			pushEvent(EVENT_DIE, std::make_unique<EventDie>());
+			m_dispatching = false;
+		}
+
 		void registerReporter(EventReporterInterface *reporter) override
 		{
 			m_reporters.push_back(reporter);
@@ -78,6 +80,8 @@ namespace partest
 
 			m_eventQueue.emplace(eventType, std::move(event));
 			dispatchEvents();
+
+			return true;
 		}
 
 		void dispatchEvents() override
@@ -116,7 +120,7 @@ namespace partest
 		{
 			std::lock_guard<std::mutex> lock(m_queueMutex);
 			m_dispatching = false; // Stop accepting new events
-			m_eventQueue.emplace(EVENT_DIE, std::make_unique<EventDie>(0, 0)); // Push an EventDie to signal the dispatcher to stop
+			m_eventQueue.emplace(EVENT_DIE, std::make_unique<EventDie>()); // Push an EventDie to signal the dispatcher to stop
 			m_eventSemaphore.release(); // Release the semaphore to unblock
 		}
 
