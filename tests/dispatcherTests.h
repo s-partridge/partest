@@ -229,8 +229,8 @@ public:
 
 		std::thread dispatcherThread = std::thread([dispatcher]() { dispatcher->dispatchEvents(); });
 
-		size_t eventCount = m_logs.size();
-		unsigned eventsPerThread = eventCount / (unsigned)threadCount;
+		unsigned eventCount = (unsigned)m_logs.size();
+		unsigned eventsPerThread = eventCount / threadCount;
 
 		for(unsigned x = 0; x < threadCount; ++x)
 		{

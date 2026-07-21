@@ -12,6 +12,8 @@
 
 namespace partest
 {
+	constexpr unsigned NO_TEST_ID = 0;
+
 	class TestFrame
 	{		
 		unsigned int m_id;
@@ -22,7 +24,7 @@ namespace partest
 		* @return the next value for frameCount
 		*/
 		static unsigned int nextID() noexcept {
-			static std::atomic<unsigned int> frameCount(0);
+			static std::atomic<unsigned int> frameCount(NO_TEST_ID + 1);
 			return frameCount++;
 		}
 
