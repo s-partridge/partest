@@ -42,10 +42,7 @@ namespace partest
 		EventDispatcherInterface& operator=(const EventDispatcherInterface&) = delete;
 		EventDispatcherInterface& operator=(EventDispatcherInterface&&) = delete;
 
-		bool isDispatching() const noexcept
-		{
-			return m_dispatching;
-		}
+		bool isDispatching() const noexcept { return m_dispatching;	}
 
 		virtual void killDispatcher() = 0;
 

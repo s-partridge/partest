@@ -70,10 +70,10 @@ class DispatcherTests : public partest::PartestBase
 	}
 
 	// Setup to initialize the dispatcher
-	void setUpSerial()
+	void setUpSerial(unsigned reporterCount)
 	{
 		m_dispatcher = partest::make_unique<partest::SerialEventDispatcher>();
-		initializeReporting(2);
+		initializeReporting(reporterCount);
 
 		// Initialize a series of events to pass to the logger.
 
@@ -87,8 +87,6 @@ class DispatcherTests : public partest::PartestBase
 		mirrorLog(EVENT_PASSTHROUGH, partest::makeEventPassthrough(1, 0, "Log from user code"));
 		// Normal log
 		mirrorLog(EVENT_LOG, partest::makeEventLog(1, 0, partest::LogEntry(partest::LogLevel::Info, PARTEST_LOG_TYPE_DEFAULT, "Framework log from test code", 1)));
-		// End event
-		mirrorLog(EVENT_DIE, partest::makeEventDie());
 	}
 
 	void tearDownSerial()
@@ -139,12 +137,13 @@ public:
 	DispatcherTests() : PartestBase("DispatcherTests", "Tests for the EventDispatcher classes.")
 	{
 		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
+		unsigned serialReporters = 2;
 		unsigned threadCount = 6;
 
 		addTest(partest::TestInfo("Test Serial Dispatcher", "Validate that dispatcher passes all events intact to reporters, in sequential order."),
 			flags,
 			[this]() { return this->SerialDispatcherPassesAllEvents(); },
-			[this]() { return this->setUpSerial(); },
+			[this, serialReporters]() { return this->setUpSerial(serialReporters); },
 			[this]() { return this->tearDownSerial(); }
 		);
 		addTest(partest::TestInfo("Test Concurrent Dispatcher", "Validate that dispatcher passes all events intact to reporters, and that order is identical between all reporters"),
@@ -165,8 +164,8 @@ public:
 		for(MockReporter &reporter: m_reporters)
 			dispatcher->registerReporter(&reporter);
 
-		// Iterate over logs, skip DIE entry.
-		for(unsigned x = 0; x < m_logs.size() - 1; ++x)
+		// Iterate over logs
+		for(unsigned x = 0; x < m_logs.size(); ++x)
 		{
 			dispatcher->pushEvent(m_logs[x].first,m_logs[x].second->clone());
 		}
@@ -178,8 +177,7 @@ public:
 		ASSERT_FALSE(success);
 
 		unsigned invalidEvents = 0;
-		// Skip comparing DIE events, since those don't originate from our log list
-		for(unsigned x = 0; x < m_logs.size() - 1; ++x)
+		for(unsigned x = 0; x < m_logs.size(); ++x)
 		{
 			const partest::EventInterface &lhs = *(m_logs[x].second.get());
 
@@ -192,12 +190,13 @@ public:
 			}
 		}
 		// All events should be identical across every firstReporter and the local reference log
-		ASSERT_EQUAL(invalidEvents, 0);
+		ASSERT_EQUAL(0, invalidEvents);
 
 		for(MockReporter &reporter: m_reporters)
 		{
-			ASSERT_EQUAL(m_logs.size(), reporter.logs().size());
-			ASSERT_TRUE(reporter.logs().back().first == EVENT_DIE);
+			// Size should be the same as the reference log + the DIE event
+			ASSERT_EQUAL(m_logs.size() + 1, reporter.logs().size());
+			ASSERT_EQUAL(EVENT_DIE, reporter.logs().back().first);
 		}
 	}
 
@@ -252,11 +251,18 @@ public:
 		const MockReporter &firstReporter = m_reporters.front();
 		for(const partest::EventPair &evt: m_logs)
 		{
-			std::find(firstReporter.logs().cbegin(), firstReporter.logs().cend(), evt);
+			std::vector<partest::EventPair>::const_iterator iter = std::find_if(
+				firstReporter.logs().cbegin(),
+				firstReporter.logs().cend(),
+				[&](const partest::EventPair &pair) {
+					return *pair.second == *evt.second;
+				});
+			if(iter == firstReporter.logs().cend())
+				++uncopiedEvents;
 		}
-		ASSERT_EQUAL(uncopiedEvents, 0);
+		ASSERT_EQUAL(0, uncopiedEvents);
 		// Last event should always be the kill event
-		ASSERT_EQUAL(firstReporter.logs().back().first, EVENT_DIE);
+		ASSERT_EQUAL(EVENT_DIE, firstReporter.logs().back().first);
 
 		unsigned invalidEventCounts = 0;
 		// Ensure all reporters have the correct number of events (eventCount + DIE)
@@ -265,7 +271,7 @@ public:
 			if(reporter.logs().size() != eventCount + 1)
 				++invalidEventCounts;
 		}
-		ASSERT_EQUAL(invalidEventCounts, 0);
+		ASSERT_EQUAL(0, invalidEventCounts);
 
 		unsigned invalidEvents = 0;
  		// Check that all reporters contain identical event logs and event order
@@ -281,7 +287,7 @@ public:
 					++invalidEvents;
 			}
 		}
-		ASSERT_EQUAL(invalidEvents, 0);
+		ASSERT_EQUAL(0, invalidEvents);
 	}
 };
 
