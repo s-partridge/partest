@@ -8,6 +8,7 @@ namespace partest
 	class EventReporterInterface
 	{
 		public:
+		EventReporterInterface() = default;
 		virtual ~EventReporterInterface() = default;
 
 		// Dispatch an event to the appropriate handler based on its type. This function is called by the EventDispatcher when an event is popped from the queue.

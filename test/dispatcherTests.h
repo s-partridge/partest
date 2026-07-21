@@ -18,6 +18,10 @@ class MockReporter : public partest::EventReporterInterface
 
 public:
 	MockReporter() = default;
+    MockReporter(const MockReporter&) = delete;
+    MockReporter& operator=(const MockReporter&) = delete;
+    MockReporter(MockReporter&&) = default;
+    MockReporter& operator=(MockReporter&&) = default;
 
 	void onTestBegin(const partest::EventBeginTest &event) override
 	{
@@ -26,30 +30,30 @@ public:
 
 	void onTestEnd(const partest::EventEndTest &event) override
 	{
-		writeLog(EVENT_END_TEST, std::make_unique<partest::EventBeginTest>(event));
+		writeLog(EVENT_END_TEST, event.clone());
 	}
 
 	void onAssertion(const partest::EventAssertion &event) override
 	{
-		writeLog(EVENT_ASSERTION, std::make_unique<partest::EventBeginTest>(event));
+		writeLog(EVENT_ASSERTION, event.clone());
 	}
 
 	void onLog(const partest::EventLog &event) override
 	{
-		writeLog(EVENT_LOG, std::make_unique<partest::EventBeginTest>(event));
+		writeLog(EVENT_LOG, event.clone());
 	}
 
 	void onPassthrough(const partest::EventPassthrough &event) override
 	{
-		writeLog(EVENT_PASSTHROUGH, std::make_unique<partest::EventBeginTest>(event));
+		writeLog(EVENT_PASSTHROUGH, event.clone());
 	}
 
 	void onDie(const partest::EventDie &event) override
 	{
-		writeLog(EVENT_DIE, std::make_unique<partest::EventBeginTest>(event));
+		writeLog(EVENT_DIE, event.clone());
 	}
 
-	const std::vector<partest::EventPair> &logs() { return m_logs; }
+	const std::vector<partest::EventPair> &logs() const { return m_logs; }
 	void clearLogs() { m_logs.clear(); }
 };
 
@@ -57,7 +61,7 @@ class DispatcherTests : public partest::PartestBase
 {
 	std::unique_ptr<partest::EventDispatcherInterface> m_dispatcher;
 	std::vector<MockReporter> m_reporters;
-	std::vector<partest::EventInterface> m_logs;
+	std::vector<partest::EventPair> m_logs;
 
 	void mirrorLog(PARTEST_STRING_PARAM eventType, std::unique_ptr<partest::EventInterface> event)
 	{
@@ -69,6 +73,21 @@ class DispatcherTests : public partest::PartestBase
 	{
 		m_dispatcher = partest::make_unique<partest::SerialEventDispatcher>();
 		initializeReporting(2);
+
+		// Initialize a series of events to pass to the logger.
+
+		// Begin test
+		mirrorLog(EVENT_BEGIN_TEST, partest::makeEventBeginTest(1, 0, "Validation"));
+		// Assert fail
+		mirrorLog(EVENT_ASSERTION, partest::makeEventAssertion(1, 0, partest::AssertionResult()));
+		// End test
+		mirrorLog(EVENT_END_TEST, partest::makeEventBeginTest(1, 0, "Validation"));
+		// Passthrough log
+		mirrorLog(EVENT_PASSTHROUGH, partest::makeEventPassthrough(1, 0, "Log from user code"));
+		// Normal log
+		mirrorLog(EVENT_LOG, partest::makeEventLog(1, 0, partest::LogEntry(partest::LogLevel::Info, PARTEST_LOG_TYPE_DEFAULT, "Framework log from test code", 1)));
+		// End event
+		mirrorLog(EVENT_DIE, partest::makeEventDie());
 	}
 
 	void tearDownSerial()
@@ -113,13 +132,29 @@ public:
 		);
 	}
 
-	// Test serial dispatcher.
+	// Test serial dispatcher. Happy path.
 	// Ensure all events are passed to the correct handlers, with original data intact.
 	// Ensure that EVENT_DIE is the last event passed, when killDispatcher is invoked.
 	// Ensure that all reporters record identical events to the reference logs, in identical order.
 	void SerialDispatcherPassesAllEvents()
 	{
+		partest::EventDispatcherInterface *dispatcher = m_dispatcher.get();
+		for(MockReporter &reporter: m_reporters)
+			dispatcher->registerReporter(&reporter);
 
+		// Iterate over logs, skip DIE entry.
+		for(unsigned x = 0; x < m_logs.size() - 1; ++x)
+		{
+			dispatcher->pushEvent(m_logs[x].first,m_logs[x].second->clone());
+		}
+
+		dispatcher->killDispatcher();
+
+		for(MockReporter &reporter: m_reporters)
+		{
+			ASSERT_EQUAL(m_logs.size(), reporter.logs().size());
+			ASSERT_TRUE(reporter.logs().back().first == EVENT_DIE);
+		}
 	}
 };
 
