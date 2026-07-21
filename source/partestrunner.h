@@ -65,6 +65,7 @@ namespace partest
 		*/
 		void addTest(std::unique_ptr<PartestBase> test)
 		{
+			test->configureEventEmitter({m_dispatcher});
 			m_tests.push_back(test.release());
 		}
 

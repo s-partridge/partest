@@ -8,6 +8,7 @@
 #include "partestcommon.h"
 #include "partesttypes.h"
 #include "partestlog.h"
+#include "partesteventemitter.h"
 #include "partestassert.h"
 
 namespace partest
@@ -29,6 +30,7 @@ namespace partest
 		}
 
 	protected:
+		EventEmitter *m_eventEmitter;
 		std::vector<TestFrame *> m_subtests; // Vector of sub-tests
 		std::vector<LogEntry> m_logs; // Logs associated with this test frame
 		std::vector<AssertionResult> m_assertions; // Results of assertions triggered by this test frame
@@ -43,12 +45,12 @@ namespace partest
 		using TestFrameIter = std::vector<TestFrame *>::iterator;
 		using TestFrameConstIter = std::vector<TestFrame *>::const_iterator;
 
-		TestFrame() noexcept : flags(), metadata(), state(), m_id(nextID()) { }
-		TestFrame(const TestFlags &flags, const TestInfo &metadata, const TestState &result,
+		TestFrame(EventEmitter &eventEmitter) noexcept : m_eventEmitter(&eventEmitter), flags(), metadata(), state(), m_id(nextID()) { }
+		TestFrame(EventEmitter &eventEmitter, const TestFlags &flags, const TestInfo &metadata, const TestState &result,
 				const std::function<void()> &testFunction = nullptr,
 				const std::function<void()> &testSetup = nullptr,
 				const std::function<void()> &testTeardown = nullptr)
-			: flags(flags), metadata(metadata), state(result),
+			: m_eventEmitter(&eventEmitter), flags(flags), metadata(metadata), state(result),
 				m_testFunction(testFunction), m_testSetup(testSetup), m_testTeardown(testTeardown),
 				m_id(nextID()) {}
 	
