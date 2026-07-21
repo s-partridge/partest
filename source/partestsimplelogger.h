@@ -1,5 +1,5 @@
-#ifndef PARTEST_SIMPLE_REPORTER_H
-#define PARTEST_SIMPLE_REPORTER_H
+#ifndef PARTEST_SIMPLE_LOGGER_H
+#define PARTEST_SIMPLE_LOGGER_H
 
 #include <ostream>
 #include <iostream>
@@ -9,7 +9,7 @@
 
 namespace partest
 {
-	class SimpleReporter : public EventReporterInterface
+	class SimpleLogger : public EventReporterInterface
 	{
 		std::ostream &m_out;
 
@@ -17,7 +17,7 @@ namespace partest
 		LogLevel m_verbosity;
 
 	public:
-		explicit SimpleReporter(std::ostream &out = std::cout, bool showPassedAssertions = false, LogLevel verbosity = LogLevel::Error)
+		explicit SimpleLogger(std::ostream &out = std::cout, bool showPassedAssertions = false, LogLevel verbosity = LogLevel::Error)
 			: EventReporterInterface(), m_out(out), m_showPassedAssertions(showPassedAssertions), m_verbosity(verbosity) { }
 
 		void onTestBegin(const EventBeginTest &event) override
@@ -28,7 +28,7 @@ namespace partest
 		// Called when a test ends
 		void onTestEnd(const EventEndTest &event) override
 		{
-			m_out << "End: " << event.getTestName() << std::endl;
+			m_out << "Ended: " << event.getTestName() << "; " << event.getResult() << std::endl;
 		}
 
 		// Called when an assertion is made

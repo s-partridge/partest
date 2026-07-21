@@ -2,7 +2,10 @@
 #define PARTEST_RUNNER_H
 
 #include <vector>
+#include <thread>
 
+#include "partestdispatcher.h"
+#include "partestsimplelogger.h"
 #include "partestbase.h"
 
 namespace partest
@@ -11,7 +14,23 @@ namespace partest
 	{
 	private:
 		std::vector<PartestBase *> m_tests; // Vector of tests to run
-		PartestRunner() noexcept = default;
+		EventDispatcherInterface *m_dispatcher;
+		SimpleLogger m_logger;
+		bool m_concurrent;
+
+		PartestRunner(bool concurrent = true) : m_concurrent(concurrent), m_logger(std::cout)
+		{
+			if(concurrent)
+			{
+				m_dispatcher = new ConcurrentEventDispatcher();
+			}
+			else
+			{
+				m_dispatcher = new SerialEventDispatcher();
+			}
+
+			m_dispatcher->registerReporter(&m_logger);
+		}
 	public:
 		// Delete copy and move constructors and assignment operators to enforce singleton pattern
 		PartestRunner(const PartestRunner &) = delete;
@@ -23,11 +42,10 @@ namespace partest
 		{
 			for(PartestBase *test : m_tests)
 			{
-				if(test != nullptr)
-				{
-					delete test;
-				}
+				delete test;
 			}
+
+			delete m_dispatcher;
 		}
 
 		/**
@@ -55,10 +73,19 @@ namespace partest
 		*/
 		void runAllTests()
 		{
+			std::thread dispatcherThread;
+			if(m_concurrent)
+				dispatcherThread = std::thread([this]() { this->m_dispatcher->dispatchEvents(); });
+
 			for(PartestBase *test : m_tests)
 			{
 				test->run();
 			}
+
+			m_dispatcher->killDispatcher();
+
+			if(m_concurrent)
+				dispatcherThread.join();
 		}
 
 		/**
@@ -68,15 +95,26 @@ namespace partest
 		*/
 		void runTestWithName(PARTEST_STRING_PARAM name)
 		{
+			std::thread dispatcherThread;
+			if(m_concurrent)
+				dispatcherThread = std::thread([this]() { this->m_dispatcher->dispatchEvents(); });
+
+			bool ran = false;
 			for(PartestBase *test : m_tests)
 			{
 				if(test->getName() == name)
 				{
 					test->run();
-					return;
+					ran = true;
 				}
 			}
-			std::cerr << "Error: No test found with name '" << name << "'." << std::endl;
+
+			m_dispatcher->pushEvent(EVENT_LOG, makeEventLog(0, 0, LogEntry(LogLevel::Error, PARTEST_LOG_TYPE_DEFAULT, "Error: No test found with name '" + PARTEST_STRING_PARAM_TO_STRING(name) + "'.\n")));
+
+			m_dispatcher->killDispatcher();
+
+			if(m_concurrent)
+				dispatcherThread.join();
 		}
 
 		void printAllTestTrees() const
