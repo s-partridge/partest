@@ -152,6 +152,24 @@ public:
 			[this, threadCount]() { return this->setUpConcurrent(threadCount); },
 			[this]() { return this->tearDownConcurrent(); }
 		);
+		addTest(partest::TestInfo("Test Serial Unpropagated Events", "Validate that the dispatcher consumes events regardles of reporter presence"),
+			flags,
+			[this]() { return this->eventsWithoutReportersSerial(); },
+			[this]() { return this->setUpSerial(1); },
+			[this]() { return this->tearDownSerial(); }
+		);
+		addTest(partest::TestInfo("Test Concurrent Unpropagated Events", "Validate that the concurrent dispatcher consumes events regardles of reporter presence"),
+			flags,
+			[this]() { return this->eventsWithoutReportersConcurrent(); },
+			[this]() { return this->setUpConcurrent(1); },
+			[this]() { return this->tearDownConcurrent(); }
+		);
+		addTest(partest::TestInfo("Test Early Concurrent Events", "Validate that dispatcher passes events pushed before dispatch begins"),
+			flags,
+			[this]() { return this->eventsPushedBeforeBeginDispatch(); },
+			[this]() { return this->setUpConcurrent(1); },
+			[this]() { return this->tearDownConcurrent(); }
+		);
 	}
 
 	// Test serial dispatcher. Happy path.
@@ -288,6 +306,87 @@ public:
 			}
 		}
 		ASSERT_EQUAL(0, invalidEvents);
+	}
+
+	void eventsWithoutReportersSerial()
+	{
+		partest::EventDispatcherInterface *dispatcher = m_dispatcher.get();
+		unsigned success = dispatcher->pushEvent(EVENT_ASSERTION, partest::makeEventAssertion(2, 0, partest::AssertionResult()));
+
+		// Event without reporters registered, the event should be processed.
+		ASSERT_TRUE(success);
+
+		MockReporter &reporter = m_reporters.front();
+		dispatcher->registerReporter(&reporter);
+
+		dispatcher->killDispatcher();
+
+		ASSERT_EQUAL(1, reporter.logs().size());
+		ASSERT_EQUAL(EVENT_DIE, reporter.logs().back().first);
+	}
+
+	void eventsWithoutReportersConcurrent()
+	{
+		partest::EventDispatcherInterface *dispatcher = m_dispatcher.get();
+		partest::counting_semaphore<1> sem(0);
+		std::thread dispatcherThread = std::thread([dispatcher, &sem]() {
+			dispatcher->dispatchEvents();
+		});
+
+
+		unsigned success = dispatcher->pushEvent(EVENT_ASSERTION, partest::makeEventAssertion(1, 0, partest::AssertionResult()));
+
+		// Even without reporters registered, the event should be processed.
+		ASSERT_TRUE(success);
+		
+		// Give it time to throw away the event deliberately.
+		std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+		MockReporter &reporter = m_reporters.front();
+		dispatcher->registerReporter(&reporter);
+
+		// Add another event following registration.
+		dispatcher->pushEvent(EVENT_LOG, partest::makeEventLog(2, 0, partest::LogEntry(partest::LogLevel::Info, PARTEST_LOG_TYPE_DEFAULT, "Framework log from test code", 2)));
+		dispatcher->killDispatcher();
+		dispatcherThread.join();
+
+		ASSERT_EQUAL(2, reporter.logs().size());
+		ASSERT_EQUAL(EVENT_LOG, reporter.logs().front().first);
+		ASSERT_EQUAL(EVENT_DIE, reporter.logs().back().first);
+	}
+
+	void eventsPushedBeforeBeginDispatch()
+	{
+		partest::EventDispatcherInterface *dispatcher = m_dispatcher.get();
+		MockReporter &reporter = m_reporters.front();
+		dispatcher->registerReporter(&reporter);
+		
+		// Iterate over logs, before the dispatcher has been spun up.
+		for(unsigned x = 0; x < m_logs.size(); ++x)
+		{
+			dispatcher->pushEvent(m_logs[x].first,m_logs[x].second->clone());
+		}
+
+		std::thread dispatcherThread = std::thread([dispatcher]() { dispatcher->dispatchEvents(); });
+
+		dispatcher->killDispatcher();
+
+		dispatcherThread.join();
+
+		unsigned invalidEvents = 0;
+		for(unsigned x = 0; x < m_logs.size(); ++x)
+		{
+			const partest::EventInterface &lhs = *(m_logs[x].second.get());
+			const partest::EventInterface &rhs = *(reporter.logs()[x].second.get());
+
+			if(lhs != rhs)
+				++invalidEvents;
+		}
+		// All events should be identical across every firstReporter and the local reference log
+		ASSERT_EQUAL(0, invalidEvents);
+
+		ASSERT_EQUAL(m_logs.size() + 1, reporter.logs().size());
+		ASSERT_EQUAL(EVENT_DIE, reporter.logs().back().first);
 	}
 };
 
