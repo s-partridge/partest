@@ -3,9 +3,9 @@
 
 #include <chrono>
 #include <thread>
-#include "partesttypes.h"
-#include "partestassertresult.h"
-#include "partestlog.h"
+#include <partest/types.h>
+#include <partest/assertresult.h>
+#include <partest/log.h>
 
 PARTEST_CONSTEXPR_11 const char *EVENT_BEGIN_TEST = "EB";
 PARTEST_CONSTEXPR_11 const char *EVENT_END_TEST = "EE";
@@ -33,7 +33,7 @@ namespace partest
 		static unsigned int nextID() noexcept {
 		
 			static std::atomic<unsigned> eventCount(0);
-			return eventCount++;
+			return eventCount.fetch_add(1, std::memory_order_relaxed);
 		}
 
 	public:

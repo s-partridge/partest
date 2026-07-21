@@ -6,8 +6,8 @@
 #include <string>
 #include <cstring>
 
-#include "partestcommon.h"
-#include "partestassertresult.h"
+#include <partest/common.h>
+#include <partest/assertresult.h>
 /**
 * Basic assertion macro for use within tests. Must be called within a TestFrame context.
 */

@@ -4,9 +4,9 @@
 #include <vector>
 #include <thread>
 
-#include "partestdispatcher.h"
-#include "partestsimplelogger.h"
-#include "partestbase.h"
+#include <partest/eventdispatcher.h>
+#include <partest/simplelogger.h>
+#include <partest/partestbase.h>
 
 namespace partest
 {

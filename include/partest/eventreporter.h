@@ -1,10 +1,24 @@
 #ifndef PARTEST_REPORTER_H
 #define PARTEST_REPORTER_H
 
-#include "partestevent.h"
+#include <unordered_map>
+#include <vector>
+#include <string>
+
+#include <partest/event.h>
 
 namespace partest
 {
+	struct TestFrameSnapshot
+	{
+		unsigned parentId = 0;
+		unsigned depth = 0;
+
+		std::string name = "";
+
+		std::vector<EventPair> events;
+	};
+
 	class EventReporterInterface
 	{
 		public:

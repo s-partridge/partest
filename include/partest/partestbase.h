@@ -16,13 +16,13 @@
 #include <cstring>
 #include <functional>
 
-#include "partestcommon.h"
-#include "partesttypes.h"
-#include "partestlog.h"
-#include "partesteventemitter.h"
-#include "partestassert.h"
-#include "partesttestframe.h"
-#include "partestexceptions.h"
+#include <partest/common.h>
+#include <partest/types.h>
+#include <partest/log.h>
+#include <partest/eventemitter.h>
+#include <partest/assert.h>
+#include <partest/testframe.h>
+#include <partest/exceptions.h>
 
 namespace partest
 {

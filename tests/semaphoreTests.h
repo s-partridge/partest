@@ -6,9 +6,9 @@
 #include <chrono>
 #include <thread>
 
-#include "partestbase.h"
-#include "partestsemaphore.h"
-#include "partestassert.h"
+#include <partest/partestbase.h>
+#include <partest/semaphore.h>
+#include <partest/assert.h>
 
 class SemaphoreTests : public partest::PartestBase
 {

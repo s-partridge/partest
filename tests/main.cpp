@@ -3,10 +3,10 @@
 #include <iostream>
 #include <vector>
 
+#include <partest/partest.h>
 #include "assertionTests.h"
 #include "semaphoreTests.h"
 #include "dispatcherTests.h"
-#include "../partest.h"
 
 class PartestBaseTest : public partest::PartestBase
 {

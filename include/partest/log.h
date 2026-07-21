@@ -3,7 +3,7 @@
 
 #include <string>
 #include <chrono>
-#include "partestcommon.h"
+#include <partest/common.h>
 
 // For logs from assert statements, used internally
 #define PARTEST_LOG_TYPE_ASSERT "Assertion"

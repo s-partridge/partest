@@ -63,11 +63,11 @@ project "partest"
 	targetdir "%{wks.location}/bin/%{cfg.platform}/%{cfg.buildcfg}"
 	objdir "%{wks.location}/obj/%{cfg.platform}/%{cfg.buildcfg}"
 
-    files { "source/**.h", "tests/**.h", "tests/**.cpp" }
-    includedirs { "source", "tests" }
+    files { "include/**.h", "tests/**.h", "tests/**.cpp" }
+    includedirs { "include", "tests" }
 
     vpaths {
-        ["Header Files"] = { "source/**.h" },
-		["Source Files"] = { "source/**.cpp" },
+        ["Header Files"] = { "include/**.h" },
+		["Source Files"] = { "include/**.cpp" },
 		["Framework Tests"] = { "tests/**.h", "tests/**.cpp" }
     }

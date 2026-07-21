@@ -3,9 +3,9 @@
 
 // Public interface for the Partest testing framework
 
-#include "source/partestcommon.h"
-#include "source/partestbase.h"
-#include "source/partestrunner.h"
+#include <partest/common.h>
+#include <partest/partestbase.h>
+#include <partest/runner.h>
 
 namespace partest
 {

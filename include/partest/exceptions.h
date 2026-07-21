@@ -3,7 +3,7 @@
 
 #include <stdexcept>
 #include <string>
-#include "partestcommon.h"
+#include <partest/common.h>
 
 namespace partest
 {

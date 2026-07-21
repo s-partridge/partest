@@ -5,7 +5,7 @@
 #include <condition_variable>
 #include <cassert>
 #include <stddef.h>
-#include "partestcommon.h"
+#include <partest/common.h>
 
 namespace partest
 {

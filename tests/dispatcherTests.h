@@ -5,9 +5,9 @@
 #include <memory>
 #include <algorithm>
 
-#include "partestdispatcher.h"
-#include "partestreporter.h"
-#include "partestbase.h"
+#include <partest/eventdispatcher.h>
+#include <partest/eventreporter.h>
+#include <partest/partestbase.h>
 
 class MockReporter : public partest::EventReporterInterface
 {

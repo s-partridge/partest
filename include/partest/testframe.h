@@ -5,11 +5,11 @@
 #include <memory>
 #include <functional>
 
-#include "partestcommon.h"
-#include "partesttypes.h"
-#include "partestlog.h"
-#include "partesteventemitter.h"
-#include "partestassert.h"
+#include <partest/common.h>
+#include <partest/types.h>
+#include <partest/log.h>
+#include <partest/eventemitter.h>
+#include <partest/assert.h>
 
 namespace partest
 {
@@ -26,7 +26,7 @@ namespace partest
 		*/
 		static unsigned int nextID() noexcept {
 			static std::atomic<unsigned int> frameCount(NO_TEST_ID + 1);
-			return frameCount++;
+			return frameCount.fetch_add(1, std::memory_order_relaxed);
 		}
 
 	protected:

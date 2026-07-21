@@ -5,7 +5,7 @@
 #include <atomic>
 #include <string>
 
-#include "partestcommon.h"
+#include <partest/common.h>
 
 namespace partest
 {
@@ -23,7 +23,7 @@ namespace partest
 		static unsigned int nextID() noexcept {
 		
 			static std::atomic<unsigned int> assertCount(0);
-			return assertCount++;
+			return assertCount.fetch_add(1, std::memory_order_relaxed);
 		}
 
 	public:

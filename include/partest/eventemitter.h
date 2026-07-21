@@ -1,8 +1,8 @@
 #ifndef PARTEST_EVENT_EMITTER_H
 #define PARTEST_EVENT_EMITTER_H
 
-#include "partestevent.h"
-#include "partestdispatcher.h"
+#include <partest/event.h>
+#include <partest/eventdispatcher.h>
 
 namespace partest
 {

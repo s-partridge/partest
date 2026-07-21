@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include "partestcommon.h"
+#include <partest/common.h>
 
 namespace partest
 {

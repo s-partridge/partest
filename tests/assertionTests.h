@@ -1,8 +1,8 @@
 #ifndef ASSERTION_TESTS_H
 #define ASSERTION_TESTS_H
 
-#include "partestassert.h"
-#include "partestbase.h"
+#include <partest/assert.h>
+#include <partest/partestbase.h>
 
 class AssertionTests : public partest::PartestBase
 {

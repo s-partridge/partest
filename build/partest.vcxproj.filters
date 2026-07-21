@@ -9,46 +9,55 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\source\partestassert.h">
+    <ClInclude Include="..\include\partest\assert.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\source\partestassertresult.h">
+    <ClInclude Include="..\include\partest\assertresult.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\source\partestbase.h">
+    <ClInclude Include="..\include\partest\common.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\source\partestcommon.h">
+    <ClInclude Include="..\include\partest\event.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\source\partestdispatcher.h">
+    <ClInclude Include="..\include\partest\eventdispatcher.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\source\partestevent.h">
+    <ClInclude Include="..\include\partest\eventemitter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\source\partesteventemitter.h">
+    <ClInclude Include="..\include\partest\eventreporter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\source\partestexceptions.h">
+    <ClInclude Include="..\include\partest\exceptions.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\source\partestlog.h">
+    <ClInclude Include="..\include\partest\log.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\source\partestreporter.h">
+    <ClInclude Include="..\include\partest\partest.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\source\partestrunner.h">
+    <ClInclude Include="..\include\partest\partestbase.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\source\partestsemaphore.h">
+    <ClInclude Include="..\include\partest\runner.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\source\partesttestframe.h">
+    <ClInclude Include="..\include\partest\semaphore.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\source\partesttypes.h">
+    <ClInclude Include="..\include\partest\simplelogger.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\partest\testframe.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\partest\testframeview.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\partest\types.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\tests\assertionTests.h">
@@ -59,9 +68,6 @@
     </ClInclude>
     <ClInclude Include="..\tests\semaphoreTests.h">
       <Filter>Framework Tests</Filter>
-    </ClInclude>
-    <ClInclude Include="..\source\partestsimplelogger.h">
-      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -8,10 +8,10 @@
 #include <mutex>
 #include <cassert>
 
-#include "partesttypes.h"
-#include "partestevent.h"
-#include "partestreporter.h"
-#include "partestsemaphore.h"
+#include <partest/types.h>
+#include <partest/event.h>
+#include <partest/eventreporter.h>
+#include <partest/semaphore.h>
 
 namespace partest
 {

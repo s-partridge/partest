@@ -5,7 +5,7 @@
 #include <iostream>
 #include <string>
 
-#include "partestreporter.h"
+#include <partest/eventreporter.h>
 
 namespace partest
 {
