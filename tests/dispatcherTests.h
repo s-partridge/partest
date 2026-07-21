@@ -3,6 +3,7 @@
 
 #include <thread>
 #include <memory>
+#include <algorithm>
 
 #include "partestdispatcher.h"
 #include "partestreporter.h"
@@ -229,7 +230,7 @@ public:
 		std::thread dispatcherThread = std::thread([dispatcher]() { dispatcher->dispatchEvents(); });
 
 		size_t eventCount = m_logs.size();
-		unsigned eventsPerThread = eventCount / threadCount;
+		unsigned eventsPerThread = eventCount / (unsigned)threadCount;
 
 		for(unsigned x = 0; x < threadCount; ++x)
 		{
@@ -278,6 +279,7 @@ public:
 			if(iter == firstReporter.logs().cend())
 				++uncopiedEvents;
 		}
+
 		ASSERT_EQUAL(0, uncopiedEvents);
 		// Last event should always be the kill event
 		ASSERT_EQUAL(EVENT_DIE, firstReporter.logs().back().first);
