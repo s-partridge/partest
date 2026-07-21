@@ -58,7 +58,7 @@ namespace partest
 			: EventInterface(testId, parentTestId), m_testName(testName) {}
 
 		std::unique_ptr<EventInterface> clone() const override {
-			return std::make_unique<EventBeginTest>(*this);
+			return partest::make_unique<EventBeginTest>(*this);
 		}
 
 		inline const std::string &getTestName() const noexcept { return m_testName; }
@@ -80,7 +80,7 @@ namespace partest
 			: EventInterface(testId, parentTestId), m_testName(testName), m_result(result) {}
 
 		std::unique_ptr<EventInterface> clone() const override {
-			return std::make_unique<EventEndTest>(*this);
+			return partest::make_unique<EventEndTest>(*this);
 		}
 
 		inline const std::string &getTestName() const noexcept { return m_testName; }
@@ -101,7 +101,7 @@ namespace partest
 			: EventInterface(testId, parentTestId), m_assertionResult(assertionResult) {}
 
 		std::unique_ptr<EventInterface> clone() const override {
-			return std::make_unique<EventAssertion>(*this);
+			return partest::make_unique<EventAssertion>(*this);
 		}
 
 		inline const AssertionResult &getAssertionResult() const noexcept { return m_assertionResult; }
@@ -121,7 +121,7 @@ namespace partest
 			: EventInterface(testId, parentTestId), m_logEntry(logEntry) {}
 
 		std::unique_ptr<EventInterface> clone() const override {
-			return std::make_unique<EventLog>(*this);
+			return partest::make_unique<EventLog>(*this);
 		}
 
 		inline const LogEntry &getLogEntry() const noexcept { return m_logEntry; }
@@ -143,7 +143,7 @@ namespace partest
 			: EventInterface(testId, parentTestId), m_message(message), m_threadId(std::this_thread::get_id()) {}
 
 		std::unique_ptr<EventInterface> clone() const override {
-			return std::make_unique<EventPassthrough>(*this);
+			return partest::make_unique<EventPassthrough>(*this);
 		}
 
 		inline const std::string &getMessage() const noexcept { return m_message; }
@@ -161,7 +161,7 @@ namespace partest
 			: EventInterface(0, 0) {}
 
 		std::unique_ptr<EventInterface> clone() const override {
-			return std::make_unique<EventDie>(*this);
+			return partest::make_unique<EventDie>(*this);
 		}
 	};
 

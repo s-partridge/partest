@@ -64,7 +64,7 @@ namespace partest
 
 		void killDispatcher() override
 		{
-			pushEvent(EVENT_DIE, std::make_unique<EventDie>());
+			pushEvent(EVENT_DIE, partest::make_unique<EventDie>());
 			m_dispatching = false;
 		}
 
@@ -120,7 +120,7 @@ namespace partest
 		{
 			std::lock_guard<std::mutex> lock(m_queueMutex);
 			m_dispatching = false; // Stop accepting new events
-			m_eventQueue.emplace(EVENT_DIE, std::make_unique<EventDie>()); // Push an EventDie to signal the dispatcher to stop
+			m_eventQueue.emplace(EVENT_DIE, partest::make_unique<EventDie>()); // Push an EventDie to signal the dispatcher to stop
 			m_eventSemaphore.release(); // Release the semaphore to unblock
 		}
 

@@ -9,7 +9,7 @@ namespace partest
 	class EventEmitter
 	{
 		// Non-owning pointer to the event dispatcher. This is used to push events to the dispatcher.
-		EventDispatcher *m_dispatcher = nullptr;
+		EventDispatcherInterface *m_dispatcher = nullptr;
 
 		bool shouldEmit() const noexcept
 		{
@@ -26,32 +26,32 @@ namespace partest
 		}
 
 	public:
-		explicit EventEmitter(EventDispatcher *dispatcher = nullptr) : m_dispatcher(dispatcher) {}
+		explicit EventEmitter(EventDispatcherInterface *dispatcher = nullptr) : m_dispatcher(dispatcher) {}
 		~EventEmitter() = default;
 
 		void emitBeginTest(unsigned testId, unsigned parentTestId, PARTEST_STRING_PARAM testName)
 		{
-			emitEvent(EVENT_BEGIN_TEST, std::make_unique<EventBeginTest>(testId, parentTestId, testName));
+			emitEvent(EVENT_BEGIN_TEST, partest::make_unique<EventBeginTest>(testId, parentTestId, testName));
 		}
 
 		void emitEndTest(unsigned testId, unsigned parentTestId, PARTEST_STRING_PARAM testName, TestResult result)
 		{
-			emitEvent(EVENT_END_TEST, std::make_unique<EventEndTest>(testId, parentTestId, testName, result));
+			emitEvent(EVENT_END_TEST, partest::make_unique<EventEndTest>(testId, parentTestId, testName, result));
 		}
 
 		void emitAssertion(unsigned testId, unsigned parentTestId, const AssertionResult &assertionResult)
 		{
-			emitEvent(EVENT_ASSERTION, std::make_unique<EventAssertion>(testId, parentTestId, assertionResult));
+			emitEvent(EVENT_ASSERTION, partest::make_unique<EventAssertion>(testId, parentTestId, assertionResult));
 		}
 
 		void emitLog(unsigned testId, unsigned parentTestId, const LogEntry &logEntry)
 		{
-			emitEvent(EVENT_LOG, std::make_unique<EventLog>(testId, parentTestId, logEntry));
+			emitEvent(EVENT_LOG, partest::make_unique<EventLog>(testId, parentTestId, logEntry));
 		}
 
 		void emitPassthrough(unsigned testId, unsigned parentTestId, PARTEST_STRING_PARAM message)
 		{
-			emitEvent(EVENT_PASSTHROUGH, std::make_unique<EventPassthrough>(testId, parentTestId, message));
+			emitEvent(EVENT_PASSTHROUGH, partest::make_unique<EventPassthrough>(testId, parentTestId, message));
 		}
 	};
 }

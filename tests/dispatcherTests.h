@@ -25,7 +25,7 @@ public:
 
 	void onTestBegin(const partest::EventBeginTest &event) override
 	{
-		writeLog(EVENT_BEGIN_TEST, std::make_unique<partest::EventBeginTest>(event));
+		writeLog(EVENT_BEGIN_TEST, event.clone());
 	}
 
 	void onTestEnd(const partest::EventEndTest &event) override
