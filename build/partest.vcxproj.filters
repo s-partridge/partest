@@ -15,6 +15,9 @@
     <ClInclude Include="..\include\partest\assertresult.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\include\partest\bootstrap.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="..\include\partest\common.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -36,12 +39,6 @@
     <ClInclude Include="..\include\partest\log.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\partest\bootstrap.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\partest\testbase.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\include\partest\runner.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -49,6 +46,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\include\partest\simplelogger.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\partest\testbase.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\include\partest\testframe.h">
