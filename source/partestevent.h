@@ -34,6 +34,7 @@ namespace partest
 			: m_testId(testId), m_parentTestId(parentTestId), m_timestamp(std::chrono::steady_clock::now()) {}
 
 		virtual ~EventInterface() = default;
+		virtual std::unique_ptr<EventInterface> clone() const = 0;
 
 		inline unsigned getTestId() const noexcept { return m_testId; }
 		inline unsigned getParentTestId() const noexcept { return m_parentTestId; }
@@ -56,6 +57,10 @@ namespace partest
 		EventBeginTest(unsigned testId, unsigned parentTestId, PARTEST_STRING_PARAM testName)
 			: EventInterface(testId, parentTestId), m_testName(testName) {}
 
+		std::unique_ptr<EventInterface> clone() const override {
+			return std::make_unique<EventBeginTest>(*this);
+		}
+
 		inline const std::string &getTestName() const noexcept { return m_testName; }
 	};
 
@@ -74,6 +79,10 @@ namespace partest
 		EventEndTest(unsigned testId, unsigned parentTestId, PARTEST_STRING_PARAM testName, TestResult result)
 			: EventInterface(testId, parentTestId), m_testName(testName), m_result(result) {}
 
+		std::unique_ptr<EventInterface> clone() const override {
+			return std::make_unique<EventEndTest>(*this);
+		}
+
 		inline const std::string &getTestName() const noexcept { return m_testName; }
 		inline TestResult getResult() const noexcept { return m_result; }
 	};
@@ -91,6 +100,10 @@ namespace partest
 		EventAssertion(unsigned testId, unsigned parentTestId, const AssertionResult &assertionResult)
 			: EventInterface(testId, parentTestId), m_assertionResult(assertionResult) {}
 
+		std::unique_ptr<EventInterface> clone() const override {
+			return std::make_unique<EventAssertion>(*this);
+		}
+
 		inline const AssertionResult &getAssertionResult() const noexcept { return m_assertionResult; }
 	};
 
@@ -106,6 +119,10 @@ namespace partest
 	public:
 		EventLog(unsigned testId, unsigned parentTestId, const LogEntry &logEntry)
 			: EventInterface(testId, parentTestId), m_logEntry(logEntry) {}
+
+		std::unique_ptr<EventInterface> clone() const override {
+			return std::make_unique<EventLog>(*this);
+		}
 
 		inline const LogEntry &getLogEntry() const noexcept { return m_logEntry; }
 	};
@@ -125,6 +142,10 @@ namespace partest
 		EventPassthrough(unsigned testId, unsigned parentTestId, PARTEST_STRING_PARAM message)
 			: EventInterface(testId, parentTestId), m_message(message), m_threadId(std::this_thread::get_id()) {}
 
+		std::unique_ptr<EventInterface> clone() const override {
+			return std::make_unique<EventPassthrough>(*this);
+		}
+
 		inline const std::string &getMessage() const noexcept { return m_message; }
 		inline std::thread::id getThreadId() const noexcept { return m_threadId; }
 	};
@@ -136,8 +157,42 @@ namespace partest
 	*/
 	struct EventDie : public EventInterface
 	{
-		EventDie(unsigned testId, unsigned parentTestId)
-			: EventInterface(testId, parentTestId) {}
+		EventDie()
+			: EventInterface(0, 0) {}
+
+		std::unique_ptr<EventInterface> clone() const override {
+			return std::make_unique<EventDie>(*this);
+		}
 	};
+
+	std::unique_ptr<EventInterface> makeEventBeginTest(unsigned testId, unsigned parentTestId, PARTEST_STRING_PARAM testName)
+	{
+		return partest::make_unique<EventBeginTest>(testId, parentTestId, testName);
+	}
+
+	std::unique_ptr<EventInterface> makeEventEndTest(unsigned testId, unsigned parentTestId, PARTEST_STRING_PARAM testName, TestResult result)
+	{
+		return partest::make_unique<EventEndTest>(testId, parentTestId, testName, result);
+	}
+
+	std::unique_ptr<EventInterface> makeEventAssertion(unsigned testId, unsigned parentTestId, const AssertionResult &result)
+	{
+		return partest::make_unique<EventAssertion>(testId, parentTestId, result);
+	}
+
+	std::unique_ptr<EventInterface> makeEventLog(unsigned testId, unsigned parentTestId, const LogEntry &log)
+	{
+		return partest::make_unique<EventLog>(testId, parentTestId, log);
+	}
+
+	std::unique_ptr<EventInterface> makeEventPassthrough(unsigned testId, unsigned parentTestId, PARTEST_STRING_PARAM message)
+	{
+		return partest::make_unique<EventPassthrough>(testId, parentTestId, message);
+	}
+
+	std::unique_ptr<EventInterface> makeEventDie()
+	{
+		return partest::make_unique<EventDie>();
+	}
 }
 #endif
