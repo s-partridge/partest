@@ -46,7 +46,7 @@ jobs:
         run: |
           for config in ${{ join(matrix.configs, ' ') }}; do
             # Executable location is tied to Premake configuration
-            ../bin/x64/${config%_x64}/partest
+            ./bin/x64/${config%_x64}/partest
           done
             
   build-clang:
@@ -88,7 +88,7 @@ jobs:
         run: |
           for config in ${{ join(matrix.configs, ' ') }}; do
             # Executable location is tied to Premake configuration
-            ../bin/x64/${config%_x64}/partest
+            ./bin/x64/${config%_x64}/partest
           done
 
   build-windows:
@@ -112,9 +112,9 @@ jobs:
           
       - name: Run MSVC
         run: |
-          ..\bin\x86\dbg-c14\partest.exe
-          ..\bin\x64\dbg-c14\partest.exe
-          ..\bin\x86\dbg-c17\partest.exe
-          ..\bin\x64\dbg-c17\partest.exe
-          ..\bin\x86\dbg-c20\partest.exe
-          ..\bin\x64\dbg-c20\partest.exe
+          bin\x86\dbg-c14\partest.exe
+          bin\x64\dbg-c14\partest.exe
+          bin\x86\dbg-c17\partest.exe
+          bin\x64\dbg-c17\partest.exe
+          bin\x86\dbg-c20\partest.exe
+          bin\x64\dbg-c20\partest.exe
