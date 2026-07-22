@@ -30,7 +30,7 @@ namespace partest
 		using MetadataConstIter = std::map<std::string, std::string>::const_iterator;
 
 		// Get the unique ID for this assertion result
-		unsigned int id() const { return m_id; }
+		unsigned int id() const noexcept { return m_id; }
 
 		// Whether the assertion passed or failed
 		bool passed;
