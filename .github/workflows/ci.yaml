@@ -43,7 +43,7 @@ jobs:
           tar -xzf premake.tar.gz
           sudo mv premake5 /usr/local/bin/
           premake5 --version
-          run: premake5 --os=linux gmake2
+          premake5 --os=linux gmake2
 
       - name: Install GCC
         run: sudo apt-get install -y ${{ matrix.compiler }}
@@ -95,7 +95,7 @@ jobs:
           tar -xzf premake.tar.gz
           sudo mv premake5 /usr/local/bin/
           premake5 --version
-          run: premake5 --os=linux gmake2
+          premake5 --os=linux gmake2
 
       - name: Install Clang
         run: |
