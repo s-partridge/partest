@@ -91,6 +91,19 @@ jobs:
             make config=$config CXX=${{ matrix.compiler }}
           done
           
+      - name: DEBUG - where am I and where is the binary?
+        run: |
+          echo "=== Current working directory ==="
+          pwd
+          echo ""
+          echo "=== All partest binaries that exist right now ==="
+          find . -type f \( -name "partest" -o -name "partest.exe" \) -print
+          echo ""
+          echo "=== Contents of possible output directories ==="
+          ls -la bin 2>/dev/null || echo "no ./bin"
+          ls -la build/bin 2>/dev/null || echo "no ./build/bin"
+          ls -la build 2>/dev/null || echo "no ./build"
+          
       - name: Run Clang
         run: |
           for binpath in ${{ join(matrix.binpaths, ' ') }}; do
