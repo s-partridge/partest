@@ -16,7 +16,7 @@ namespace partest
 	constexpr unsigned NO_TEST_ID = 0;
 
 	class TestFrame
-	{		
+	{
 		unsigned int m_id;
 
 		/**
@@ -27,6 +27,13 @@ namespace partest
 		static unsigned int nextID() noexcept {
 			static std::atomic<unsigned int> frameCount(NO_TEST_ID + 1);
 			return frameCount.fetch_add(1, std::memory_order_relaxed);
+		}
+
+		TestFrame() noexcept
+			: m_eventEmitter(nullptr), flags(), metadata(), state(), m_id(NO_TEST_ID)
+		{
+			metadata.name = "Null Test Frame";
+			metadata.description = "Empty frame representing test suite root";
 		}
 
 	protected:
@@ -64,6 +71,12 @@ namespace partest
 		{
 			for(TestFrame *subtest : m_subtests)
 				delete subtest;			
+		}
+
+		static const TestFrame &getNullTestFrameInstance()
+		{
+			static TestFrame nullInstance;
+			return nullInstance;
 		}
 
 		unsigned int id() const noexcept { return m_id; }
