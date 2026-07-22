@@ -6,7 +6,7 @@ local standards = { "c14", "c17", "c20" }
 -- Add C++11 if build system is known to still support it
 -- Visual Studio doesn't support specifying C++11
 if _ACTION and _ACTION:match("^gmake") then
-	table.insert(standards, 1, "C11")
+	table.insert(standards, 1, "c11")
 end
 
 local configs = {}

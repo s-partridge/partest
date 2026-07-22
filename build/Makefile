@@ -43,18 +43,18 @@ define POSTBUILDCMDS
 endef
 
 ifeq ($(config),dbg-c11_x86)
-TARGETDIR = ../bin/x86/dbg-C11
+TARGETDIR = ../bin/x86/dbg-c11
 TARGET = $(TARGETDIR)/partest.exe
-OBJDIR = ../obj/x86/dbg-C11
+OBJDIR = ../obj/x86/dbg-c11
 DEFINES += -D_DEBUG
 ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -m32 -O0 -g -pedantic
 ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -m32 -O0 -g -std=c++11 -pedantic
 ALL_LDFLAGS += $(LDFLAGS) -L/usr/lib32 -m32
 
 else ifeq ($(config),dbg-c11_x64)
-TARGETDIR = ../bin/x64/dbg-C11
+TARGETDIR = ../bin/x64/dbg-c11
 TARGET = $(TARGETDIR)/partest.exe
-OBJDIR = ../obj/x64/dbg-C11
+OBJDIR = ../obj/x64/dbg-c11
 DEFINES += -D_DEBUG
 ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -m64 -O0 -g -pedantic
 ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -m64 -O0 -g -std=c++11 -pedantic
@@ -115,18 +115,18 @@ ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -m64 -O0 -g -std=c++20 -pedantic
 ALL_LDFLAGS += $(LDFLAGS) -L/usr/lib64 -m64
 
 else ifeq ($(config),rel-c11_x86)
-TARGETDIR = ../bin/x86/rel-C11
+TARGETDIR = ../bin/x86/rel-c11
 TARGET = $(TARGETDIR)/partest.exe
-OBJDIR = ../obj/x86/rel-C11
+OBJDIR = ../obj/x86/rel-c11
 DEFINES += -DNDEBUG
 ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -m32 -O2 -pedantic
 ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -m32 -O2 -std=c++11 -pedantic
 ALL_LDFLAGS += $(LDFLAGS) -L/usr/lib32 -m32 -s
 
 else ifeq ($(config),rel-c11_x64)
-TARGETDIR = ../bin/x64/rel-C11
+TARGETDIR = ../bin/x64/rel-c11
 TARGET = $(TARGETDIR)/partest.exe
-OBJDIR = ../obj/x64/rel-C11
+OBJDIR = ../obj/x64/rel-c11
 DEFINES += -DNDEBUG
 ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -m64 -O2 -pedantic
 ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -m64 -O2 -std=c++11 -pedantic
