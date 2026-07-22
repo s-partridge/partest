@@ -41,6 +41,13 @@ jobs:
           for config in ${{ join(matrix.configs, ' ') }}; do
             make config=$config CXX=${{ matrix.compiler }}
           done
+          
+      - name: Run GCC
+        run: |
+          for config in ${{ join(matrix.configs, ' ') }}; do
+            # Executable location is tied to Premake configuration
+            bin/x64/${config%_x64}/partest
+          done
             
   build-clang:
     runs-on: ${{ matrix.os }}
@@ -76,6 +83,13 @@ jobs:
           for config in ${{ join(matrix.configs, ' ') }}; do
             make config=$config CXX=${{ matrix.compiler }}
           done
+          
+      - name: Run Clang
+        run: |
+          for config in ${{ join(matrix.configs, ' ') }}; do
+            # Executable location is tied to Premake configuration
+            bin/x64/${config%_x64}/partest
+          done
 
   build-windows:
     runs-on: windows-latest
@@ -87,7 +101,7 @@ jobs:
       - name: Set Up MSBuild
         uses: microsoft/setup-msbuild@v2
 
-      - name: Build All Debug
+      - name: Build MSVC Debug
         run: | 
           msbuild build\partest.vcxproj /p:Configuration=dbg-c14 /p:Platform=Win32
           msbuild build\partest.vcxproj /p:Configuration=dbg-c14 /p:Platform=x64
@@ -95,3 +109,12 @@ jobs:
           msbuild build\partest.vcxproj /p:Configuration=dbg-c17 /p:Platform=x64
           msbuild build\partest.vcxproj /p:Configuration=dbg-c20 /p:Platform=Win32
           msbuild build\partest.vcxproj /p:Configuration=dbg-c20 /p:Platform=x64
+          
+      - name: Run MSVC
+        run: |
+          bin\x86\dbg-c14\partest.exe
+          bin\x64\dbg-c14\partest.exe
+          bin\x86\dbg-c17\partest.exe
+          bin\x64\dbg-c17\partest.exe
+          bin\x86\dbg-c20\partest.exe
+          bin\x64\dbg-c20\partest.exe
