@@ -8,6 +8,13 @@
 #include "semaphoreTests.h"
 #include "dispatcherTests.h"
 
+// For memory leak validation on MSVC
+#if defined(_MSVC_LANG)
+	#define _CRTDBG_MAP_ALLOC
+	#include <stdlib.h>
+	#include <crtdbg.h>
+#endif
+
 class PartestBaseTest : public partest::TestBase
 {
 public:
@@ -154,6 +161,10 @@ public:
 
 int main()
 {
+// For memory leak validation on MSVC
+#if defined(_MSVC_LANG)
+	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+#endif
 	std::cout << "Partest framework initialized." << std::endl;
 	
 	//partest::addTestClass(partest::make_unique<PartestBaseTest>());
