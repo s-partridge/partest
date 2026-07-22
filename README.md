@@ -62,9 +62,14 @@ class UnitTest : public TestBase
 {
 public:
 	UnitTest()
-	 : TestBase("Test name", "Test description")
+	 : TestBase("UnitTest", "Test description")
 	{
-		registerTest(
+		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
+		
+		addTest(partest::TestInfo("ValidateState", "Simple smoke test"),
+			flags,
+			[this]() { return this->validateState(0, 0); }
+		);
 	}
 	
 	void validateState(unsigned x, unsigned y)
@@ -73,3 +78,34 @@ public:
 	}
 }
 ```
+
+### Test registration and invocation
+```cpp
+#include <partest/bootstrap.h>
+#include "UnitTest.h"
+
+int main(int argc, char **argv)
+{
+	// Create an instance of the test class and pass it to the runner
+	// The test runner will bootstrap itself on first invocation
+	partest::addTestClass(partest::make_unique<UnitTest>());
+	partest::runAllTests();
+	
+	// Display aggregated logs from the test suite in the console
+	partest::displayAllTests();
+	
+	// Aggregate the count of all assertions that did not pass, at any level
+	unsigned assertions = partest::getAssertionFailureCount();
+	
+	// Aggregate the count of all test functions that did not pass.
+	// This ignores subtests; a failed subtest counts against its parent test's success
+	unsigned results = partest::getTopLevelFailures();
+	
+	std::cout << "Total assertion failures: " << assertions << std::endl;
+	std::cout << "Total top-level failures: " << results << std::endl;
+	
+	return results;
+}
+```
+
+More comprehensive examples of test use cases can be found in `/tests`, which contains the current suite of tests that ParTest runs on itself.
