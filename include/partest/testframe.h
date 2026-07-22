@@ -8,7 +8,7 @@
 #include <partest/common.h>
 #include <partest/types.h>
 #include <partest/log.h>
-#include <partest/eventemitter.h>
+#include <partest/eventemitterinterface.h>
 #include <partest/assert.h>
 
 namespace partest
@@ -54,15 +54,17 @@ namespace partest
 			return frameCount.fetch_add(1, std::memory_order_relaxed);
 		}
 
-		TestFrame() noexcept
-			: m_eventEmitter(nullptr), flags(), metadata(), state(), m_id(NO_TEST_ID)
-		{
-			metadata.name = "Null Test Frame";
+		TestFrame()
+			: m_eventEmitter(nullptr), flags(), metadata(), state(), m_id(NO_TEST_ID), m_testFrameView(*this)
+		{ 
+			metadata.name = "Undefined Test Frame";
 			metadata.description = "Empty frame representing test suite root";
 		}
 
 	protected:
-		EventEmitter *m_eventEmitter;
+		EventEmitterInterface *m_eventEmitter;
+		TestFrameView m_testFrameView;
+
 		std::vector<TestFrame *> m_subtests; // Vector of sub-tests
 		std::vector<LogEntry> m_logs; // Logs associated with this test frame
 		std::vector<AssertionResult> m_assertions; // Results of assertions triggered by this test frame
@@ -77,14 +79,14 @@ namespace partest
 		using TestFrameIter = std::vector<TestFrame *>::iterator;
 		using TestFrameConstIter = std::vector<TestFrame *>::const_iterator;
 
-		TestFrame(EventEmitter &eventEmitter) noexcept : m_eventEmitter(&eventEmitter), flags(), metadata(), state(), m_id(nextID()) { }
-		TestFrame(EventEmitter &eventEmitter, const TestFlags &flags, const TestInfo &metadata, const TestState &result,
+		TestFrame(EventEmitterInterface *eventEmitter) : m_eventEmitter(eventEmitter), flags(), metadata(), state(), m_id(nextID()), m_testFrameView(*this) { }
+		TestFrame(EventEmitterInterface *eventEmitter, const TestFlags &flags, const TestInfo &metadata, const TestState &result,
 				const std::function<void()> &testFunction = nullptr,
 				const std::function<void()> &testSetup = nullptr,
 				const std::function<void()> &testTeardown = nullptr)
-			: m_eventEmitter(&eventEmitter), flags(flags), metadata(metadata), state(result),
+			: m_eventEmitter(eventEmitter), flags(flags), metadata(metadata), state(result),
 				m_testFunction(testFunction), m_testSetup(testSetup), m_testTeardown(testTeardown),
-				m_id(nextID()) {}
+				m_id(nextID()), m_testFrameView(*this) { }
 	
 		// Nothing should be moving or copying TestFrame instances. They exist as part of a tree structure managed by TestBase.
 		TestFrame(const TestFrame &) = delete; // Disable copy constructor
@@ -95,7 +97,7 @@ namespace partest
 		~TestFrame()
 		{
 			for(TestFrame *subtest : m_subtests)
-				delete subtest;			
+				delete subtest;
 		}
 
 		static const TestFrame &getNullTestFrameInstance()
@@ -106,6 +108,8 @@ namespace partest
 
 		unsigned int id() const noexcept { return m_id; }
 		unsigned int parentId() const noexcept { return (m_parent != nullptr ? m_parent->m_id : NO_TEST_ID); }
+
+		const TestFrameView &testFrameView() const noexcept { return m_testFrameView; }
 
 		TestInfo metadata; // Test metadata, including name and description
 		TestFlags flags; // Effective flags for this test frame

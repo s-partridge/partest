@@ -19,10 +19,10 @@
 #include <partest/common.h>
 #include <partest/types.h>
 #include <partest/log.h>
-#include <partest/eventemitter.h>
 #include <partest/assert.h>
 #include <partest/testframe.h>
 #include <partest/exceptions.h>
+#include <partest/eventemitter.h>
 
 namespace partest
 {
@@ -130,7 +130,7 @@ namespace partest
 		*/
 		void addTest(const TestInfo metadata, const TestFlags &flags, const std::function<void()> &testFunc, const std::function<void()> &setupFunc = nullptr, const std::function<void()> &teardownFunc = nullptr)
 		{
-			m_testTree->addSubtest(partest::make_unique<TestFrame>(m_eventEmitter, flags, metadata, TestState::defaultState(), testFunc, setupFunc, teardownFunc));
+			m_testTree->addSubtest(partest::make_unique<TestFrame>(&m_eventEmitter, flags, metadata, TestState::defaultState(), testFunc, setupFunc, teardownFunc));
 		}
 
 		template<PARTEST_ENABLE_IF_INVOCABLE(Func)>
@@ -145,7 +145,7 @@ namespace partest
 		template<PARTEST_ENABLE_IF_INVOCABLE(Func)>
 		void subtest(const TestInfo &testInfo, const TestFlags& flags, Func &&testFunc)
 		{
-			TestFrame *subtest = m_currentFrame->addSubtest(partest::make_unique<TestFrame>(m_eventEmitter, flags, testInfo, TestState::defaultState(), testFunc));
+			TestFrame *subtest = m_currentFrame->addSubtest(partest::make_unique<TestFrame>(&m_eventEmitter, flags, testInfo, TestState::defaultState(), testFunc));
 			runTest(subtest);
 			subtest->setTestFunction(nullptr); // Clear the function to avoid dangling references. This is only necessary for subtests because they are intended to be run immediately and then discarded.
 
@@ -273,7 +273,7 @@ namespace partest
 		{
 			// Initialize the root test frame. This frame is not associated with any specific test but serves as the root of the test tree.
 			// Its primary purpose is to contain information such as the overall test suite name and description in the same collection as the individual tests.
-			m_testTree = partest::make_unique<TestFrame>(m_eventEmitter, flags, TestInfo(name, description), TestState::defaultState());
+			m_testTree = partest::make_unique<TestFrame>(&m_eventEmitter, flags, TestInfo(name, description), TestState::defaultState());
 			// Set the setup and teardown functions for the root test frame
 			m_testTree->setSetupFunction([this]() { this->setup(); });
 			m_testTree->setTestFunction([this]() { this->runBaseTests(); });
@@ -325,6 +325,7 @@ namespace partest
 			}
 
 			//Incomplete
+			return std::vector<LogEntry>();
 		}
 
 		void printLogs(LogLevel maxLevel = LogLevel::Info, unsigned maxDepth = 1)
