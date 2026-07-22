@@ -11,11 +11,11 @@
 
 class MockReporter : public partest::EventReporterInterface
 {
-	std::vector<partest::EventPair> m_logs;
+	std::vector<std::unique_ptr<partest::Event>> m_logs;
 
-	void writeLog(PARTEST_STRING_PARAM eventType, std::unique_ptr<partest::EventInterface> event)
+	void writeLog(std::unique_ptr<partest::Event> event)
 	{
-		m_logs.emplace_back(std::make_pair(eventType, std::move(event)));
+		m_logs.emplace_back(std::move(event));
 	}
 
 public:
@@ -25,37 +25,37 @@ public:
     MockReporter(MockReporter&&) = default;
     MockReporter& operator=(MockReporter&&) = default;
 
-	void onTestBegin(const partest::EventBeginTest &event) override
+	void onTestBegin(const partest::Event &event, const partest::BeginTestPayload &payload) override
 	{
-		writeLog(EVENT_BEGIN_TEST, event.clone());
+		writeLog(event.clone());
 	}
 
-	void onTestEnd(const partest::EventEndTest &event) override
+	void onTestEnd(const partest::Event &event, const partest::EndTestPayload &payload) override
 	{
-		writeLog(EVENT_END_TEST, event.clone());
+		writeLog(event.clone());
 	}
 
-	void onAssertion(const partest::EventAssertion &event) override
+	void onAssertion(const partest::Event &event, const partest::AssertionPayload &payload) override
 	{
-		writeLog(EVENT_ASSERTION, event.clone());
+		writeLog(event.clone());
 	}
 
-	void onLog(const partest::EventLog &event) override
+	void onLog(const partest::Event &event, const partest::LogPayload &payload) override
 	{
-		writeLog(EVENT_LOG, event.clone());
+		writeLog(event.clone());
 	}
 
-	void onPassthrough(const partest::EventPassthrough &event) override
+	void onPassthrough(const partest::Event &event, const partest::PassthroughPayload &payload) override
 	{
-		writeLog(EVENT_PASSTHROUGH, event.clone());
+		writeLog(event.clone());
 	}
 
-	void onDie(const partest::EventDie &event) override
+	void onDie(const partest::Event &event, const partest::DiePayload &payload) override
 	{
-		writeLog(EVENT_DIE, event.clone());
+		writeLog(event.clone());
 	}
 
-	const std::vector<partest::EventPair> &logs() const { return m_logs; }
+	const std::vector<std::unique_ptr<partest::Event>> &logs() const { return m_logs; }
 	void clearLogs() { m_logs.clear(); }
 };
 
@@ -63,11 +63,11 @@ class DispatcherTests : public partest::TestBase
 {
 	std::unique_ptr<partest::EventDispatcherInterface> m_dispatcher;
 	std::vector<MockReporter> m_reporters;
-	std::vector<partest::EventPair> m_logs;
+	std::vector<std::unique_ptr<partest::Event>> m_logs;
 
-	void mirrorLog(PARTEST_STRING_PARAM eventType, std::unique_ptr<partest::EventInterface> event)
+	void mirrorLog(std::unique_ptr<partest::Event> event)
 	{
-		m_logs.emplace_back(std::make_pair(eventType, std::move(event)));
+		m_logs.emplace_back(std::move(event));
 	}
 
 	// Setup to initialize the dispatcher
@@ -77,17 +77,17 @@ class DispatcherTests : public partest::TestBase
 		initializeReporting(reporterCount);
 
 		// Initialize a series of events to pass to the logger.
-
+		partest::TestFrameView nullTestFrame = partest::TestFrameView::getNullTestFrameView();
 		// Begin test
-		mirrorLog(EVENT_BEGIN_TEST, partest::makeEventBeginTest(1, 0, "Validation"));
+		mirrorLog(partest::makeEventBeginTest(nullTestFrame));
 		// Assert fail
-		mirrorLog(EVENT_ASSERTION, partest::makeEventAssertion(1, 0, partest::AssertionResult()));
+		mirrorLog(partest::makeEventAssertion(nullTestFrame, partest::AssertionResult()));
 		// End test
-		mirrorLog(EVENT_END_TEST, partest::makeEventBeginTest(1, 0, "Validation"));
+		mirrorLog(partest::makeEventEndTest(nullTestFrame));
 		// Passthrough log
-		mirrorLog(EVENT_PASSTHROUGH, partest::makeEventPassthrough(1, 0, "Log from user code"));
+		mirrorLog(partest::makeEventPassthrough(nullTestFrame, std::this_thread::get_id(), "Log from user code"));
 		// Normal log
-		mirrorLog(EVENT_LOG, partest::makeEventLog(1, 0, partest::LogEntry(partest::LogLevel::Info, PARTEST_LOG_TYPE_DEFAULT, "Framework log from test code", 1)));
+		mirrorLog(partest::makeEventLog(nullTestFrame, partest::LogEntry(partest::LogLevel::Info, PARTEST_LOG_TYPE_DEFAULT, "Framework log from test code")));
 	}
 
 	void tearDownSerial()
@@ -101,18 +101,21 @@ class DispatcherTests : public partest::TestBase
 		initializeReporting(threadCount);
 
 		// Initialize a series of events to pass to the logger.
+		partest::TestFrameView nullTestFrame = partest::TestFrameView::getNullTestFrameView();
+
+		// Initialize a series of events to pass to the logger.
 		for(unsigned x = 0; x < threadCount; ++x)
 		{
 			// Begin test
-			mirrorLog(EVENT_BEGIN_TEST, partest::makeEventBeginTest(x, 0, "Validation"));
+			mirrorLog(partest::makeEventBeginTest(nullTestFrame));
 			// Assert fail
-			mirrorLog(EVENT_ASSERTION, partest::makeEventAssertion(x, 0, partest::AssertionResult()));
+			mirrorLog(partest::makeEventAssertion(nullTestFrame, partest::AssertionResult()));
 			// End test
-			mirrorLog(EVENT_END_TEST, partest::makeEventBeginTest(x, 0, "Validation"));
+			mirrorLog(partest::makeEventEndTest(nullTestFrame));
 			// Passthrough log
-			mirrorLog(EVENT_PASSTHROUGH, partest::makeEventPassthrough(x, 0, "Log from user code"));
+			mirrorLog(partest::makeEventPassthrough(nullTestFrame, std::this_thread::get_id(), "Log from user code"));
 			// Normal log
-			mirrorLog(EVENT_LOG, partest::makeEventLog(x, 0, partest::LogEntry(partest::LogLevel::Info, PARTEST_LOG_TYPE_DEFAULT, "Framework log from test code", x)));
+			mirrorLog(partest::makeEventLog(nullTestFrame, partest::LogEntry(partest::LogLevel::Info, PARTEST_LOG_TYPE_DEFAULT, "Framework log from test code")));
 		}
 	}
 
@@ -180,29 +183,32 @@ public:
 	void SerialDispatcherPassesAllEvents()
 	{
 		partest::EventDispatcherInterface *dispatcher = m_dispatcher.get();
+		// Initialize a series of events to pass to the logger.
+		partest::TestFrameView nullTestFrame = partest::TestFrameView::getNullTestFrameView();
+		
 		for(MockReporter &reporter: m_reporters)
 			dispatcher->registerReporter(&reporter);
 
 		// Iterate over logs
 		for(unsigned x = 0; x < m_logs.size(); ++x)
 		{
-			dispatcher->pushEvent(m_logs[x].first,m_logs[x].second->clone());
+			dispatcher->pushEvent(m_logs[x]->clone());
 		}
 
 		dispatcher->killDispatcher();
 
-		bool success = dispatcher->pushEvent(EVENT_ASSERTION, partest::makeEventAssertion(2, 0, partest::AssertionResult()));
+		bool success = dispatcher->pushEvent(makeEventAssertion(nullTestFrame, partest::AssertionResult()));
 		// A dead dispatcher should refuse any new events.
 		ASSERT_FALSE(success);
 
 		unsigned invalidEvents = 0;
 		for(unsigned x = 0; x < m_logs.size(); ++x)
 		{
-			const partest::EventInterface &lhs = *(m_logs[x].second.get());
+			const partest::Event &lhs = *m_logs[x];
 
 			for(MockReporter &reporter: m_reporters)
 			{
-				const partest::EventInterface &rhs = *(reporter.logs()[x].second.get());
+				const partest::Event &rhs = *reporter.logs()[x];
 
 				if(lhs != rhs)
 					++invalidEvents;
@@ -215,13 +221,15 @@ public:
 		{
 			// Size should be the same as the reference log + the DIE event
 			ASSERT_EQUAL(m_logs.size() + 1, reporter.logs().size());
-			ASSERT_EQUAL(EVENT_DIE, reporter.logs().back().first);
+			ASSERT_EQUAL(partest::EventType::Die, reporter.logs().back()->getEventType());
 		}
 	}
 
 	void concurrentDispatcherPassesAllEvents(unsigned threadCount)
 	{
 		partest::EventDispatcherInterface *dispatcher = m_dispatcher.get();
+		// Initialize a series of events to pass to the logger.
+		partest::TestFrameView nullTestFrame = partest::TestFrameView::getNullTestFrameView();
 		for(MockReporter &reporter: m_reporters)
 			dispatcher->registerReporter(&reporter);
 
@@ -241,7 +249,7 @@ public:
 
 				for(unsigned x = lower; x < upper; ++x)
 				{
-					dispatcher->pushEvent(m_logs[x].first, m_logs[x].second->clone());
+					dispatcher->pushEvent(m_logs[x]->clone());
 				}
 			});
 
@@ -254,13 +262,13 @@ public:
 		}
 		dispatcher->killDispatcher();
 		// Ensure no events propagate after death
-		bool success = dispatcher->pushEvent(EVENT_ASSERTION, partest::makeEventAssertion(2, 0, partest::AssertionResult()));
+		bool success = dispatcher->pushEvent(partest::makeEventAssertion(nullTestFrame, partest::AssertionResult()));
 
 		ASSERT_FALSE(success);
 
 		dispatcherThread.join();
 
-		success = dispatcher->pushEvent(EVENT_ASSERTION, partest::makeEventAssertion(2, 0, partest::AssertionResult()));
+		success = dispatcher->pushEvent(partest::makeEventAssertion(nullTestFrame, partest::AssertionResult()));
 		// Ensure no events propagate after join.
 		// This should be impossible because no thread is running the dispatchEvents() call.
 		ASSERT_FALSE(success);
@@ -268,13 +276,13 @@ public:
 		unsigned uncopiedEvents = 0;
 		// Check that all the events from m_logs were propagated to one reporter
 		const MockReporter &firstReporter = m_reporters.front();
-		for(const partest::EventPair &evt: m_logs)
+		for(const std::unique_ptr<partest::Event> &lhs: m_logs)
 		{
-			std::vector<partest::EventPair>::const_iterator iter = std::find_if(
+			std::vector<std::unique_ptr<partest::Event>>::const_iterator iter = std::find_if(
 				firstReporter.logs().cbegin(),
 				firstReporter.logs().cend(),
-				[&](const partest::EventPair &pair) {
-					return *pair.second == *evt.second;
+				[&](const std::unique_ptr<partest::Event> &rhs) {
+					return *lhs == *rhs;
 				});
 			if(iter == firstReporter.logs().cend())
 				++uncopiedEvents;
@@ -282,7 +290,7 @@ public:
 
 		ASSERT_EQUAL(0, uncopiedEvents);
 		// Last event should always be the kill event
-		ASSERT_EQUAL(EVENT_DIE, firstReporter.logs().back().first);
+		ASSERT_EQUAL(partest::EventType::Die, firstReporter.logs().back()->getEventType());
 
 		unsigned invalidEventCounts = 0;
 		// Ensure all reporters have the correct number of events (eventCount + DIE)
@@ -297,11 +305,11 @@ public:
  		// Check that all reporters contain identical event logs and event order
 		for(unsigned logIdx = 0; logIdx < firstReporter.logs().size(); ++logIdx)
 		{
-			const partest::EventInterface &lhs = *(firstReporter.logs()[logIdx].second.get());
+			const partest::Event &lhs = *firstReporter.logs()[logIdx];
 
 			for(unsigned reporterIdx = 1; reporterIdx < m_reporters.size(); ++reporterIdx)
 			{
-				const partest::EventInterface &rhs = *(m_reporters[reporterIdx].logs()[logIdx].second.get());
+				const partest::Event &rhs = *m_reporters[reporterIdx].logs()[logIdx];
 
 				if(lhs != rhs)
 					++invalidEvents;
@@ -313,7 +321,9 @@ public:
 	void eventsWithoutReportersSerial()
 	{
 		partest::EventDispatcherInterface *dispatcher = m_dispatcher.get();
-		unsigned success = dispatcher->pushEvent(EVENT_ASSERTION, partest::makeEventAssertion(2, 0, partest::AssertionResult()));
+		// Initialize a series of events to pass to the logger.
+		partest::TestFrameView nullTestFrame = partest::TestFrameView::getNullTestFrameView();
+		unsigned success = dispatcher->pushEvent(partest::makeEventAssertion(nullTestFrame, partest::AssertionResult()));
 
 		// Event without reporters registered, the event should be processed.
 		ASSERT_TRUE(success);
@@ -324,19 +334,22 @@ public:
 		dispatcher->killDispatcher();
 
 		ASSERT_EQUAL(1, reporter.logs().size());
-		ASSERT_EQUAL(EVENT_DIE, reporter.logs().back().first);
+		ASSERT_EQUAL(partest::EventType::Die, reporter.logs().back()->getEventType());
 	}
 
 	void eventsWithoutReportersConcurrent()
 	{
 		partest::EventDispatcherInterface *dispatcher = m_dispatcher.get();
+		// Initialize a series of events to pass to the logger.
+		partest::TestFrameView nullTestFrame = partest::TestFrameView::getNullTestFrameView();
+		
 		partest::counting_semaphore<1> sem(0);
 		std::thread dispatcherThread = std::thread([dispatcher, &sem]() {
 			dispatcher->dispatchEvents();
 		});
 
 
-		unsigned success = dispatcher->pushEvent(EVENT_ASSERTION, partest::makeEventAssertion(1, 0, partest::AssertionResult()));
+		unsigned success = dispatcher->pushEvent(partest::makeEventAssertion(nullTestFrame, partest::AssertionResult()));
 
 		// Even without reporters registered, the event should be processed.
 		ASSERT_TRUE(success);
@@ -348,13 +361,13 @@ public:
 		dispatcher->registerReporter(&reporter);
 
 		// Add another event following registration.
-		dispatcher->pushEvent(EVENT_LOG, partest::makeEventLog(2, 0, partest::LogEntry(partest::LogLevel::Info, PARTEST_LOG_TYPE_DEFAULT, "Framework log from test code", 2)));
+		dispatcher->pushEvent(partest::makeEventLog(nullTestFrame, partest::LogEntry(partest::LogLevel::Info, PARTEST_LOG_TYPE_DEFAULT, "Framework log from test code")));
 		dispatcher->killDispatcher();
 		dispatcherThread.join();
 
 		ASSERT_EQUAL(2, reporter.logs().size());
-		ASSERT_EQUAL(EVENT_LOG, reporter.logs().front().first);
-		ASSERT_EQUAL(EVENT_DIE, reporter.logs().back().first);
+		ASSERT_EQUAL(partest::EventType::Log, reporter.logs().front()->getEventType());
+		ASSERT_EQUAL(partest::EventType::Die, reporter.logs().back()->getEventType());
 	}
 
 	void eventsPushedBeforeBeginDispatch()
@@ -366,7 +379,7 @@ public:
 		// Iterate over logs, before the dispatcher has been spun up.
 		for(unsigned x = 0; x < m_logs.size(); ++x)
 		{
-			dispatcher->pushEvent(m_logs[x].first,m_logs[x].second->clone());
+			dispatcher->pushEvent(m_logs[x]->clone());
 		}
 
 		std::thread dispatcherThread = std::thread([dispatcher]() { dispatcher->dispatchEvents(); });
@@ -378,8 +391,8 @@ public:
 		unsigned invalidEvents = 0;
 		for(unsigned x = 0; x < m_logs.size(); ++x)
 		{
-			const partest::EventInterface &lhs = *(m_logs[x].second.get());
-			const partest::EventInterface &rhs = *(reporter.logs()[x].second.get());
+			const partest::Event &lhs = *m_logs[x];
+			const partest::Event &rhs = *reporter.logs()[x];
 
 			if(lhs != rhs)
 				++invalidEvents;
@@ -388,7 +401,7 @@ public:
 		ASSERT_EQUAL(0, invalidEvents);
 
 		ASSERT_EQUAL(m_logs.size() + 1, reporter.logs().size());
-		ASSERT_EQUAL(EVENT_DIE, reporter.logs().back().first);
+		ASSERT_EQUAL(partest::EventType::Die, reporter.logs().back()->getEventType());
 	}
 };
 
