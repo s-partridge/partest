@@ -18,16 +18,16 @@ namespace partest
 	class EventDispatcherInterface
 	{
 	protected:
-		// Owning queue of events. Each event is a pair of event type string and a pointer to an EventInterface object.
-		std::queue<Event> m_eventQueue;
+		// Owning queue of events.
+		std::queue<std::unique_ptr<Event>> m_eventQueue;
 		// Non-owning vector of reporter interfaces. These are the subscribers that will receive events from the dispatcher.
 		std::vector<EventReporterInterface *> m_reporters;
 
 		std::atomic<bool> m_dispatching; // True until killDispatcher is called
 
-		Event popEventUnsafe() noexcept
+		std::unique_ptr<Event> popEventUnsafe() noexcept
 		{
-			Event event = std::move(m_eventQueue.front());
+			std::unique_ptr<Event> event(std::move(m_eventQueue.front()));
 			m_eventQueue.pop();
 			return event;
 		}
@@ -85,14 +85,14 @@ namespace partest
 		{
 			while(!m_eventQueue.empty())
 			{
-				Event event = popEventUnsafe();
+				std::unique_ptr<Event> event = popEventUnsafe();
 				// Get temporary copy of reporters, since a reporter could theoretically be added in response to an event and invalidate our iterator.
 				std::vector<EventReporterInterface *> localReporters = m_reporters;
 
 				// Dispatch the event to all registered reporters
 				for(EventReporterInterface *reporter : localReporters)
 				{
-					reporter->reportEvent(event);
+					reporter->reportEvent(*event);
 				}
 			}
 		}
@@ -151,7 +151,7 @@ namespace partest
 
 				m_queueMutex.lock();
 				assert(!m_eventQueue.empty() && "Invariant violated: Event queue is empty when it should not be.");
-				Event event = popEventUnsafe();
+				std::unique_ptr<Event> event = popEventUnsafe();
 				m_queueMutex.unlock();
 
 				m_reportersMutex.lock();
@@ -161,11 +161,11 @@ namespace partest
 				// Dispatch the event to all registered reporters
 				for(EventReporterInterface *reporter : localReporters)
 				{
-					reporter->reportEvent(event);				
+					reporter->reportEvent(*event);				
 				}
 
 				// If the event is an EventDie, break the loop and stop dispatching
-				if(event.getEventType() == EventType::Die)
+				if(event->getEventType() == EventType::Die)
 				{
 					break;
 				}
