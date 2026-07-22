@@ -110,7 +110,7 @@ namespace partest
 				}
 			}
 
-			m_dispatcher->pushEvent(EVENT_LOG, makeEventLog(0, 0, LogEntry(LogLevel::Error, PARTEST_LOG_TYPE_DEFAULT, "Error: No test found with name '" + PARTEST_STRING_PARAM_TO_STRING(name) + "'.\n")));
+			m_dispatcher->pushEvent(makeEventLog(TestFrameView::getNullTestFrameView(), LogEntry(LogLevel::Error, PARTEST_LOG_TYPE_DEFAULT, "Error: No test found with name '" + PARTEST_STRING_PARAM_TO_STRING(name) + "'.\n")));
 
 			m_dispatcher->killDispatcher();
 

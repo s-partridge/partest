@@ -3,32 +3,70 @@
 
 #include <chrono>
 #include <thread>
-#include <partest/types.h>
-#include <partest/assertresult.h>
 #include <partest/log.h>
-
-PARTEST_CONSTEXPR_11 const char *EVENT_BEGIN_TEST = "EB";
-PARTEST_CONSTEXPR_11 const char *EVENT_END_TEST = "EE";
-PARTEST_CONSTEXPR_11 const char *EVENT_ASSERTION = "EA";
-PARTEST_CONSTEXPR_11 const char *EVENT_LOG = "EL";
-PARTEST_CONSTEXPR_11 const char *EVENT_PASSTHROUGH = "EP";
-PARTEST_CONSTEXPR_11 const char *EVENT_DIE = "ED";
+#include <partest/types.h>
+#include <partest/testframe.h>
+#include <partest/assertresult.h>
 
 namespace partest
 {
+	enum class EventType : uint8_t
+	{
+		BeginTest = 0,
+		EndTest,
+		Assertion,
+		Log,
+		Passthrough,
+		Die
+	};
+
+	struct EventPayload
+	{
+		EventPayload() = default;
+		virtual ~EventPayload() = default;
+
+		TestFrameView testFrame;
+	};
+
+	// For assertions
+	struct AssertionPayload : public EventPayload
+	{
+		AssertionResultView assertionResult;
+	};
+
+	struct LogPayload : public EventPayload
+	{
+		// Passed by value in case a transient log goes out of scope
+		LogEntry logEntry;
+	};
+
+	struct PassthroughPayload : public EventPayload
+	{
+		// Passed by value in case a transient message goes out of scope
+		std::string message;
+		std::thread::id threadId;
+	};
+
+	// Aliases for events that currently have no extra members
+	// Future-proofed, in case requirements change
+	using BeginTestPayload = EventPayload;
+	using EndTestPayload = EventPayload;
+	using DiePayload = EventPayload;
+
 	/**
-	* @class EventInterface
-	* @brief Base class for all test events
-	* @member m_testId The unique ID of the test associated with this event.
-	* @member m_parentTestId The unique ID of the parent test, if any.
-	* @member m_timestamp The time when the event was created.
+	* @class Event
+	* @brief Container class for all test events
+	* @member eventId The unique ID of this event
+	* @member m_timestamp The time the event was created
+	* @member m_eventType Type of event the object contains
+	* @member m_payload The unique members for the given event type
 	*/
-	struct EventInterface
+	struct Event
 	{
 		unsigned m_eventId;
-		unsigned m_testId;
-		unsigned m_parentTestId;
 		std::chrono::steady_clock::time_point m_timestamp;
+		EventType m_eventType;
+		std::unique_ptr<EventPayload> m_payload;
 
 		static unsigned int nextID() noexcept {
 		
@@ -37,177 +75,73 @@ namespace partest
 		}
 
 	public:
-		EventInterface(unsigned testId, unsigned parentTestId)
-			: m_eventId(nextID()), m_testId(testId), m_parentTestId(parentTestId), m_timestamp(std::chrono::steady_clock::now()) {}
+		Event(EventType eventType, std::unique_ptr<EventPayload> payload)
+			: m_eventId(nextID()), m_timestamp(std::chrono::steady_clock::now()), m_eventType(eventType), m_payload(std::move(payload)) {}
 
-		virtual ~EventInterface() = default;
-		virtual std::unique_ptr<EventInterface> clone() const = 0;
+		std::unique_ptr<Event> clone() const 
+		{
+			return partest::make_unique<Event>(*this);
+		}
+
 
 		inline unsigned getEventId() const noexcept { return m_eventId; }
-		inline unsigned getTestId() const noexcept { return m_testId; }
-		inline unsigned getParentTestId() const noexcept { return m_parentTestId; }
+		EventType getEventType() const noexcept { return m_eventType; }
+		const EventPayload &getPayload() const noexcept { return *m_payload; }
 		inline std::chrono::steady_clock::time_point getTimestamp() const noexcept { return m_timestamp; }
 
-		bool operator==(const EventInterface &rhs) const noexcept
+		bool operator==(const Event &rhs) const noexcept
 		{
 			return m_eventId == rhs.m_eventId;
 		}
 
-		bool operator!=(const EventInterface &rhs) const noexcept { return !(*this == rhs); }
+		bool operator!=(const Event &rhs) const noexcept { return !(*this == rhs); }
 	};
 
-	// Type alias for an event pair, which consists of an event type string and a unique pointer to an EventInterface object. This allows for easy management of events in the dispatcher.
-	using EventPair = std::pair<std::string, std::unique_ptr<EventInterface>>;
-
-	/**
-	* @class EventBeginTest
-	* @brief Event type for when a test begins
-	* @member m_testName The name of the test that is starting
-	*/
-	struct EventBeginTest : public EventInterface
+	std::unique_ptr<Event> makeEventBeginTest(TestFrameView testFrame)
 	{
-		std::string m_testName;
+		std::unique_ptr<BeginTestPayload> payload = partest::make_unique<BeginTestPayload>();
+		payload->testFrame = testFrame;
 
-	public:
-		EventBeginTest(unsigned testId, unsigned parentTestId, PARTEST_STRING_PARAM testName)
-			: EventInterface(testId, parentTestId), m_testName(testName) {}
-
-		std::unique_ptr<EventInterface> clone() const override {
-			return partest::make_unique<EventBeginTest>(*this);
-		}
-
-		inline const std::string &getTestName() const noexcept { return m_testName; }
-	};
-
-	/**
-	* @class EventEndTest
-	* @brief Event type for when a test ends
-	* @member m_testName The name of the test that is ending
-	* @member m_result The result of the test
-	*/
-	struct EventEndTest : public EventInterface
-	{
-		std::string m_testName;
-		TestResult m_result;
-
-	public:
-		EventEndTest(unsigned testId, unsigned parentTestId, PARTEST_STRING_PARAM testName, TestResult result)
-			: EventInterface(testId, parentTestId), m_testName(testName), m_result(result) {}
-
-		std::unique_ptr<EventInterface> clone() const override {
-			return partest::make_unique<EventEndTest>(*this);
-		}
-
-		inline const std::string &getTestName() const noexcept { return m_testName; }
-		inline TestResult getResult() const noexcept { return m_result; }
-	};
-
-	/**
-	* @class EventAssertion
-	* @brief Event type for when an assertion is made
-	* @member m_assertionResult The result of the assertion
-	*/
-	struct EventAssertion : public EventInterface
-	{
-		AssertionResult m_assertionResult;
-
-	public:
-		EventAssertion(unsigned testId, unsigned parentTestId, const AssertionResult &assertionResult)
-			: EventInterface(testId, parentTestId), m_assertionResult(assertionResult) {}
-
-		std::unique_ptr<EventInterface> clone() const override {
-			return partest::make_unique<EventAssertion>(*this);
-		}
-
-		inline const AssertionResult &getAssertionResult() const noexcept { return m_assertionResult; }
-	};
-
-	/**
-	* @class EventLog
-	* @brief Event type for logging messages
-	* @member m_logEntry The log entry to be recorded
-	*/
-	struct EventLog : public EventInterface
-	{
-		LogEntry m_logEntry;
-
-	public:
-		EventLog(unsigned testId, unsigned parentTestId, const LogEntry &logEntry)
-			: EventInterface(testId, parentTestId), m_logEntry(logEntry) {}
-
-		std::unique_ptr<EventInterface> clone() const override {
-			return partest::make_unique<EventLog>(*this);
-		}
-
-		inline const LogEntry &getLogEntry() const noexcept { return m_logEntry; }
-	};
-
-	/**
-	* @class EventPassthrough
-	* @brief Event type for console output routed from user code through the test framework
-	* @member m_message The message to be output
-	* @member m_threadId The ID of the thread that generated the output
-	*/
-	struct EventPassthrough : public EventInterface
-	{
-		std::string m_message;
-		std::thread::id m_threadId;
-
-	public:
-		EventPassthrough(unsigned testId, unsigned parentTestId, PARTEST_STRING_PARAM message)
-			: EventInterface(testId, parentTestId), m_message(message), m_threadId(std::this_thread::get_id()) {}
-
-		std::unique_ptr<EventInterface> clone() const override {
-			return partest::make_unique<EventPassthrough>(*this);
-		}
-
-		inline const std::string &getMessage() const noexcept { return m_message; }
-		inline std::thread::id getThreadId() const noexcept { return m_threadId; }
-	};
-
-	/**
-	* @class EventDie
-	* @brief Special event to kill the dispatcher thread and stop the reporting system.
-	*        This is used internally by the framework to signal that no more events will be generated.
-	*/
-	struct EventDie : public EventInterface
-	{
-		EventDie()
-			: EventInterface(0, 0) {}
-
-		std::unique_ptr<EventInterface> clone() const override {
-			return partest::make_unique<EventDie>(*this);
-		}
-	};
-
-	std::unique_ptr<EventInterface> makeEventBeginTest(unsigned testId, unsigned parentTestId, PARTEST_STRING_PARAM testName)
-	{
-		return partest::make_unique<EventBeginTest>(testId, parentTestId, testName);
+		return partest::make_unique<Event>(EventType::BeginTest, payload);
 	}
 
-	std::unique_ptr<EventInterface> makeEventEndTest(unsigned testId, unsigned parentTestId, PARTEST_STRING_PARAM testName, TestResult result)
+	std::unique_ptr<Event> makeEventEndTest(TestFrameView testFrame)
 	{
-		return partest::make_unique<EventEndTest>(testId, parentTestId, testName, result);
+		std::unique_ptr<EndTestPayload> payload = partest::make_unique<EndTestPayload>();
+		payload->testFrame = testFrame;
+		return partest::make_unique<Event>(EventType::EndTest, payload);
 	}
 
-	std::unique_ptr<EventInterface> makeEventAssertion(unsigned testId, unsigned parentTestId, const AssertionResult &result)
+	std::unique_ptr<Event> makeEventAssertion(TestFrameView testFrame, AssertionResultView assertionResult)
 	{
-		return partest::make_unique<EventAssertion>(testId, parentTestId, result);
+		std::unique_ptr<AssertionPayload> payload = partest::make_unique<AssertionPayload>();
+		payload->testFrame = testFrame;
+		payload->assertionResult = assertionResult;
+		return partest::make_unique<Event>(EventType::Assertion, payload);
 	}
 
-	std::unique_ptr<EventInterface> makeEventLog(unsigned testId, unsigned parentTestId, const LogEntry &log)
+	std::unique_ptr<Event> makeEventLog(TestFrameView testFrame, const LogEntry &logEntry)
 	{
-		return partest::make_unique<EventLog>(testId, parentTestId, log);
+		std::unique_ptr<LogPayload> payload = partest::make_unique<LogPayload>();
+		payload->testFrame = testFrame;
+		payload->logEntry = logEntry;
+		return partest::make_unique<Event>(EventType::Log, payload);
 	}
 
-	std::unique_ptr<EventInterface> makeEventPassthrough(unsigned testId, unsigned parentTestId, PARTEST_STRING_PARAM message)
+	std::unique_ptr<Event> makeEventPassthrough(TestFrameView testFrame, std::thread::id threadId, PARTEST_STRING_PARAM message)
 	{
-		return partest::make_unique<EventPassthrough>(testId, parentTestId, message);
+		std::unique_ptr<PassthroughPayload> payload = partest::make_unique<PassthroughPayload>();
+		payload->testFrame = testFrame;
+		payload->message = message;
+		payload->threadId = threadId;
+		return partest::make_unique<Event>(EventType::Passthrough, payload);
 	}
 
-	std::unique_ptr<EventInterface> makeEventDie()
+	std::unique_ptr<Event> makeEventDie()
 	{
-		return partest::make_unique<EventDie>();
+		std::unique_ptr<DiePayload> payload = partest::make_unique<DiePayload>();
+		payload->testFrame = TestFrameView::getNullTestFrameView();
+		return partest::make_unique<Event>(EventType::Die, payload);
 	}
 }
 #endif

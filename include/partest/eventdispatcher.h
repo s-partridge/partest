@@ -19,17 +19,17 @@ namespace partest
 	{
 	protected:
 		// Owning queue of events. Each event is a pair of event type string and a pointer to an EventInterface object.
-		std::queue<EventPair> m_eventQueue;
+		std::queue<Event> m_eventQueue;
 		// Non-owning vector of reporter interfaces. These are the subscribers that will receive events from the dispatcher.
 		std::vector<EventReporterInterface *> m_reporters;
 
 		std::atomic<bool> m_dispatching; // True until killDispatcher is called
 
-		EventPair popEventUnsafe() noexcept
+		Event popEventUnsafe() noexcept
 		{
-			EventPair eventPair = std::move(m_eventQueue.front());
+			Event event = std::move(m_eventQueue.front());
 			m_eventQueue.pop();
-			return eventPair;
+			return event;
 		}
 
 	public:
@@ -48,7 +48,7 @@ namespace partest
 
 		virtual void registerReporter(EventReporterInterface *reporter) = 0;
 
-		virtual bool pushEvent(const std::string &eventType, std::unique_ptr<EventInterface> event) = 0;
+		virtual bool pushEvent(std::unique_ptr<Event> event) = 0;
 
 		virtual void dispatchEvents() = 0;
 	};
@@ -61,7 +61,7 @@ namespace partest
 
 		void killDispatcher() override
 		{
-			pushEvent(EVENT_DIE, partest::make_unique<EventDie>());
+			pushEvent(makeEventDie());
 			m_dispatching = false;
 		}
 
@@ -70,12 +70,12 @@ namespace partest
 			m_reporters.push_back(reporter);
 		}
 
-		bool pushEvent(const std::string &eventType, std::unique_ptr<EventInterface> event) override
+		bool pushEvent(std::unique_ptr<Event> event) override
 		{
 			if(!isDispatching())
 				return false;
 
-			m_eventQueue.emplace(eventType, std::move(event));
+			m_eventQueue.emplace(std::move(event));
 			dispatchEvents();
 
 			return true;
@@ -85,14 +85,14 @@ namespace partest
 		{
 			while(!m_eventQueue.empty())
 			{
-				EventPair eventPair = popEventUnsafe();
+				Event event = popEventUnsafe();
 				// Get temporary copy of reporters, since a reporter could theoretically be added in response to an event and invalidate our iterator.
 				std::vector<EventReporterInterface *> localReporters = m_reporters;
 
 				// Dispatch the event to all registered reporters
 				for(EventReporterInterface *reporter : localReporters)
 				{
-					reporter->reportEvent(eventPair);				
+					reporter->reportEvent(event);
 				}
 			}
 		}
@@ -117,7 +117,7 @@ namespace partest
 		{
 			std::lock_guard<std::mutex> lock(m_queueMutex);
 			m_dispatching = false; // Stop accepting new events
-			m_eventQueue.emplace(EVENT_DIE, partest::make_unique<EventDie>()); // Push an EventDie to signal the dispatcher to stop
+			m_eventQueue.emplace(makeEventDie()); // Push an EventDie to signal the dispatcher to stop
 			m_eventSemaphore.release(); // Release the semaphore to unblock
 		}
 
@@ -127,13 +127,13 @@ namespace partest
 			m_reporters.push_back(reporter);
 		}
 
-		bool pushEvent(const std::string &eventType, std::unique_ptr<EventInterface> event) override
+		bool pushEvent(std::unique_ptr<Event> event) override
 		{
 			std::lock_guard<std::mutex> lock(m_queueMutex);
 			if(!m_dispatching)
 				return false; // If the dispatcher is not dispatching, do not accept new events
 
-			m_eventQueue.emplace(eventType, std::move(event)); // Transfer ownership of the EventInterface pointer to the queue
+			m_eventQueue.emplace(std::move(event)); // Transfer ownership of the EventInterface pointer to the queue
 			m_eventSemaphore.release();
 
 			return true;
@@ -151,7 +151,7 @@ namespace partest
 
 				m_queueMutex.lock();
 				assert(!m_eventQueue.empty() && "Invariant violated: Event queue is empty when it should not be.");
-				EventPair eventPair = popEventUnsafe();
+				Event event = popEventUnsafe();
 				m_queueMutex.unlock();
 
 				m_reportersMutex.lock();
@@ -161,11 +161,11 @@ namespace partest
 				// Dispatch the event to all registered reporters
 				for(EventReporterInterface *reporter : localReporters)
 				{
-					reporter->reportEvent(eventPair);				
+					reporter->reportEvent(event);				
 				}
 
 				// If the event is an EventDie, break the loop and stop dispatching
-				if(eventPair.first == EVENT_DIE)
+				if(event.getEventType() == EventType::Die)
 				{
 					break;
 				}

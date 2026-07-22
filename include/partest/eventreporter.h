@@ -9,16 +9,6 @@
 
 namespace partest
 {
-	struct TestFrameSnapshot
-	{
-		unsigned parentId = 0;
-		unsigned depth = 0;
-
-		std::string name = "";
-
-		std::vector<EventPair> events;
-	};
-
 	class EventReporterInterface
 	{
 		public:
@@ -26,48 +16,48 @@ namespace partest
 		virtual ~EventReporterInterface() = default;
 
 		// Dispatch an event to the appropriate handler based on its type. This function is called by the EventDispatcher when an event is popped from the queue.
-		void reportEvent(const EventPair &eventPair)
+		void reportEvent(const Event &event)
 		{
-			const std::string &eventType = eventPair.first;
-			const std::unique_ptr<EventInterface> &event = eventPair.second;
-			if(eventType == EVENT_BEGIN_TEST)
+			switch(event.getEventType())
 			{
-				onTestBegin(static_cast<const EventBeginTest &>(*event));
-			}
-			else if(eventType == EVENT_END_TEST)
-			{
-				onTestEnd(static_cast<const EventEndTest &>(*event));
-			}
-			else if(eventType == EVENT_ASSERTION)
-			{
-				onAssertion(static_cast<const EventAssertion &>(*event));
-			}
-			else if(eventType == EVENT_LOG)
-			{
-				onLog(static_cast<const EventLog &>(*event));
-			}
-			else if(eventType == EVENT_PASSTHROUGH)
-			{
-				onPassthrough(static_cast<const EventPassthrough &>(*event));
-			}
-			else if(eventType == EVENT_DIE)
-			{
-				onDie(static_cast<const EventDie &>(*event));
+			case EventType::BeginTest:
+				onTestBegin(event, static_cast<const BeginTestPayload &>(event.getPayload()));
+				break;
+			
+			case EventType::EndTest:
+				onTestEnd(event, static_cast<const EndTestPayload &>(event.getPayload()));
+				break;
+			
+			case EventType::Assertion:
+				onAssertion(event, static_cast<const AssertionPayload &>(event.getPayload()));
+				break;
+			
+			case EventType::Log:
+				onLog(event, static_cast<const LogPayload &>(event.getPayload()));
+				break;
+			
+			case EventType::Passthrough:
+				onPassthrough(event, static_cast<const PassthroughPayload &>(event.getPayload()));
+				break;
+			
+			case EventType::Die:
+				onDie(event, static_cast<const DiePayload &>(event.getPayload()));
+				break;
 			}
 		}
 
 		// Called when a test begins
-		virtual void onTestBegin(const EventBeginTest &event) = 0;
+		virtual void onTestBegin(const Event &event, const BeginTestPayload &payload) = 0;
 		// Called when a test ends
-		virtual void onTestEnd(const EventEndTest &event) = 0;
+		virtual void onTestEnd(const Event &event, const EndTestPayload &payload) = 0;
 		// Called when an assertion is made
-		virtual void onAssertion(const EventAssertion &event) = 0;
+		virtual void onAssertion(const Event &event, const AssertionPayload &payload) = 0;
 		// Called when a log entry is made
-		virtual void onLog(const EventLog &event) = 0;
+		virtual void onLog(const Event &event, const LogPayload &payload) = 0;
 		// Called when a passthrough event is received
-		virtual void onPassthrough(const EventPassthrough &event) = 0;
+		virtual void onPassthrough(const Event &event, const PassthroughPayload &payload) = 0;
 		// Called when a die event is received
-		virtual void onDie(const EventDie &event) = 0;
+		virtual void onDie(const Event &event, const DiePayload &payload) = 0;
 	};
 }
 

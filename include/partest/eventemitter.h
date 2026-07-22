@@ -22,11 +22,11 @@ namespace partest
 		}
 
 		// Emit an event to the event queue. This function is called by the test framework when an event occurs.
-		bool emitEvent(PARTEST_STRING_PARAM eventType, std::unique_ptr<EventInterface> event)
+		bool emitEvent(std::unique_ptr<Event> event)
 		{
 			if (shouldEmit())
 			{
-				return m_dispatcher->pushEvent(PARTEST_STRING_PARAM_TO_STRING(eventType), std::move(event));
+				return m_dispatcher->pushEvent(std::move(event));
 			}
 			
 			return false;
@@ -41,29 +41,29 @@ namespace partest
 			m_dispatcher = emitterConfig.dispatcher;
 		}
 
-		bool emitBeginTest(unsigned testId, unsigned parentTestId, PARTEST_STRING_PARAM testName)
+		bool emitBeginTest(TestFrameView testFrame)
 		{
-			return emitEvent(EVENT_BEGIN_TEST, partest::make_unique<EventBeginTest>(testId, parentTestId, testName));
+			return emitEvent(makeEventBeginTest(testFrame));
 		}
 
-		bool emitEndTest(unsigned testId, unsigned parentTestId, PARTEST_STRING_PARAM testName, TestResult result)
+		bool emitEndTest(TestFrameView testFrame)
 		{
-			return emitEvent(EVENT_END_TEST, partest::make_unique<EventEndTest>(testId, parentTestId, testName, result));
+			return emitEvent(makeEventEndTest(testFrame));
 		}
 
-		bool emitAssertion(unsigned testId, unsigned parentTestId, const AssertionResult &assertionResult)
+		bool emitAssertion(TestFrameView testFrame, AssertionResultView assertionResult)
 		{
-			return emitEvent(EVENT_ASSERTION, partest::make_unique<EventAssertion>(testId, parentTestId, assertionResult));
+			return emitEvent(makeEventAssertion(testFrame, assertionResult));
 		}
 
-		bool emitLog(unsigned testId, unsigned parentTestId, const LogEntry &logEntry)
+		bool emitLog(TestFrameView testFrame, const LogEntry &logEntry)
 		{
-			return emitEvent(EVENT_LOG, partest::make_unique<EventLog>(testId, parentTestId, logEntry));
+			return emitEvent(makeEventLog(testFrame, logEntry));
 		}
 
-		bool emitPassthrough(unsigned testId, unsigned parentTestId, PARTEST_STRING_PARAM message)
+		bool emitPassthrough(TestFrameView testFrame, std::thread::id threadId, PARTEST_STRING_PARAM message)
 		{
-			return emitEvent(EVENT_PASSTHROUGH, partest::make_unique<EventPassthrough>(testId, parentTestId, message));
+			return emitEvent(makeEventPassthrough(testFrame, threadId, message));
 		}
 	};
 }

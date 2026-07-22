@@ -15,6 +15,31 @@ namespace partest
 {
 	constexpr unsigned NO_TEST_ID = 0;
 
+	class TestFrame;
+
+	class TestFrameView
+	{
+		const TestFrame *m_testFrame;
+
+	public:
+		TestFrameView() : m_testFrame(&TestFrame::getNullTestFrameInstance()) {}
+
+		TestFrameView(const TestFrame &testFrame) : m_testFrame(&testFrame) {}
+
+		static TestFrameView getNullTestFrameView() { return TestFrameView(TestFrame::getNullTestFrameInstance()); }
+
+		unsigned id() const noexcept { return m_testFrame->id(); }
+		unsigned parentId() const noexcept { return m_testFrame->parentId(); }
+		const TestInfo &info() const noexcept { return m_testFrame->metadata; }
+		PARTEST_STRING_PARAM name() const noexcept { return m_testFrame->metadata.name; }
+		PARTEST_STRING_PARAM description() const noexcept { return m_testFrame->metadata.description; }
+		const TestFlags &flags() const noexcept { return m_testFrame->flags; }
+		const TestState &state() const noexcept { return m_testFrame->state; }
+		
+		TestStatus status() const noexcept { return m_testFrame->state.getStatus(); }
+		TestResult result() const noexcept { return m_testFrame->state.getResult(); }
+	};
+
 	class TestFrame
 	{
 		unsigned int m_id;
@@ -97,7 +122,6 @@ namespace partest
 		void logSubtestTransition(PARTEST_STRING_PARAM message, const TestFrame *frame)
 		{
 			LogEntry logEntry(LogLevel::Info, PARTEST_LOG_TYPE_SUBTEST, message);
-			logEntry.testFrameID = frame != nullptr ? frame->id() : 0;
 			log(logEntry);
 		}
 
@@ -246,9 +270,9 @@ namespace partest
 			{
 				updateStatus(TestStatus::Running);
 				
-				m_eventEmitter->emitBeginTest(id(), parentId(), metadata.name);
+				m_eventEmitter->emitBeginTest(TestFrameView(*this));
 				m_testFunction();
-				m_eventEmitter->emitEndTest(id(), parentId(), metadata.name, getResult());
+				m_eventEmitter->emitEndTest(TestFrameView(*this));
 
 				if(getResult() == TestResult::NoResult)
 				{
