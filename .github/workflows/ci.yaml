@@ -37,6 +37,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
+      - name: Install Premake and Generate Project Files
+        run: |
+          curl -L -o premake.tar.gz https://github.com/premake/premake-core/releases/download/v5.0.0-beta2/premake-5.0.0-beta2-linux.tar.gz
+          tar -xzf premake.tar.gz
+          sudo mv premake5 /usr/local/bin/
+          premake5 --version
+          run: premake5 --os=linux gmake2
+
       - name: Install GCC
         run: sudo apt-get install -y ${{ matrix.compiler }}
 
@@ -81,6 +89,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
+      - name: Install Premake and Generate Project Files
+        run: |
+          curl -L -o premake.tar.gz https://github.com/premake/premake-core/releases/download/v5.0.0-beta2/premake-5.0.0-beta2-linux.tar.gz
+          tar -xzf premake.tar.gz
+          sudo mv premake5 /usr/local/bin/
+          premake5 --version
+          run: premake5 --os=linux gmake2
+
       - name: Install Clang
         run: |
           sudo apt-get install ${{ matrix.package }} -y
@@ -90,19 +106,6 @@ jobs:
           for config in ${{ join(matrix.configs, ' ') }}; do
             make config=$config CXX=${{ matrix.compiler }}
           done
-          
-      - name: DEBUG - where am I and where is the binary?
-        run: |
-          echo "=== Current working directory ==="
-          pwd
-          echo ""
-          echo "=== All partest binaries that exist right now ==="
-          find . -type f \( -name "partest" -o -name "partest.exe" \) -print
-          echo ""
-          echo "=== Contents of possible output directories ==="
-          ls -la bin 2>/dev/null || echo "no ./bin"
-          ls -la build/bin 2>/dev/null || echo "no ./build/bin"
-          ls -la build 2>/dev/null || echo "no ./build"
           
       - name: Run Clang
         run: |
@@ -117,6 +120,13 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+
+      - name: Install Premake and Generate Project Files
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/premake/premake-core/releases/download/v5.0.0-beta2/premake-5.0.0-beta2-windows.zip" -OutFile premake.zip
+          Expand-Archive premake.zip -DestinationPath .
+          # premake5.exe is now in the current directory
+          .\premake5.exe vs2022
 
       - name: Set Up MSBuild
         uses: microsoft/setup-msbuild@v2
