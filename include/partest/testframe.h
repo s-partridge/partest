@@ -22,22 +22,20 @@ namespace partest
 		const TestFrame *m_testFrame;
 
 	public:
-		TestFrameView() : m_testFrame(&TestFrame::getNullTestFrameInstance()) {}
+		TestFrameView(const TestFrame &testFrame);
 
-		TestFrameView(const TestFrame &testFrame) : m_testFrame(&testFrame) {}
+		static const TestFrameView &getNullTestFrameView();
 
-		static TestFrameView getNullTestFrameView() { return TestFrameView(TestFrame::getNullTestFrameInstance()); }
-
-		unsigned id() const noexcept { return m_testFrame->id(); }
-		unsigned parentId() const noexcept { return m_testFrame->parentId(); }
-		const TestInfo &info() const noexcept { return m_testFrame->metadata; }
-		PARTEST_STRING_PARAM name() const noexcept { return m_testFrame->metadata.name; }
-		PARTEST_STRING_PARAM description() const noexcept { return m_testFrame->metadata.description; }
-		const TestFlags &flags() const noexcept { return m_testFrame->flags; }
-		const TestState &state() const noexcept { return m_testFrame->state; }
+		unsigned id() const noexcept;
+		unsigned parentId() const noexcept;
+		const TestInfo &info() const noexcept;
+		PARTEST_STRING_PARAM name() const noexcept;
+		PARTEST_STRING_PARAM description() const noexcept;
+		const TestFlags &flags() const noexcept;
+		const TestState &state() const noexcept;
 		
-		TestStatus status() const noexcept { return m_testFrame->state.getStatus(); }
-		TestResult result() const noexcept { return m_testFrame->state.getResult(); }
+		TestStatus status() const noexcept;
+		TestResult result() const noexcept;
 	};
 
 	class TestFrame
@@ -382,6 +380,24 @@ namespace partest
 			}
 		}
 	};
+
+	/**
+	* TestFrameView function definitions
+	*/
+	inline TestFrameView::TestFrameView(const TestFrame &testFrame) : m_testFrame(&testFrame) {}
+
+	inline const TestFrameView &TestFrameView::getNullTestFrameView() { return TestFrame::getNullTestFrameInstance().testFrameView(); }
+
+	inline unsigned TestFrameView::id() const noexcept { return m_testFrame->id(); }
+	inline unsigned TestFrameView::parentId() const noexcept { return m_testFrame->parentId(); }
+	inline const TestInfo &TestFrameView::info() const noexcept { return m_testFrame->metadata; }
+	inline PARTEST_STRING_PARAM TestFrameView::name() const noexcept { return m_testFrame->metadata.name; }
+	inline PARTEST_STRING_PARAM TestFrameView::description() const noexcept { return m_testFrame->metadata.description; }
+	inline const TestFlags &TestFrameView::flags() const noexcept { return m_testFrame->flags; }
+	inline const TestState &TestFrameView::state() const noexcept { return m_testFrame->state; }
+		
+	inline TestStatus TestFrameView::status() const noexcept { return m_testFrame->state.getStatus(); }
+	inline TestResult TestFrameView::result() const noexcept { return m_testFrame->state.getResult(); }
 }
 
 #endif // PARTESTTESTFRAME_H
