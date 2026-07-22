@@ -29,9 +29,10 @@ namespace partest
 		LogLevel level;
 		std::string type;
 		std::string message;
+		unsigned int testFrameID;
 
 		LogEntry() : LogEntry(LogLevel::Info, PARTEST_LOG_TYPE_DEFAULT, "") { }
-		LogEntry(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message) : level(level),  type(type), message(message) {}
+		LogEntry(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message, unsigned int testFrameID = 0) : level(level),  type(type), message(message), testFrameID(testFrameID) {}
 	};
 }
 
