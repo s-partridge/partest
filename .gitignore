@@ -31,6 +31,15 @@ x86/
 *.dylib
 *.a
 
+# Generated project files
+build/
+Makefile
+*.make
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+
 # Compiled object files
 *.o
 *.obj
