@@ -3,6 +3,7 @@
 
 #include <chrono>
 #include <vector>
+#include <deque>
 #include <memory>
 #include <functional>
 
@@ -51,7 +52,7 @@ namespace partest
 		* 
 		* @return the next value for frameCount
 		*/
-		static unsigned int nextID() noexcept {
+		static unsigned int nextId() noexcept {
 			static std::atomic<unsigned int> frameCount(NO_TEST_ID + 1);
 			return frameCount.fetch_add(1, std::memory_order_relaxed);
 		}
@@ -67,8 +68,8 @@ namespace partest
 		TestFrameView m_testFrameView;
 
 		std::vector<TestFrame *> m_subtests; // Vector of sub-tests
-		std::vector<LogEntry> m_logs; // Logs associated with this test frame
-		std::vector<AssertionResult> m_assertions; // Results of assertions triggered by this test frame
+		std::deque<LogEntry> m_logs; // Logs associated with this test frame
+		std::deque<AssertionResult> m_assertions; // Results of assertions triggered by this test frame
 
 		TestFrame *m_parent = nullptr; // Pointer to the parent test frame
 		
@@ -80,14 +81,14 @@ namespace partest
 		using TestFrameIter = std::vector<TestFrame *>::iterator;
 		using TestFrameConstIter = std::vector<TestFrame *>::const_iterator;
 
-		TestFrame(EventEmitterInterface *eventEmitter) : m_eventEmitter(eventEmitter), flags(), metadata(), state(), m_id(nextID()), m_testFrameView(*this) { }
+		TestFrame(EventEmitterInterface *eventEmitter) : m_eventEmitter(eventEmitter), flags(), metadata(), state(), m_id(nextId()), m_testFrameView(*this) { }
 		TestFrame(EventEmitterInterface *eventEmitter, const TestFlags &flags, const TestInfo &metadata, const TestState &result,
 				const std::function<void()> &testFunction = nullptr,
 				const std::function<void()> &testSetup = nullptr,
 				const std::function<void()> &testTeardown = nullptr)
 			: m_eventEmitter(eventEmitter), flags(flags), metadata(metadata), state(result),
 				m_testFunction(testFunction), m_testSetup(testSetup), m_testTeardown(testTeardown),
-				m_id(nextID()), m_testFrameView(*this) { }
+				m_id(nextId()), m_testFrameView(*this) { }
 	
 		// Nothing should be moving or copying TestFrame instances. They exist as part of a tree structure managed by TestBase.
 		TestFrame(const TestFrame &) = delete; // Disable copy constructor
