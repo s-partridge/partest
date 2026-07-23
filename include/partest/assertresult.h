@@ -147,20 +147,20 @@ namespace partest
 	/**
 	* AssertionResultView function definitions
 	*/
-	AssertionResultView::AssertionResultView(const AssertionResult &assertionResult) : m_assertionResult(&assertionResult) {}
+	inline AssertionResultView::AssertionResultView(const AssertionResult &assertionResult) : m_assertionResult(&assertionResult) {}
 
-	unsigned AssertionResultView::id() const noexcept { return m_assertionResult->id(); }
-	bool AssertionResultView::passed() const noexcept { return m_assertionResult->passed; }
-	PARTEST_STRING_PARAM AssertionResultView::assertType() const noexcept { return m_assertionResult->assertType; }
-	PARTEST_STRING_PARAM AssertionResultView::condition() const noexcept { return m_assertionResult->condition; }
-	PARTEST_STRING_PARAM AssertionResultView::message() const noexcept { return m_assertionResult->message; }
-	PARTEST_STRING_PARAM AssertionResultView::file() const noexcept { return m_assertionResult->file; }
-	int AssertionResultView::line() const noexcept { return m_assertionResult->line; }
+	inline unsigned AssertionResultView::id() const noexcept { return m_assertionResult->id(); }
+	inline bool AssertionResultView::passed() const noexcept { return m_assertionResult->passed; }
+	inline PARTEST_STRING_PARAM AssertionResultView::assertType() const noexcept { return m_assertionResult->assertType; }
+	inline PARTEST_STRING_PARAM AssertionResultView::condition() const noexcept { return m_assertionResult->condition; }
+	inline PARTEST_STRING_PARAM AssertionResultView::message() const noexcept { return m_assertionResult->message; }
+	inline PARTEST_STRING_PARAM AssertionResultView::file() const noexcept { return m_assertionResult->file; }
+	inline int AssertionResultView::line() const noexcept { return m_assertionResult->line; }
 
-	bool AssertionResultView::hasMetadata(PARTEST_STRING_PARAM key) const noexcept { return m_assertionResult->hasMetadata(key); }
-	std::string AssertionResultView::getMetadata(PARTEST_STRING_PARAM key) const {return m_assertionResult->getMetadata(key); }
+	inline bool AssertionResultView::hasMetadata(PARTEST_STRING_PARAM key) const noexcept { return m_assertionResult->hasMetadata(key); }
+	inline std::string AssertionResultView::getMetadata(PARTEST_STRING_PARAM key) const {return m_assertionResult->getMetadata(key); }
 
-	AssertionResult::MetadataConstIter AssertionResultView::metadataBegin() const noexcept { return m_assertionResult->metadataBegin(); }
-	AssertionResult::MetadataConstIter AssertionResultView::metadataEnd() const noexcept { return m_assertionResult->metadataEnd(); }
+	inline AssertionResult::MetadataConstIter AssertionResultView::metadataBegin() const noexcept { return m_assertionResult->metadataBegin(); }
+	inline AssertionResult::MetadataConstIter AssertionResultView::metadataEnd() const noexcept { return m_assertionResult->metadataEnd(); }
 }
 #endif

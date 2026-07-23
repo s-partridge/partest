@@ -179,37 +179,37 @@ namespace partest
 		bool operator!=(const Event &rhs) const noexcept { return !(*this == rhs); }
 	};
 
-	std::unique_ptr<Event> makeEventBeginTest(TestFrameView testFrame)
+	inline std::unique_ptr<Event> makeEventBeginTest(TestFrameView testFrame)
 	{
 		std::unique_ptr<BeginTestPayload> payload = partest::make_unique<BeginTestPayload>(testFrame);
 		return partest::make_unique<Event>(EventType::BeginTest, std::move(payload));
 	}
 
-	std::unique_ptr<Event> makeEventEndTest(TestFrameView testFrame)
+	inline std::unique_ptr<Event> makeEventEndTest(TestFrameView testFrame)
 	{
 		std::unique_ptr<EndTestPayload> payload = partest::make_unique<EndTestPayload>(testFrame);
 		return partest::make_unique<Event>(EventType::EndTest, std::move(payload));
 	}
 
-	std::unique_ptr<Event> makeEventAssertion(TestFrameView testFrame, AssertionResultView assertionResult)
+	inline std::unique_ptr<Event> makeEventAssertion(TestFrameView testFrame, AssertionResultView assertionResult)
 	{
 		std::unique_ptr<AssertionPayload> payload = partest::make_unique<AssertionPayload>(testFrame, assertionResult);
 		return partest::make_unique<Event>(EventType::Assertion, std::move(payload));
 	}
 
-	std::unique_ptr<Event> makeEventLog(TestFrameView testFrame, const LogEntry &logEntry)
+	inline std::unique_ptr<Event> makeEventLog(TestFrameView testFrame, const LogEntry &logEntry)
 	{
 		std::unique_ptr<LogPayload> payload = partest::make_unique<LogPayload>(testFrame, logEntry);
 		return partest::make_unique<Event>(EventType::Log, std::move(payload));
 	}
 
-	std::unique_ptr<Event> makeEventPassthrough(TestFrameView testFrame, std::thread::id threadId, PARTEST_STRING_PARAM message)
+	inline std::unique_ptr<Event> makeEventPassthrough(TestFrameView testFrame, std::thread::id threadId, PARTEST_STRING_PARAM message)
 	{
 		std::unique_ptr<PassthroughPayload> payload = partest::make_unique<PassthroughPayload>(testFrame, threadId, message);
 		return partest::make_unique<Event>(EventType::Passthrough, std::move(payload));
 	}
 
-	std::unique_ptr<Event> makeEventDie()
+	inline std::unique_ptr<Event> makeEventDie()
 	{
 		std::unique_ptr<DiePayload> payload = partest::make_unique<DiePayload>(TestFrameView::getNullTestFrameView());
 		return partest::make_unique<Event>(EventType::Die, std::move(payload));

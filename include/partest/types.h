@@ -248,7 +248,7 @@ namespace partest
 		friend std::ostream &operator<<(std::ostream &out, const TestState &state);
 	};
 
-	PARTEST_CONSTEXPR_14 const char* to_string(const TestStatus &status)
+	inline PARTEST_CONSTEXPR_14 const char* to_string(const TestStatus &status)
 	{
 		switch(status)
 		{
@@ -267,7 +267,7 @@ namespace partest
 		}
 	}
 
-	PARTEST_CONSTEXPR_14 const char* to_string(const TestResult &result)
+	inline PARTEST_CONSTEXPR_14 const char* to_string(const TestResult &result)
 	{
 		switch(result)
 		{

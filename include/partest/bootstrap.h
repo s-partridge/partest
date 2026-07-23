@@ -19,7 +19,7 @@ namespace partest
 	* 
 	* @param test A unique pointer to the TestBase instance representing the test class to add.
 	*/
-	void addTestClass(std::unique_ptr<partest::TestBase> test)
+	inline void addTestClass(std::unique_ptr<partest::TestBase> test)
 	{
 		testRunner().addTest(std::move(test));
 	}
@@ -27,7 +27,7 @@ namespace partest
 	/**
 	* Run all registered tests in the global test runner, in the order they were added.
 	*/
-	void runAllTests()
+	inline void runAllTests()
 	{
 		testRunner().runAllTests();
 	}
@@ -35,7 +35,7 @@ namespace partest
 	/**
 	* Run a specific test class by name in the global test runner.
 	*/
-	void runTestClassWithName(PARTEST_STRING_PARAM name)
+	inline void runTestClassWithName(PARTEST_STRING_PARAM name)
 	{
 		testRunner().runTestWithName(name);
 	}
@@ -43,17 +43,17 @@ namespace partest
 	/**
 	* Display the test tree structure for all registered tests in the global test runner.
 	*/
-	void displayAllTests()
+	inline void displayAllTests()
 	{
 		testRunner().printAllTestTrees();
 	}
 
-	unsigned getTopLevelFailures()
+	inline unsigned getTopLevelFailures()
 	{
 		return testRunner().getTopLevelFailures();
 	}
 
-	unsigned getAssertionFailureCount()
+	inline unsigned getAssertionFailureCount()
 	{
 		return testRunner().getAllAssertionFailures();
 	}

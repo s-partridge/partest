@@ -112,7 +112,7 @@ namespace partest
 	}
 
 	// C-string specialization for string comparisons
-	AssertionResult handleAssertEqual(const char* expected, const char* actual, const char *type, const char *conditionStr, const char* file, int line)
+	inline AssertionResult handleAssertEqual(const char* expected, const char* actual, const char *type, const char *conditionStr, const char* file, int line)
 	{
 		bool passed = (expected != nullptr && actual != nullptr && std::strcmp(expected, actual) == 0
 			|| expected == nullptr && actual == nullptr);
@@ -167,7 +167,7 @@ namespace partest
 	}
 
 	// C-string specialization for string comparisons
-	AssertionResult handleAssertNotEqual(const char* expected, const char* actual, const char* type, const char* conditionStr, const char* file, int line)
+	inline AssertionResult handleAssertNotEqual(const char* expected, const char* actual, const char* type, const char* conditionStr, const char* file, int line)
 	{
 		bool passed = (expected != nullptr && actual != nullptr && std::strcmp(expected, actual) != 0)
 			|| (expected == nullptr && actual != nullptr)
