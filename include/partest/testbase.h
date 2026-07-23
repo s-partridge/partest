@@ -66,7 +66,7 @@ namespace partest
 					m_currentFrame->updateResult(TestResult::Failed);
 
 					resultStream << "Error: Unhandled exception in test '" << m_currentFrame->metadata.name << "': " << e.what() << std::endl;
-					m_currentFrame->log(LogLevel::Info, PARTEST_LOG_TYPE_DEFAULT, resultStream.str());
+					recordLog(LogLevel::Info, PARTEST_LOG_TYPE_DEFAULT, resultStream.str());
 				}
 				catch(...)
 				{
@@ -77,7 +77,7 @@ namespace partest
 					m_currentFrame->updateResult(TestResult::Failed);
 
 					resultStream << "Error: Unknown exception in test '" << m_currentFrame->metadata.name << "'." << std::endl;
-					m_currentFrame->log(LogLevel::Error, PARTEST_LOG_TYPE_DEFAULT, resultStream.str());
+					recordLog(LogLevel::Error, PARTEST_LOG_TYPE_DEFAULT, resultStream.str());
 				}
 
 				m_currentFrame->finalizeTest();
@@ -104,6 +104,30 @@ namespace partest
 				}
 			}
 		}
+
+		/**
+		* Check if the current test should raise an assertion failure based on its status and flags. Used in ASSERT macros.
+		* 
+		* @param file The file where the assertion is being checked. Typically provided by the __FILE__ macro.
+		* @param line The line number where the assertion is being checked. Typically provided by the __LINE__ macro.
+		* @param condition The condition being asserted, as a string. Typically provided by the condition expression itself.
+		* @throws AssertionFailure if the current test has failed and stopOnFail is enabled.
+		*/
+		void maybeRaiseOnAssertion(const char *file, int line, PARTEST_STRING_PARAM condition) const
+		{
+			if(m_currentFrame->getEffectiveFlags().stopOnFail == FlagState::Enabled && (m_currentFrame->hasFailures()))
+			{
+				throw AssertionFailure(file, line, condition);
+			}
+		}
+
+		/**
+		* Check if the current test should raise an assertion failure based on its status and flags. Used in ASSERT macros.
+		* 
+		* @param result Object containing the evaluated result of an assertion
+		* @throws AssertionFailure if the current test has failed and stopOnFail is enabled.
+		*/
+		inline void maybeRaiseOnAssertion(const AssertionResult &result) const { maybeRaiseOnAssertion(result.file.c_str(), result.line, result.condition); }
 
 	protected:
 		/** 
@@ -157,24 +181,19 @@ namespace partest
 		TestFlags getCurrentFlags() const noexcept { return m_currentFrame->getEffectiveFlags(); }
 
 		/**
-		* Log an assertion result.
-		* @param result The assertion result to log.
+		* Process an evaluated assertion. Log it and raise an exception if necessary.
+		* 
+		* @param result Output of an evaluated assertion. AssertionResults should be produced by assertion handlers.
+		* @throws AssertionFailure if the assertion result did not pass and stopOnFail is enabled.
 		*/
-		void logAssertion(const AssertionResult &result) const
+		void commitAssertion(const AssertionResult &result) const
 		{
-			m_currentFrame->updateResult(result.passed ? TestResult::Passed : TestResult::Failed);
-			m_currentFrame->logAssertion(result);
-		}
+			// Pass the assertion result on to the test frame
+			m_currentFrame->processAssertion(result);
 
-		/**
-		* Log an assertion result.
-		* @param passed Whether the assertion passed or failed.
-		* @param log The log message to associate with the assertion result.
-		*/
-		void logAssertion(bool passed, PARTEST_STRING_PARAM log) const
-		{
-			m_currentFrame->updateResult(passed ? TestResult::Passed : TestResult::Failed);
-			m_currentFrame->log(LogLevel::Info, PARTEST_LOG_TYPE_ASSERT, log);
+			// On failure, allow an exception to be raised if the current test frame is configured to do so.
+			if(!result.passed)
+				maybeRaiseOnAssertion(result.file.c_str(), result.line, result.condition);
 		}
 
 		/**
@@ -183,34 +202,10 @@ namespace partest
 		* @param type The log type.
 		* @param message The log message.
 		*/
-		void addLog(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message) const
+		void recordLog(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message)
 		{
-			m_currentFrame->log(level, type, message);
+			m_currentFrame->recordLog(level, type, message);
 		}
-
-		/**
-		* Check if the current test should raise an assertion failure based on its status and flags. Used in ASSERT macros.
-		* 
-		* @param file The file where the assertion is being checked. Typically provided by the __FILE__ macro.
-		* @param line The line number where the assertion is being checked. Typically provided by the __LINE__ macro.
-		* @param condition The condition being asserted, as a string. Typically provided by the condition expression itself.
-		* @throws AssertionFailure if the current test has failed and stopOnFail is enabled.
-		*/
-		void maybeRaiseOnAssertion(const char *file, int line, PARTEST_STRING_PARAM condition) const
-		{
-			if(m_currentFrame->getEffectiveFlags().stopOnFail == FlagState::Enabled && (m_currentFrame->hasFailures()))
-			{
-				throw AssertionFailure(file, line, condition);
-			}
-		}
-
-		/**
-		* Check if the current test should raise an assertion failure based on its status and flags. Used in ASSERT macros.
-		* 
-		* @param result Object containing the evaluated result of an assertion
-		* @throws AssertionFailure if the current test has failed and stopOnFail is enabled.
-		*/
-		inline void maybeRaiseOnAssertion(const AssertionResult &result) const { maybeRaiseOnAssertion(result.file.c_str(), result.line, result.condition); }
 
 		/**
 		* Recursively print the test tree starting from the given frame, with indentation based on depth.
@@ -239,24 +234,6 @@ namespace partest
 		* Teardown function to be overridden by derived classes
 		*/
 		virtual void teardown() {}
-
-		/**
-		* Process an evaluated assertion. Log it and raise an exception if necessary.
-		* 
-		* @param result Output of an evaluated assertion. AssertionResults should be produced by assertion handlers.
-		* @throws AssertionFailure if the assertion result did not pass and stopOnFail is enabled.
-		*/
-		void commitAssertion(const AssertionResult &result) const
-		{
- 			// Store the assertion result
- 			logAssertion(result);
-			// Old style log for compatibility, for now
-			logAssertion(result.passed, result.message);
-
-			// On failure, allow an exception to be raised if the current test frame is configured to do so.
-			if(!result.passed)
-				maybeRaiseOnAssertion(result.file.c_str(), result.line, result.condition);
-		}
 
 	public:
 		TestBase(PARTEST_STRING_PARAM name, PARTEST_STRING_PARAM description,

@@ -127,36 +127,13 @@ namespace partest
 		bool hasTestFunction() const noexcept { return m_testFunction != nullptr; }
 		bool hasTeardownFunction() const noexcept { return m_testTeardown != nullptr; }
 
-		void logSubtestTransition(PARTEST_STRING_PARAM message, const TestFrame *frame)
-		{
-			LogEntry logEntry(LogLevel::Info, PARTEST_LOG_TYPE_SUBTEST, message);
-			log(logEntry);
-		}
-
-		void log(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message)
+		void recordLog(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message)
 		{
 			m_logs.push_back(LogEntry(level, type, message));
+			m_eventEmitter->emitLog(m_testFrameView, m_logs.back());
 		}
 
-		void log(const LogEntry &level)
-		{
-			m_logs.push_back(level);
-		}
-
-		const std::vector<LogEntry> &getLogs() const noexcept { return m_logs; }
-
-		void logAssertion(const AssertionResult &result)
-		{
-			m_assertions.push_back(result);
-		}
-
-		void logAssertion(bool passed,
-				PARTEST_STRING_PARAM assertType, PARTEST_STRING_PARAM condition,
-				PARTEST_STRING_PARAM message, PARTEST_STRING_PARAM file,
-				int line)
-		{
-			m_assertions.push_back(AssertionResult(passed, assertType, condition, message, file, line));
-		}
+		const std::deque<LogEntry> &getLogs() const noexcept { return m_logs; }
 
 		void clearLogs() noexcept { m_logs.clear(); }
 
@@ -172,6 +149,13 @@ namespace partest
 			clearLogs(); 
 			clearSubtests(); 
 			state = TestState::defaultState();
+		}
+
+		void processAssertion(const AssertionResult &result)
+		{
+			updateResult(result.passed ? TestResult::Passed : TestResult::Failed);
+			m_assertions.push_back(result);
+			m_eventEmitter->emitAssertion(m_testFrameView, AssertionResultView(m_assertions.back()));
 		}
 
 		PARTEST_CONSTEXPR_14 void updateStatus(TestStatus status) noexcept { state.updateStatus(status); }
@@ -255,10 +239,6 @@ namespace partest
 			}
 			else
 			{
-				if(m_parent != nullptr)
-				{
-					m_parent->logSubtestTransition("Initializing subtest " + metadata.name, this);
-				}
 				if(m_testSetup != nullptr)
 				{
 					m_testSetup();
@@ -300,7 +280,7 @@ namespace partest
 			{
 				if(getResult() == TestResult::NoResult)
 				{
-					log(LogLevel::Warning, PARTEST_LOG_TYPE_TEST, "Warning: '" + metadata.name + "' completed without any assertions. Defaulting to PASSED.");
+					recordLog(LogLevel::Warning, PARTEST_LOG_TYPE_TEST, "Warning: '" + metadata.name + "' completed without any assertions. Defaulting to PASSED.");
 					updateResult(TestResult::Passed);
 				}
 
@@ -309,10 +289,6 @@ namespace partest
 
 				if(m_parent != nullptr)
 				{
-					std::string logString = "Finished: " + metadata.name + "; Results: " + to_string(getResult());
-					log(LogLevel::Info, PARTEST_LOG_TYPE_TEST, logString);
-
-					//m_parent->log("Finalizing subtest " + metadata.name, this);
 					m_parent->updateResult(getResult());
 				}
 

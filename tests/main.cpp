@@ -51,7 +51,7 @@ public:
 
 	void sampleTest()
 	{
-		addLog(partest::LogLevel::Debug, PARTEST_LOG_TYPE_TEST, "This is a sample log message.");
+		recordLog(partest::LogLevel::Debug, PARTEST_LOG_TYPE_TEST, "This is a sample log message.");
 		ASSERT_TRUE(true); // This assertion will pass
 	}
 
@@ -73,7 +73,7 @@ public:
 
 	void parameterizedTest(int testValue)
 	{
-		addLog(partest::LogLevel::Debug, PARTEST_LOG_TYPE_TEST, "Running example test...");
+		recordLog(partest::LogLevel::Debug, PARTEST_LOG_TYPE_TEST, "Running example test...");
 		subtest(partest::TestInfo("Subtest1", "A subtest that checks if testValue is 3."), [&]()
 		{
 			// Subtest logic here
@@ -150,12 +150,12 @@ public:
 
 	void setup() override
 	{
-		addLog(partest::LogLevel::Debug, PARTEST_LOG_TYPE_TEST, "Setting up PartestBaseTest...");
+		recordLog(partest::LogLevel::Debug, PARTEST_LOG_TYPE_TEST, "Setting up PartestBaseTest...");
 	}
 
 	void teardown() override
 	{
-		addLog(partest::LogLevel::Debug, PARTEST_LOG_TYPE_TEST, "Tearing down PartestBaseTest...");
+		recordLog(partest::LogLevel::Debug, PARTEST_LOG_TYPE_TEST, "Tearing down PartestBaseTest...");
 	}
 };
 
@@ -164,10 +164,8 @@ int main()
 // For memory leak validation on MSVC
 #if defined(_MSVC_LANG)
 	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
-#endif
-	std::cout << "Partest framework initialized." << std::endl;
-	
-	//partest::addTestClass(partest::make_unique<PartestBaseTest>());
+#endif	
+	partest::addTestClass(partest::make_unique<PartestBaseTest>());
 	//partest::addTestClass(partest::make_unique<AssertionTests>());
 	partest::addTestClass(partest::make_unique<SemaphoreTests>());
 	partest::addTestClass(partest::make_unique<DispatcherTests>());
