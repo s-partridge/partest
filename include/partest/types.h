@@ -2,6 +2,7 @@
 #define PARTEST_TYPES_H
 
 #include <iostream>
+#include <cstdint>
 #include <string>
 #include <vector>
 
