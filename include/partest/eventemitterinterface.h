@@ -12,7 +12,7 @@ namespace partest
 	class AssertionResultView;
 	class TestFrameView;
 	struct LogEntry;
-	struct Event;
+	class Event;
 
 	struct EmitterConfig
 	{

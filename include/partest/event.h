@@ -91,7 +91,7 @@ namespace partest
 	* @member m_eventType Type of event the object contains
 	* @member m_payload The unique members for the given event type
 	*/
-	struct Event
+	class Event
 	{
 		unsigned m_eventId;
 		std::chrono::steady_clock::time_point m_timestamp;
@@ -99,7 +99,7 @@ namespace partest
 		
 		EventPayload *m_payload;
 
-		static unsigned int nextID() noexcept {
+		static unsigned int nextId() noexcept {
 		
 			static std::atomic<unsigned> eventCount(0);
 			return eventCount.fetch_add(1, std::memory_order_relaxed);
@@ -107,7 +107,7 @@ namespace partest
 
 	public:
 		Event(EventType eventType, std::unique_ptr<EventPayload> payload)
-			: m_eventId(nextID()), m_timestamp(std::chrono::steady_clock::now()), m_eventType(eventType), m_payload(payload.release()) {}
+			: m_eventId(nextId()), m_timestamp(std::chrono::steady_clock::now()), m_eventType(eventType), m_payload(payload.release()) {}
 
 		// Copy ctors
 		Event(const Event &other)
