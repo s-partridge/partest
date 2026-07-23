@@ -54,6 +54,9 @@ Makefile
 *.xcodeproj/xcuserdata/
 *.xcodeproj/project.xcworkspace/xcuserdata/
 
+# IntelliJ
+.idea/
+
 # macOS
 .DS_Store
 
