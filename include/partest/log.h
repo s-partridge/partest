@@ -3,6 +3,8 @@
 
 #include <string>
 #include <chrono>
+#include <ostream>
+
 #include <partest/common.h>
 
 // For logs from assert statements, used internally
@@ -24,15 +26,42 @@ namespace partest
 		Debug
 	};
 
+	inline std::ostream &operator<<(std::ostream &out, const LogLevel &rhs)
+	{
+		switch(rhs)
+		{
+		case LogLevel::Error:
+			out << "Error";
+			break;
+
+		case LogLevel::Warning:
+			out << "Warning";
+			break;
+
+		case LogLevel::Info:
+			out << "Info";
+			break;
+
+		case LogLevel::Debug:
+			out << "Debug";
+			break;
+
+		default:
+			out << "Unknown";
+			break;
+		}
+		return out;
+	}
+
 	struct LogEntry
 	{
 		LogLevel level;
 		std::string type;
 		std::string message;
-		unsigned int testFrameID;
+		unsigned int testFrameId;
 
 		LogEntry() : LogEntry(LogLevel::Info, PARTEST_LOG_TYPE_DEFAULT, "") { }
-		LogEntry(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message, unsigned int testFrameID = 0) : level(level),  type(type), message(message), testFrameID(testFrameID) {}
+		LogEntry(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message, unsigned int testFrameID = 0) : level(level),  type(type), message(message), testFrameId(testFrameID) {}
 	};
 }
 

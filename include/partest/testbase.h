@@ -332,13 +332,13 @@ namespace partest
 			{
 				std::cout << entry.message << std::endl;
 
-				if(depth < maxDepth && entry.type == PARTEST_LOG_TYPE_SUBTEST && entry.testFrameID != 0)
+				if(depth < maxDepth && entry.type == PARTEST_LOG_TYPE_SUBTEST && entry.testFrameId != 0)
 				{
 					auto subtest = frame->subtestsBegin();
 
 					while(subtest != frame->subtestsEnd())
 					{
-						if((*subtest)->id() == entry.testFrameID)
+						if((*subtest)->id() == entry.testFrameId)
 						{
 							printLogs(*subtest, maxLevel, maxDepth, depth + 1);
 							break;

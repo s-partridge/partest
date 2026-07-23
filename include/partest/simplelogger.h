@@ -36,7 +36,7 @@ namespace partest
 		{
 			if(m_showPassedAssertions || !payload.assertionResult.passed())
 			{
-				m_out << payload.assertionResult.message();
+				m_out << payload.assertionResult.message() << std::endl;
 			}
 
 		}
@@ -46,7 +46,7 @@ namespace partest
 			const LogEntry& logEntry = payload.logEntry;
 
 			if(logEntry.level <= m_verbosity)
-				m_out << logEntry.message;
+				m_out << logEntry.level << ' ' << logEntry.message;
 		}
 
 		// Called when a passthrough event is received
