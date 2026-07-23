@@ -208,24 +208,6 @@ namespace partest
 		}
 
 		/**
-		* Recursively print the test tree starting from the given frame, with indentation based on depth.
-		* @param frame The TestFrame to start printing from.
-		* @param depth The current depth in the tree, used for indentation. Default is 0.
-		*/
-		void printTestTree(const TestFrame &frame, unsigned depth = 0) const
-		{
-			std::string depthPrefix = std::string(depth, '\t');
-			std::cout << depthPrefix << "Test '" << frame.metadata.name << ": " << frame.state << std::endl;
-
-			depth++;
-			// Recursively print subtests
-			for(auto frameIter = frame.subtestsBegin(); frameIter != frame.subtestsEnd(); ++frameIter)
-			{
-				printTestTree(**frameIter, depth);
-			}
-		}
-
-		/**
 		* Setup function to be overridden by derived classes
 		*/
 		virtual void setup() {}
@@ -270,77 +252,6 @@ namespace partest
 		void run()
 		{
 			runTest(m_testTree.get());
-		}
-
-		/**
-		* Print the entire test tree, including all tests and their statuses.
-		*/
-		void printTestTree() const
-		{
-			printTestTree(*m_testTree);
-		}
-
-		std::vector<LogEntry> aggregateLogs(TestFrame *frame, LogLevel maxLevel, unsigned depth = 1)
-		{
-			std::vector<LogEntry> entries;
-
-			for(const LogEntry &entry : frame->getLogs())
-			{
-				if(entry.level <= maxLevel)
-				{
-					entries.push_back(entry);
-				}
-			}
-
-			//Incomplete
-			return std::vector<LogEntry>();
-		}
-
-		void printLogs(LogLevel maxLevel = LogLevel::Info, unsigned maxDepth = 1)
-		{
-			printLogs(m_testTree.get(), maxLevel, maxDepth, 0);
-		}
-
-		void printLogs(TestFrame *frame, LogLevel maxLevel = LogLevel::Info, unsigned maxDepth = 1, unsigned depth = 0)
-		{
-			std::vector<LogEntry> entries;
-
-			for(const LogEntry &entry : frame->getLogs())
-			{
-				std::cout << entry.message << std::endl;
-
-				if(depth < maxDepth && entry.type == PARTEST_LOG_TYPE_SUBTEST && entry.testFrameId != 0)
-				{
-					auto subtest = frame->subtestsBegin();
-
-					while(subtest != frame->subtestsEnd())
-					{
-						if((*subtest)->id() == entry.testFrameId)
-						{
-							printLogs(*subtest, maxLevel, maxDepth, depth + 1);
-							break;
-						}
-						++subtest;
-					}
-				}
-			}
-		}
-
-		void aggregateLogs(LogLevel maxLevel, unsigned depth = 1)
-		{
-			std::vector<LogEntry> entries;
-
-			TestFrame *frame = m_testTree.get();
-
-			for(const LogEntry &entry : frame->getLogs())
-			{
-				if(entry.level <= maxLevel)
-				{
-					entries.push_back(entry);
-				}
-			}
-
-			//Incomplete
 		}
 
 		unsigned getTestFailureCount(unsigned depth = 1) const

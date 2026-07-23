@@ -118,12 +118,9 @@ namespace partest
 				dispatcherThread.join();
 		}
 
+		// TODO: Finish once PostMortemReporters are implemented
 		void printAllTestTrees() const
 		{
-			for(TestBase *test : m_tests)
-			{
-				test->printLogs(LogLevel::Info, 10);
-			}
 		/*	for(TestBase *test : m_tests)
 			{
 				test->printTestTree();
