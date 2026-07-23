@@ -49,24 +49,17 @@ namespace partest
 				{
 					m_currentFrame->runTestFunction();
 				}
-				// A test returned early due to an assertion failure with stopOnFail enabled.
+				
+				// A test returned early due to an assertion failure with stopOnFail enabled
 				// Nothing special to do here, but this is necessary to prevent the exception from propagating further.
 
-				// Assertion failures indicate that the test has already been marked as Failed, so no additional action is needed here.
+				// Assertion failures indicate that the test has already been marked as Failed, so no additional action is needed here
 				#pragma warning(suppress:4101) 
 				catch(const partest::AssertionFailure &e)
-				{
-					resultStream << "Stopped test early due to failure in " << m_currentFrame->metadata.name << std::endl;
-
-					if(e.file() != "" && e.line() != 0)
-						resultStream << "At: " << e.file() << ":" << e.line() << std::endl;
-
-					m_currentFrame->log(LogLevel::Info, PARTEST_LOG_TYPE_TEST, resultStream.str());
-				}
-
+				{ }
+				// Unexpected exceptions will generally indicate errors within the user's test code and must be reported
 				catch(const std::exception &e)
 				{
-					// An unexpected exception occurred during test execution.
 					// Mark the test as aborted and log a generic message.
 					m_currentFrame->updateStatus(TestStatus::Aborted);
 					// Ensure that the test result was set. A generic exception indicates test failure.
@@ -107,7 +100,6 @@ namespace partest
 				// If the test failed and stopOnFail is enabled, stop executing further tests
 				if(m_currentFrame->getEffectiveFlags().stopOnFail == FlagState::Enabled && m_currentFrame->hasFailures())
 				{
-					std::cout << "Stopping further tests due to failure in test '" << m_currentFrame->metadata.name << "' with stopOnFail enabled." << std::endl;
 					break;
 				}
 			}

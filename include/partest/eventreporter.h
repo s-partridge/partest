@@ -18,6 +18,7 @@ namespace partest
 		// Dispatch an event to the appropriate handler based on its type. This function is called by the EventDispatcher when an event is popped from the queue.
 		void reportEvent(const Event &event)
 		{
+			// NOLINTBEGIN(cppcoreguidelines-pro-type-static-cast-downcast)
 			switch(event.getEventType())
 			{
 			case EventType::BeginTest:
@@ -44,6 +45,7 @@ namespace partest
 				onDie(event, static_cast<const DiePayload &>(event.getPayload()));
 				break;
 			}
+			// NOLINTEND(cppcoreguidelines-pro-type-static-cast-downcast)
 		}
 
 		// Called when a test begins

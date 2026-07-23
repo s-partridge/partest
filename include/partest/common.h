@@ -355,6 +355,7 @@ namespace partest
 			static constexpr bool value = decltype(check<MaybeInvocable>(0))::value;
 		};
 
+		// NOLINTNEXTLINE(bugprone-macro-parentheses)
 		// Helper macro to enable functions only if the provided type is callable
 		// If is_callable evaluates to true, the function is enabled and can be instantiated
 		// If is_callable evaluates to false, type does not exist, causing a substitution failure
