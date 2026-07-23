@@ -45,7 +45,7 @@ namespace partest
 		* 
 		* @return the next value for assertCount
 		*/
-		static unsigned int nextID() noexcept {
+		static unsigned int nextId() noexcept {
 		
 			static std::atomic<unsigned int> assertCount(0);
 			return assertCount.fetch_add(1, std::memory_order_relaxed);
@@ -100,7 +100,7 @@ namespace partest
 			PARTEST_STRING_PARAM message,
 			PARTEST_STRING_PARAM file,
 			int line)
-				: m_id(nextID()), passed(passed), assertType(assertType),
+				: m_id(nextId()), passed(passed), assertType(assertType),
 				condition(condition), message(message), file(file), line(line) {}
 
 		virtual ~AssertionResult() = default;

@@ -4,7 +4,6 @@
 #include <iostream>
 #include <cstdint>
 #include <string>
-#include <vector>
 
 #include <partest/common.h>
 
@@ -151,7 +150,7 @@ namespace partest
 	{
 		std::string name; // Name of the test
 		std::string description; // Description of the test
-		PARTEST_CONSTEXPR_20 TestInfo() : name(""), description("") {}
+		PARTEST_CONSTEXPR_20 TestInfo() : name(), description() {}
 		PARTEST_CONSTEXPR_20 TestInfo(PARTEST_STRING_PARAM name, PARTEST_STRING_PARAM description = "") : name(name), description(description) {}
 
 		/**

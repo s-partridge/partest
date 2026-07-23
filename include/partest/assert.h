@@ -2,7 +2,6 @@
 #define PARTEST_ASSERT_H
 
 #include <atomic>
-#include <map>
 #include <string>
 #include <cstring>
 

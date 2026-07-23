@@ -315,7 +315,7 @@ namespace partest
 		result.reserve(19 + strlen(typeName) + 1);
 		result += "<unprintable type: ";
 		result += typeName;
-		result += ">";
+		result += '>';
 		return result;
 	}
 #endif

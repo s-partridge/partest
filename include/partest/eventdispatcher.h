@@ -1,14 +1,12 @@
 #ifndef PARTEST_DISPATCHER_H
 #define PARTEST_DISPATCHER_H
 
-#include <string>
 #include <queue>
 #include <utility>
 #include <vector>
 #include <mutex>
 #include <cassert>
 
-#include <partest/types.h>
 #include <partest/event.h>
 #include <partest/eventreporter.h>
 #include <partest/semaphore.h>

@@ -1,4 +1,4 @@
-// File: partestbase.h
+// File: testbase.h
 // Author: Samuel Partridge
 //  
 // Partest is a lightweight C++ testing framework designed for simplicity and ease of use.
@@ -19,7 +19,6 @@
 #include <partest/common.h>
 #include <partest/types.h>
 #include <partest/log.h>
-#include <partest/assert.h>
 #include <partest/testframe.h>
 #include <partest/exceptions.h>
 #include <partest/eventemitter.h>
@@ -128,7 +127,7 @@ namespace partest
 		* @param setupFunc Optional setup function to be called before the test function. Default is nullptr.
 		* @param teardownFunc Optional teardown function to be called after the test function. Default is nullptr.
 		*/
-		void addTest(const TestInfo metadata, const TestFlags &flags, const std::function<void()> &testFunc, const std::function<void()> &setupFunc = nullptr, const std::function<void()> &teardownFunc = nullptr)
+		void addTest(const TestInfo &metadata, const TestFlags &flags, const std::function<void()> &testFunc, const std::function<void()> &setupFunc = nullptr, const std::function<void()> &teardownFunc = nullptr)
 		{
 			m_testTree->addSubtest(partest::make_unique<TestFrame>(&m_eventEmitter, flags, metadata, TestState::defaultState(), testFunc, setupFunc, teardownFunc));
 		}
@@ -163,13 +162,13 @@ namespace partest
 		* Get the effective flags of the current test frame.
 		* @return The effective TestFlags of the current test frame.
 		*/
-		TestFlags getCurrentFlags() const { return m_currentFrame->getEffectiveFlags(); }
+		TestFlags getCurrentFlags() const noexcept { return m_currentFrame->getEffectiveFlags(); }
 
 		/**
 		* Log an assertion result.
 		* @param result The assertion result to log.
 		*/
-		void logAssertion(const AssertionResult &result)
+		void logAssertion(const AssertionResult &result) const
 		{
 			m_currentFrame->updateResult(result.passed ? TestResult::Passed : TestResult::Failed);
 			m_currentFrame->logAssertion(result);
@@ -180,7 +179,7 @@ namespace partest
 		* @param passed Whether the assertion passed or failed.
 		* @param log The log message to associate with the assertion result.
 		*/
-		void logAssertion(bool passed, PARTEST_STRING_PARAM log)
+		void logAssertion(bool passed, PARTEST_STRING_PARAM log) const
 		{
 			m_currentFrame->updateResult(passed ? TestResult::Passed : TestResult::Failed);
 			m_currentFrame->log(LogLevel::Info, PARTEST_LOG_TYPE_ASSERT, log);
@@ -192,7 +191,7 @@ namespace partest
 		* @param type The log type.
 		* @param message The log message.
 		*/
-		void addLog(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message)
+		void addLog(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message) const
 		{
 			m_currentFrame->log(level, type, message);
 		}
@@ -205,7 +204,7 @@ namespace partest
 		* @param condition The condition being asserted, as a string. Typically provided by the condition expression itself.
 		* @throws AssertionFailure if the current test has failed and stopOnFail is enabled.
 		*/
-		void maybeRaiseOnAssertion(const char *file, int line, PARTEST_STRING_PARAM condition)
+		void maybeRaiseOnAssertion(const char *file, int line, PARTEST_STRING_PARAM condition) const
 		{
 			if(m_currentFrame->getEffectiveFlags().stopOnFail == FlagState::Enabled && (m_currentFrame->hasFailures()))
 			{
@@ -219,7 +218,7 @@ namespace partest
 		* @param result Object containing the evaluated result of an assertion
 		* @throws AssertionFailure if the current test has failed and stopOnFail is enabled.
 		*/
-		inline void maybeRaiseOnAssertion(const AssertionResult &result) { maybeRaiseOnAssertion(result.file.c_str(), result.line, result.condition); }
+		inline void maybeRaiseOnAssertion(const AssertionResult &result) const { maybeRaiseOnAssertion(result.file.c_str(), result.line, result.condition); }
 
 		/**
 		* Recursively print the test tree starting from the given frame, with indentation based on depth.
@@ -255,7 +254,7 @@ namespace partest
 		* @param result Output of an evaluated assertion. AssertionResults should be produced by assertion handlers.
 		* @throws AssertionFailure if the assertion result did not pass and stopOnFail is enabled.
 		*/
-		void commitAssertion(const AssertionResult &result)
+		void commitAssertion(const AssertionResult &result) const
 		{
  			// Store the assertion result
  			logAssertion(result);
@@ -291,13 +290,13 @@ namespace partest
 		void configureEventEmitter(const EmitterConfig &emitterConfig) { m_eventEmitter.setConfiguration(emitterConfig); }
 
 		void setName(PARTEST_STRING_PARAM name) { m_testTree->metadata.name = name; }
-		const std::string &getName() const { return m_testTree->metadata.name; }
+		const std::string &getName() const noexcept { return m_testTree->metadata.name; }
 
 		void setDescription(PARTEST_STRING_PARAM description) { m_testTree->metadata.description = description; }
-		const std::string &getDescription() const { return m_testTree->metadata.description; }
+		const std::string &getDescription() const noexcept { return m_testTree->metadata.description; }
 		
-		void setFlags(const TestFlags &flags) { m_testTree->flags.setFlags(flags); }
-		const TestFlags &getFlags() const { return m_testTree->flags; }
+		void setFlags(const TestFlags &flags) noexcept { m_testTree->flags.setFlags(flags); }
+		const TestFlags &getFlags() const noexcept { return m_testTree->flags; }
 
 		void run()
 		{
@@ -352,7 +351,7 @@ namespace partest
 							printLogs(*subtest, maxLevel, maxDepth, depth + 1);
 							break;
 						}
-						subtest++;
+						++subtest;
 					}
 				}
 			}

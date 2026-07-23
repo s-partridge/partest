@@ -30,7 +30,7 @@ namespace partest
 
 	public:
 		explicit EventEmitterInterface(EventDispatcherInterface *dispatcher = nullptr) : m_dispatcher(dispatcher) {}
-		~EventEmitterInterface() = default;
+		virtual ~EventEmitterInterface() = default;
 
 		void setConfiguration(const EmitterConfig &emitterConfig)
 		{

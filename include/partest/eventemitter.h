@@ -9,6 +9,7 @@ namespace partest
 {
 	class EventEmitter : public EventEmitterInterface
 	{
+	protected:
 		bool shouldEmit() const noexcept override
 		{
 			return m_dispatcher != nullptr && m_dispatcher->isDispatching();
@@ -27,7 +28,6 @@ namespace partest
 
 	public:
 		explicit EventEmitter(EventDispatcherInterface *dispatcher = nullptr) : EventEmitterInterface(dispatcher) {}
-		~EventEmitter() = default;
 
 		bool emitBeginTest(TestFrameView testFrame) override
 		{
