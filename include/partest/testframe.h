@@ -1,6 +1,7 @@
 #ifndef PARTEST_TESTFRAME_H
 #define PARTEST_TESTFRAME_H
 
+#include <chrono>
 #include <vector>
 #include <memory>
 #include <functional>
@@ -36,12 +37,15 @@ namespace partest
 		
 		TestStatus status() const noexcept;
 		TestResult result() const noexcept;
+		std::chrono::steady_clock::time_point startTime() const noexcept;
+		std::chrono::steady_clock::time_point endTime() const noexcept;
 	};
 
 	class TestFrame
 	{
 		unsigned int m_id;
-
+		std::chrono::steady_clock::time_point m_startTime;
+		std::chrono::steady_clock::time_point m_endTime;
 		/**
 		* Get a globally incrementing counter. Used internally to assign IDs to newly created test frames.
 		* 
@@ -59,7 +63,6 @@ namespace partest
 			metadata.description = "Empty frame representing test suite root";
 		}
 
-	protected:
 		EventEmitterInterface *m_eventEmitter;
 		TestFrameView m_testFrameView;
 
@@ -106,6 +109,9 @@ namespace partest
 
 		unsigned int id() const noexcept { return m_id; }
 		unsigned int parentId() const noexcept { return (m_parent != nullptr ? m_parent->m_id : NO_TEST_ID); }
+
+		std::chrono::steady_clock::time_point startTime() const noexcept { return m_startTime; }
+		std::chrono::steady_clock::time_point endTime() const noexcept { return m_endTime; }
 
 		const TestFrameView &testFrameView() const noexcept { return m_testFrameView; }
 
@@ -240,6 +246,7 @@ namespace partest
 
 		bool initializeTest()
 		{
+			m_eventEmitter->emitBeginTest(TestFrameView(*this));
 			// If effective flags indicate the test should be skipped, do nothing and return immediately
 			if(getEffectiveFlags().skip == FlagState::Enabled)
 			{
@@ -268,26 +275,22 @@ namespace partest
 		*/
 		void runTestFunction()
 		{
-			if(m_testFunction != nullptr)
-			{
-				updateStatus(TestStatus::Running);
-				
-				m_eventEmitter->emitBeginTest(TestFrameView(*this));
-				m_testFunction();
-				m_eventEmitter->emitEndTest(TestFrameView(*this));
-
-				if(getResult() == TestResult::NoResult)
-				{
-					log(LogLevel::Warning, PARTEST_LOG_TYPE_TEST, "Warning: '" + metadata.name + "' completed without any assertions. Defaulting to PASSED.");
-					updateResult(TestResult::Passed);
-				}
-
-				updateStatus(TestStatus::Completed);
-			}
-			else
-			{
+			if(m_testFunction == nullptr)
 				throw std::runtime_error("Attempted to run a test function that is not set.");
-			}
+
+			struct ClockGuard
+			{
+				TestFrame *frame;
+				~ClockGuard()
+				{
+					frame->m_endTime = std::chrono::steady_clock::now();
+				}
+			} guard{this};
+
+			updateStatus(TestStatus::Running);
+			m_startTime = std::chrono::steady_clock::now();
+			m_testFunction();
+			// ClockGuard sets endTime automatically on return
 		}
 
 		TestFrame *finalizeTest()
@@ -295,6 +298,12 @@ namespace partest
 			// If effective flags indicate the test should be skipped, do nothing and return immediately
 			if(getEffectiveFlags().skip == FlagState::Disabled)
 			{
+				if(getResult() == TestResult::NoResult)
+				{
+					log(LogLevel::Warning, PARTEST_LOG_TYPE_TEST, "Warning: '" + metadata.name + "' completed without any assertions. Defaulting to PASSED.");
+					updateResult(TestResult::Passed);
+				}
+
 				if(getStatus() != TestStatus::Aborted)
 					updateStatus(TestStatus::Completed);
 
@@ -312,6 +321,7 @@ namespace partest
 					m_testTeardown();
 				}
 			}
+			m_eventEmitter->emitEndTest(TestFrameView(*this));
 
 			return m_parent;
 		}
@@ -398,6 +408,9 @@ namespace partest
 		
 	inline TestStatus TestFrameView::status() const noexcept { return m_testFrame->state.getStatus(); }
 	inline TestResult TestFrameView::result() const noexcept { return m_testFrame->state.getResult(); }
+
+	inline std::chrono::steady_clock::time_point TestFrameView::startTime() const noexcept { return m_testFrame->startTime(); }
+	inline std::chrono::steady_clock::time_point TestFrameView::endTime() const noexcept { return m_testFrame->startTime(); }
 }
 
 #endif // PARTESTTESTFRAME_H
