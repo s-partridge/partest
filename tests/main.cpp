@@ -175,10 +175,10 @@ int main()
 	partest::runAllTests();
 	partest::displayAllTests();
 	unsigned assertions = partest::getAssertionFailureCount();
-	unsigned result = partest::getTopLevelFailures();
+	unsigned results = partest::getTopLevelFailures();
 
 	std::cout << "Total assertion failures: " << assertions << std::endl;
-	std::cout << "Total top-level failures: " << result << std::endl;
+	std::cout << "Total top-level failures: " << results << std::endl;
 
-	return 0;
+	return results;
 }
