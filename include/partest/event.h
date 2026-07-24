@@ -94,7 +94,7 @@ namespace partest
 	class Event
 	{
 		unsigned m_eventId;
-		std::chrono::steady_clock::time_point m_timestamp;
+		std::chrono::system_clock::time_point m_timestamp;
 		EventType m_eventType;
 		
 		EventPayload *m_payload;
@@ -107,7 +107,7 @@ namespace partest
 
 	public:
 		Event(EventType eventType, std::unique_ptr<EventPayload> payload)
-			: m_eventId(nextId()), m_timestamp(std::chrono::steady_clock::now()), m_eventType(eventType), m_payload(payload.release()) {}
+			: m_eventId(nextId()), m_timestamp(std::chrono::system_clock::now()), m_eventType(eventType), m_payload(payload.release()) { }
 
 		// Copy ctors
 		Event(const Event &other)
@@ -169,7 +169,7 @@ namespace partest
 		inline unsigned getEventId() const noexcept { return m_eventId; }
 		EventType getEventType() const noexcept { return m_eventType; }
 		const EventPayload &getPayload() const noexcept { return *m_payload; }
-		inline std::chrono::steady_clock::time_point getTimestamp() const noexcept { return m_timestamp; }
+		inline std::chrono::system_clock::time_point getTimestamp() const noexcept { return m_timestamp; }
 
 		bool operator==(const Event &rhs) const noexcept
 		{
