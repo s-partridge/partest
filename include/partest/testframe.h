@@ -356,7 +356,7 @@ namespace partest
 
 		unsigned getAssertionCount() const
 		{
-			unsigned total = m_assertions.size();
+			unsigned total = (unsigned)m_assertions.size();
 			for(TestFrame *subtest : m_subtests)
 			{
 				total += subtest->getAssertionCount();

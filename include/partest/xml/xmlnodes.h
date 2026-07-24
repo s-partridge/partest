@@ -25,9 +25,11 @@ namespace partest
 		constexpr const char *JUNIT_ERROR = "error";
 
 		// Standard datetime expected by JUnit
+		// TODO: Move this to a common location
 		std::string toIso8601(std::chrono::system_clock::time_point timePoint)
 		{
 			time_t time = std::chrono::system_clock::to_time_t(timePoint);
+			// TODO: replace gmtime call with centralized alternative that uses gmtime_s/_r as available.
 			std::tm calendarTime = *std::gmtime(&time);
 			std::ostringstream out;
 			out << std::put_time(&calendarTime, "%Y-%m-%dT%H:%M:%S");
@@ -62,7 +64,14 @@ namespace partest
 			JUnitXMLNode(PARTEST_STRING_PARAM nodeTag) : nodeTag(nodeTag) {}
 			virtual ~JUnitXMLNode() = default;
 
-			void addChild(std::unique_ptr<JUnitXMLNode> child) { children.push_back(std::move(child)); }
+			/**
+			* Add a new child node to this node. Return non-owning pointer to the new child.
+			*/
+			JUnitXMLNode *addChild(std::unique_ptr<JUnitXMLNode> child)
+			{
+				children.push_back(std::move(child));
+				return children.back().get();
+			}
 
 			friend std::ostream &operator<<(std::ostream &out, const JUnitXMLNode &rhs);
 		};
