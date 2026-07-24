@@ -6,6 +6,7 @@
 
 #include <partest/eventdispatcher.h>
 #include <partest/simplelogger.h>
+#include <partest/testframe.h>
 #include <partest/testbase.h>
 
 namespace partest
@@ -14,11 +15,11 @@ namespace partest
 	{
 	private:
 		std::vector<TestBase *> m_tests; // Vector of tests to run
+		std::vector<EventReporterInterface *> m_reporters;
 		EventDispatcherInterface *m_dispatcher;
-		SimpleLogger m_logger;
 		bool m_concurrent;
 
-		PartestRunner(bool concurrent = true) : m_concurrent(concurrent), m_logger(std::cout)
+		PartestRunner(bool concurrent = true) : m_concurrent(concurrent)
 		{
 			if(concurrent)
 			{
@@ -28,8 +29,6 @@ namespace partest
 			{
 				m_dispatcher = new SerialEventDispatcher();
 			}
-
-			m_dispatcher->registerReporter(&m_logger);
 		}
 	public:
 		// Delete copy and move constructors and assignment operators to enforce singleton pattern
@@ -40,12 +39,17 @@ namespace partest
 
 		~PartestRunner()
 		{
+			delete m_dispatcher;
+
+			for(EventReporterInterface *reporter: m_reporters)
+			{
+				delete reporter;
+			}
+
 			for(TestBase *test : m_tests)
 			{
 				delete test;
 			}
-
-			delete m_dispatcher;
 		}
 
 		/**
@@ -57,6 +61,11 @@ namespace partest
 			return instance;
 		}
 
+		void addReporter(std::unique_ptr<EventReporterInterface> reporter)
+		{
+			m_dispatcher->registerReporter(reporter.get());
+			m_reporters.push_back(reporter.release());
+		}
 
 		/**
 		* Add a test to the runner.
@@ -110,12 +119,21 @@ namespace partest
 				}
 			}
 
-			m_dispatcher->pushEvent(makeEventLog(TestFrameView::getNullTestFrameView(), LogEntry(LogLevel::Error, PARTEST_LOG_TYPE_DEFAULT, "Error: No test found with name '" + PARTEST_STRING_PARAM_TO_STRING(name) + "'.\n")));
+			if(!ran)
+				m_dispatcher->pushEvent(makeEventLog(TestFrameView::getNullTestFrameView(), LogEntry(LogLevel::Error, LOG_TYPE_DEFAULT, "Error: No test found with name '" + PARTEST_STRING_PARAM_TO_STRING(name) + "'.\n")));
 
 			m_dispatcher->killDispatcher();
 
 			if(m_concurrent)
 				dispatcherThread.join();
+		}
+
+		void readAllTests(TestFrameReaderInterface *visitor)
+		{
+			for(TestBase *test : m_tests)
+			{
+				test->visit(visitor);
+			}
 		}
 
 		// TODO: Finish once PostMortemReporters are implemented
