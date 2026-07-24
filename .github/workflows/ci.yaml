@@ -60,6 +60,15 @@ jobs:
             # Executable location is tied to Premake configuration
             bin/x64/${binpath}/partest
           done
+
+      - name: Test Report
+        uses: dorny/test-reporter@v1
+        if: always() # && hashFiles('testResults.xml') != '' # Uncomment to only run if the JUnit file is present
+        with:
+          name: Partest Results
+          path: testResults.xml
+          reporter: java-junit
+          # fail-on-empty: false      # ← don’t fail if the file doesn’t exist
             
   build-clang:
     runs-on: ${{ matrix.os }}
@@ -114,6 +123,15 @@ jobs:
             bin/x64/${binpath}/partest
           done
 
+      - name: Test Report
+        uses: dorny/test-reporter@v1
+        if: always() # && hashFiles('testResults.xml') != '' # Uncomment to only run if the JUnit file is present
+        with:
+          name: Partest Results
+          path: testResults.xml
+          reporter: java-junit
+          # fail-on-empty: false      # ← don’t fail if the file doesn’t exist
+
   build-windows:
     runs-on: windows-latest
 
@@ -132,7 +150,7 @@ jobs:
         uses: microsoft/setup-msbuild@v2
 
       - name: Build MSVC Debug
-        run: | 
+        run: |
           msbuild build\partest.vcxproj /p:Configuration=dbg-c14 /p:Platform=Win32
           msbuild build\partest.vcxproj /p:Configuration=dbg-c14 /p:Platform=x64
           msbuild build\partest.vcxproj /p:Configuration=dbg-c17 /p:Platform=Win32
@@ -148,3 +166,12 @@ jobs:
           bin\x64\dbg-c17\partest.exe
           bin\x86\dbg-c20\partest.exe
           bin\x64\dbg-c20\partest.exe
+
+      - name: Test Report
+        uses: dorny/test-reporter@v1
+        if: always() # && hashFiles('testResults.xml') != '' # Uncomment to only run if the JUnit file is present
+        with:
+          name: Partest Results
+          path: testResults.xml
+          reporter: java-junit
+          # fail-on-empty: false      # ← don’t fail if the file doesn’t exist
