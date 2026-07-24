@@ -16,7 +16,7 @@ namespace partest
 		return partest::PartestRunner::getInstance();
 	}
 
-	inline void initializeSuite(int argc, const char*argv)
+	inline void initializeSuite(int argc, const char **argv)
 	{
 		testRunner().addReporter(partest::make_unique<SimpleLogger>());
 		testRunner().addReporter(partest::make_unique<JUnitLogger>());

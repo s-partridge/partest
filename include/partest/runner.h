@@ -128,11 +128,11 @@ namespace partest
 				dispatcherThread.join();
 		}
 
-		void readAllTests(TestFrameReaderInterface *visitor)
+		void readAllTests(TestFrameReaderInterface *reader)
 		{
 			for(TestBase *test : m_tests)
 			{
-				test->visit(visitor);
+				test->readTestTree(reader);
 			}
 		}
 

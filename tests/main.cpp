@@ -158,12 +158,13 @@ public:
 	}
 };
 
-int main()
+int main(int argc, const char **argv)
 {
 // For memory leak validation on MSVC
 #if defined(_MSVC_LANG)
 	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
-#endif	
+#endif
+	partest::initializeSuite(argc, argv);
 	//partest::addTestClass(partest::make_unique<PartestBaseTest>());
 	//partest::addTestClass(partest::make_unique<AssertionTests>());
 	partest::addTestClass(partest::make_unique<SemaphoreTests>());

@@ -268,16 +268,9 @@ namespace partest
 			return frame->getAssertionFailureCount();
 		}
 
-		void traverseTestTree(TestFrameReaderInterface &visitor, const TestFrame &frame)
+		void readTestTree(TestFrameReaderInterface *reader)
 		{
-			visitor.readTree(frame);
-
-
-		}
-
-		void traverseTestTree(TestFrameReaderInterface &visitor)
-		{
-			traverseTestTree(visitor, *m_testTree.get());
+			reader->readTree(*m_testTree);
 		}
 	};
 } // namespace partest
