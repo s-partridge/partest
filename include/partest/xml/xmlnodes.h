@@ -192,6 +192,20 @@ namespace partest
 			bool valueAsBody = false;
 
 			PropertyNode(PARTEST_STRING_PARAM nodeTag = JUNIT_PROPERTY) : PropertiesNode(nodeTag) {}
+
+			std::string openTag() const override
+			{
+				if(valueAsBody)
+					return '<' + nodeTag + '>';
+				// TODO: Escape value when used as part of tag
+				return '<' + nodeTag + " value=\"" + value + "\">";
+			}
+
+			void bodyText(std::ostream &out) const override
+			{
+				if(valueAsBody)
+					out << value;
+			}
 		};
 
 		// Suite or Test level log from stdout
@@ -199,6 +213,11 @@ namespace partest
 		{
 			std::string body = "";
 			SystemOutNode(PARTEST_STRING_PARAM nodeTag = JUNIT_SYSTEM_OUT) : JUnitXMLNode(nodeTag) {}
+
+			void bodyText(std::ostream &out) const override
+			{
+				out << body;
+			}
 		};
 
 		// Suite or Test level log from stderr
@@ -206,6 +225,11 @@ namespace partest
 		{
 			std::string body = "";
 			SystemErrNode(PARTEST_STRING_PARAM nodeTag = JUNIT_SYSTEM_ERR) : JUnitXMLNode(nodeTag) {}
+
+			void bodyText(std::ostream &out) const override
+			{
+				out << body;
+			}
 		};
 
 		// Used to report that a test was skipped
@@ -214,6 +238,17 @@ namespace partest
 			std::string message = "";
 
 			SkippedNode(PARTEST_STRING_PARAM nodeTag = JUNIT_SKIPPED) : JUnitXMLNode(nodeTag) {}
+
+			std::string openTag() const override
+			{
+				// TODO: Escape message
+				return '<' + nodeTag + " message=\"" + message + "\" />";
+			}
+
+			std::string closeTag() const override
+			{
+				return "";
+			}
 		};
 
 		// Used to report the results of a failed test, usually from a failed assertion
@@ -224,6 +259,20 @@ namespace partest
 			std::string body = "";
 
 			FailureNode(PARTEST_STRING_PARAM nodeTag = JUNIT_FAILURE) : JUnitXMLNode(nodeTag) {}
+
+			std::string openTag() const override
+			{
+				// TODO: Escape message
+				return '<' + nodeTag
+					+ " message=\"" + message
+					+ "\" type=\"" + type 
+					+ "\">";
+			}
+
+			void bodyText(std::ostream &out) const override
+			{
+				out << body;
+			}
 		};
 
 		// Same as failure node, but represents an unexpected error during test execution
@@ -234,6 +283,20 @@ namespace partest
 			std::string body = "";
 
 			ErrorNode(PARTEST_STRING_PARAM nodeTag = JUNIT_ERROR) : JUnitXMLNode(nodeTag) {}
+
+			std::string openTag() const override
+			{
+				// TODO: Escape message
+				return '<' + nodeTag
+					+ " message=\"" + message
+					+ "\" type=\"" + type 
+					+ "\">";
+			}
+
+			void bodyText(std::ostream &out) const override
+			{
+				out << body;
+			}
 		};
 	}
 }
