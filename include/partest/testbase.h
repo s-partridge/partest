@@ -148,14 +148,46 @@ namespace partest
 			m_testTree->addSubtest(partest::make_unique<TestFrame>(&m_eventEmitter, flags, metadata, TestState::defaultState(), testFunc, setupFunc, teardownFunc));
 		}
 
+		void addTest(PARTEST_STRING_PARAM name, const TestFlags &flags, const std::function<void()> &testFunc, const std::function<void()> &setupFunc = nullptr, const std::function<void()> &teardownFunc = nullptr)
+		{
+			m_testTree->addSubtest(partest::make_unique<TestFrame>(&m_eventEmitter, flags, TestInfo(name), TestState::defaultState(), testFunc, setupFunc, teardownFunc));
+		}
+
+		void addTest(PARTEST_STRING_PARAM name, PARTEST_STRING_PARAM description, const TestFlags &flags, const std::function<void()> &testFunc, const std::function<void()> &setupFunc = nullptr, const std::function<void()> &teardownFunc = nullptr)
+		{
+			m_testTree->addSubtest(partest::make_unique<TestFrame>(&m_eventEmitter, flags, TestInfo(name, description), TestState::defaultState(), testFunc, setupFunc, teardownFunc));
+		}
+
+		/////////////////////
+		//Subtest overloads//
+		/////////////////////
 		template<PARTEST_ENABLE_IF_INVOCABLE(Func)>
-		void subtest(Func &&testFunc) { subtest(TestInfo::defaultInfo(), TestFlags::defaultInherit(), testFunc); }
+		void subtest(PARTEST_STRING_PARAM name, Func &&testFunc)
+		{ subtest(TestInfo(name), TestFlags::defaultInherit(), testFunc); }
 
 		template<PARTEST_ENABLE_IF_INVOCABLE(Func)>
-		void subtest(const TestFlags& flags, Func &&testFunc) { subtest(TestInfo::defaultInfo(), flags, testFunc); }
+		void subtest(PARTEST_STRING_PARAM name, PARTEST_STRING_PARAM description, Func &&testFunc)
+		{ subtest(TestInfo(name, description), TestFlags::defaultInherit(), testFunc); }
 
 		template<PARTEST_ENABLE_IF_INVOCABLE(Func)>
-		void subtest(const TestInfo &testInfo, Func &&testFunc) { subtest(testInfo, TestFlags::defaultInherit(), testFunc); }
+		void subtest(PARTEST_STRING_PARAM name, const TestFlags& flags, Func &&testFunc)
+		{ subtest(TestInfo(name), flags, testFunc); }
+
+		template<PARTEST_ENABLE_IF_INVOCABLE(Func)>
+		void subtest(PARTEST_STRING_PARAM name, PARTEST_STRING_PARAM description, const TestFlags& flags, Func &&testFunc)
+		{ subtest(TestInfo(name, description), flags, testFunc); }
+
+		template<PARTEST_ENABLE_IF_INVOCABLE(Func)>
+		void subtest(Func &&testFunc)
+		{ subtest(TestInfo::defaultInfo(), TestFlags::defaultInherit(), testFunc); }
+
+		template<PARTEST_ENABLE_IF_INVOCABLE(Func)>
+		void subtest(const TestFlags& flags, Func &&testFunc)
+		{ subtest(TestInfo::defaultInfo(), flags, testFunc); }
+
+		template<PARTEST_ENABLE_IF_INVOCABLE(Func)>
+		void subtest(const TestInfo &testInfo, Func &&testFunc)
+		{ subtest(testInfo, TestFlags::defaultInherit(), testFunc); }
 
 		template<PARTEST_ENABLE_IF_INVOCABLE(Func)>
 		void subtest(const TestInfo &testInfo, const TestFlags& flags, Func &&testFunc)
