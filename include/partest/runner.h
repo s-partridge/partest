@@ -11,7 +11,7 @@
 
 namespace partest
 {
-	class PartestRunner
+	class TestRunner
 	{
 	private:
 		std::vector<TestBase *> m_tests; // Vector of tests to run
@@ -19,7 +19,7 @@ namespace partest
 		EventDispatcherInterface *m_dispatcher;
 		bool m_concurrent;
 
-		PartestRunner(bool concurrent = true) : m_concurrent(concurrent)
+		TestRunner(bool concurrent = true) : m_concurrent(concurrent)
 		{
 			if(concurrent)
 			{
@@ -32,12 +32,12 @@ namespace partest
 		}
 	public:
 		// Delete copy and move constructors and assignment operators to enforce singleton pattern
-		PartestRunner(const PartestRunner &) = delete;
-		PartestRunner &operator=(const PartestRunner &) = delete;
-		PartestRunner(PartestRunner &&) = delete;
-		PartestRunner &operator=(PartestRunner &&) = delete;
+		TestRunner(const TestRunner &) = delete;
+		TestRunner &operator=(const TestRunner &) = delete;
+		TestRunner(TestRunner &&) = delete;
+		TestRunner &operator=(TestRunner &&) = delete;
 
-		~PartestRunner()
+		~TestRunner()
 		{
 			delete m_dispatcher;
 
@@ -53,11 +53,11 @@ namespace partest
 		}
 
 		/**
-		* Get the singleton instance of the PartestRunner.
+		* Get the singleton instance of TestRunner.
 		*/
-		static PartestRunner &getInstance() noexcept
+		static TestRunner &getInstance() noexcept
 		{
-			static PartestRunner instance;
+			static TestRunner instance;
 			return instance;
 		}
 
@@ -120,12 +120,17 @@ namespace partest
 			}
 
 			if(!ran)
-				m_dispatcher->pushEvent(makeEventLog(TestFrameView::getNullTestFrameView(), LogEntry(LogLevel::Error, LOG_TYPE_DEFAULT, "Error: No test found with name '" + PARTEST_STRING_PARAM_TO_STRING(name) + "'.\n")));
+				recordLog(LogLevel::Error, LOG_TYPE_DEFAULT, "Error: No test found with name '" + PARTEST_STRING_PARAM_TO_STRING(name) + "'.\n");
 
 			m_dispatcher->killDispatcher();
 
 			if(m_concurrent)
 				dispatcherThread.join();
+		}
+
+		bool recordLog(LogLevel level, PARTEST_STRING_PARAM logType, PARTEST_STRING_PARAM message)
+		{
+			return m_dispatcher->pushEvent(makeEventLog(TestFrameView::getNullTestFrameView(), LogEntry(level, logType, message)));
 		}
 
 		void readAllTests(TestFrameReaderInterface *reader)

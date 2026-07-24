@@ -12,9 +12,9 @@
 
 namespace partest
 {
-	inline partest::PartestRunner &testRunner()
+	inline partest::TestRunner &testRunner()
 	{
-		return partest::PartestRunner::getInstance();
+		return partest::TestRunner::getInstance();
 	}
 
 	inline void initializeSuite(int argc, const char **argv)
@@ -22,6 +22,9 @@ namespace partest
 		std::string xmlPath = makeAbsolutePath("testResults.xml");
 		testRunner().addReporter(partest::make_unique<SimpleLogger>());
 		testRunner().addReporter(partest::make_unique<JUnitLogger>("testResults.xml"));
+
+		if(!maybeOpenFile(xmlPath, std::ios::out))
+			testRunner().recordLog(LogLevel::Error, LOG_TYPE_DEFAULT, "Error: Unable to open file for JUnit reporting: '" + xmlPath + "'.\n");
 	}
 
 	/**

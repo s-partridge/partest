@@ -131,7 +131,7 @@ namespace partest
 	*/
 	inline bool maybeOpenFile(PARTEST_STRING_PARAM absolutePath, std::ios_base::openmode mode)
 	{
-		std::fstream handle(absolutePath, mode);
+		std::fstream handle(PARTEST_STRING_PARAM_TO_STRING(absolutePath), mode);
 
 		if(!handle.is_open())
 			return false;
