@@ -19,6 +19,15 @@ namespace partest
 
 	class TestFrame;
 
+	class TestFrameReaderInterface
+	{
+	public:
+		TestFrameReaderInterface() = default;
+		virtual ~TestFrameReaderInterface() = default;
+
+		virtual void readTree(const TestFrame &root) = 0;
+	};
+
 	class TestFrameView
 	{
 		const TestFrame *m_testFrame;
@@ -30,6 +39,13 @@ namespace partest
 
 		unsigned id() const noexcept;
 		unsigned parentId() const noexcept;
+		
+		unsigned assertionCount() const noexcept;
+		unsigned subtestCount() const noexcept;
+		
+		unsigned assertionFailureCount() const noexcept;
+		unsigned subtestFailureCount(unsigned depth = 1) const noexcept;
+
 		const TestInfo &info() const noexcept;
 		PARTEST_STRING_PARAM name() const noexcept;
 		PARTEST_STRING_PARAM description() const noexcept;
@@ -80,6 +96,8 @@ namespace partest
 	public:
 		using TestFrameIter = std::vector<TestFrame *>::iterator;
 		using TestFrameConstIter = std::vector<TestFrame *>::const_iterator;
+		using LogEntryConstIter = std::deque<LogEntry>::const_iterator;
+		using AssertionConstIter = std::deque<AssertionResult>::const_iterator;
 
 		TestFrame(EventEmitterInterface *eventEmitter) : m_eventEmitter(eventEmitter), flags(), metadata(), state(), m_id(nextId()), m_testFrameView(*this) { }
 		TestFrame(EventEmitterInterface *eventEmitter, const TestFlags &flags, const TestInfo &metadata, const TestState &result,
@@ -229,6 +247,14 @@ namespace partest
 		TestFrameConstIter subtestsBegin() const noexcept{ return m_subtests.cbegin(); }
 		TestFrameConstIter subtestsEnd() const noexcept { return m_subtests.cend(); }
 
+		size_t logEntryCount() const noexcept { return m_logs.size(); }
+		LogEntryConstIter logEntryBegin() const noexcept { return m_logs.cbegin(); }
+		LogEntryConstIter logEntryEnd() const noexcept { return m_logs.cend(); }
+
+		size_t assertionCount() const noexcept { return m_assertions.size(); }
+		AssertionConstIter assertionsBegin() const noexcept { return m_assertions.cbegin(); }
+		AssertionConstIter assertionsEnd() const noexcept { return m_assertions.cend(); }
+
 		bool initializeTest()
 		{
 			m_eventEmitter->emitBeginTest(TestFrameView(*this));
@@ -281,7 +307,7 @@ namespace partest
 			{
 				if(getResult() == TestResult::NoResult)
 				{
-					recordLog(LogLevel::Warning, PARTEST_LOG_TYPE_TEST, "Warning: '" + metadata.name + "' completed without any assertions. Defaulting to PASSED.");
+					recordLog(LogLevel::Warning, LOG_TYPE_TEST, "Warning: '" + metadata.name + "' completed without any assertions. Defaulting to PASSED.");
 					updateResult(TestResult::Passed);
 				}
 
@@ -323,6 +349,17 @@ namespace partest
 			}
 
 			return failureCount;
+		}
+
+		unsigned getAssertionCount() const
+		{
+			unsigned total = m_assertions.size();
+			for(TestFrame *subtest : m_subtests)
+			{
+				total += subtest->getAssertionCount();
+			}
+
+			return total;
 		}
 
 		/**
@@ -367,7 +404,7 @@ namespace partest
 			}
 		}
 	};
-
+	
 	/**
 	* TestFrameView function definitions
 	*/
@@ -377,12 +414,19 @@ namespace partest
 
 	inline unsigned TestFrameView::id() const noexcept { return m_testFrame->id(); }
 	inline unsigned TestFrameView::parentId() const noexcept { return m_testFrame->parentId(); }
+
+	inline unsigned TestFrameView::assertionCount() const noexcept { return m_testFrame->assertionCount(); }
+	inline unsigned TestFrameView::subtestCount() const noexcept { return m_testFrame->subtestCount(); }
+
+	inline unsigned TestFrameView::assertionFailureCount() const noexcept { return m_testFrame->getAssertionFailureCount(); }
+	inline unsigned TestFrameView::subtestFailureCount(unsigned depth = 1) const noexcept { return m_testFrame->getTestFailureCount(depth); }
+
 	inline const TestInfo &TestFrameView::info() const noexcept { return m_testFrame->metadata; }
 	inline PARTEST_STRING_PARAM TestFrameView::name() const noexcept { return m_testFrame->metadata.name; }
 	inline PARTEST_STRING_PARAM TestFrameView::description() const noexcept { return m_testFrame->metadata.description; }
 	inline const TestFlags &TestFrameView::flags() const noexcept { return m_testFrame->flags; }
 	inline const TestState &TestFrameView::state() const noexcept { return m_testFrame->state; }
-		
+
 	inline TestStatus TestFrameView::status() const noexcept { return m_testFrame->state.getStatus(); }
 	inline TestResult TestFrameView::result() const noexcept { return m_testFrame->state.getResult(); }
 
