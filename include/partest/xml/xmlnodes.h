@@ -88,11 +88,11 @@ namespace partest
 		struct TestSuitesNode : public JUnitXMLNode
 		{
 			std::string name = "";		// Name of the test suite (e.g. class name or folder name)
-			unsigned tests = 0;			// Total number of tests
-			unsigned failures = 0;		// Total number of failed tests
-			unsigned errors = 0;		// Total number of errored tests
-			unsigned skipped = 0;		// Total number of skipped tests
-			unsigned assertions = 0;	// Total number of assertions for all tests
+			size_t tests = 0;			// Total number of tests
+			size_t failures = 0;		// Total number of failed tests
+			size_t errors = 0;			// Total number of errored tests
+			size_t skipped = 0;			// Total number of skipped tests
+			size_t assertions = 0;		// Total number of assertions for all tests
 
 			// Aggregated time of all tests in this file in seconds
 			std::chrono::steady_clock::duration time = std::chrono::steady_clock::duration(0);
@@ -150,7 +150,7 @@ namespace partest
 		{
 			std::string name = "";		// The name of this test case, often the function name
 			std::string classname = "";	// The name of the parent class/folder, often the same as the suite's name
-			unsigned assertions = 0;	// Number of assertions checked during test case execution
+			size_t assertions = 0;	// Number of assertions checked during test case execution
         
 			// Execution time of the test in seconds
 			std::chrono::steady_clock::duration time = std::chrono::steady_clock::duration(0);

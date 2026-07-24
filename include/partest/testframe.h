@@ -40,11 +40,11 @@ namespace partest
 		unsigned id() const noexcept;
 		unsigned parentId() const noexcept;
 		
-		unsigned assertionCount() const noexcept;
-		unsigned subtestCount() const noexcept;
+		size_t assertionCount() const noexcept;
+		size_t subtestCount() const noexcept;
 		
-		unsigned assertionFailureCount() const noexcept;
-		unsigned subtestFailureCount(unsigned depth = 1) const noexcept;
+		size_t assertionFailureCount() const noexcept;
+		size_t subtestFailureCount(unsigned depth = 1) const noexcept;
 
 		const TestInfo &info() const noexcept;
 		PARTEST_STRING_PARAM name() const noexcept;
@@ -244,9 +244,9 @@ namespace partest
 		/**
 		* Iterator access for subtests
 		*/
+		size_t subtestCount() const noexcept { return m_subtests.size(); }
 		TestFrameIter subtestsBegin() noexcept { return m_subtests.begin(); }
 		TestFrameIter subtestsEnd() noexcept { return m_subtests.end(); }
-		size_t subtestCount() const noexcept { return m_subtests.size(); }
 		TestFrameConstIter subtestsBegin() const noexcept{ return m_subtests.cbegin(); }
 		TestFrameConstIter subtestsEnd() const noexcept { return m_subtests.cend(); }
 
@@ -418,11 +418,11 @@ namespace partest
 	inline unsigned TestFrameView::id() const noexcept { return m_testFrame->id(); }
 	inline unsigned TestFrameView::parentId() const noexcept { return m_testFrame->parentId(); }
 
-	inline unsigned TestFrameView::assertionCount() const noexcept { return m_testFrame->assertionCount(); }
-	inline unsigned TestFrameView::subtestCount() const noexcept { return m_testFrame->subtestCount(); }
+	inline size_t TestFrameView::assertionCount() const noexcept { return m_testFrame->assertionCount(); }
+	inline size_t TestFrameView::subtestCount() const noexcept { return m_testFrame->subtestCount(); }
 
-	inline unsigned TestFrameView::assertionFailureCount() const noexcept { return m_testFrame->getAssertionFailureCount(); }
-	inline unsigned TestFrameView::subtestFailureCount(unsigned depth) const noexcept { return m_testFrame->getTestFailureCount(depth); }
+	inline size_t TestFrameView::assertionFailureCount() const noexcept { return m_testFrame->getAssertionFailureCount(); }
+	inline size_t TestFrameView::subtestFailureCount(unsigned depth) const noexcept { return m_testFrame->getTestFailureCount(depth); }
 
 	inline const TestInfo &TestFrameView::info() const noexcept { return m_testFrame->metadata; }
 	inline PARTEST_STRING_PARAM TestFrameView::name() const noexcept { return m_testFrame->metadata.name; }
