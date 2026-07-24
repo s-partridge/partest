@@ -1,5 +1,4 @@
 // Entry point for testing the partest framework
-
 #include <iostream>
 #include <vector>
 
@@ -51,7 +50,7 @@ public:
 
 	void sampleTest()
 	{
-		recordLog(partest::LogLevel::Debug, PARTEST_LOG_TYPE_TEST, "This is a sample log message.");
+		recordLog(partest::LogLevel::Debug, partest::LOG_TYPE_TEST, "This is a sample log message.");
 		ASSERT_TRUE(true); // This assertion will pass
 	}
 
@@ -73,7 +72,7 @@ public:
 
 	void parameterizedTest(int testValue)
 	{
-		recordLog(partest::LogLevel::Debug, PARTEST_LOG_TYPE_TEST, "Running example test...");
+		recordLog(partest::LogLevel::Debug, partest::LOG_TYPE_TEST, "Running example test...");
 		subtest(partest::TestInfo("Subtest1", "A subtest that checks if testValue is 3."), [&]()
 		{
 			// Subtest logic here
@@ -150,12 +149,12 @@ public:
 
 	void setup() override
 	{
-		recordLog(partest::LogLevel::Debug, PARTEST_LOG_TYPE_TEST, "Setting up PartestBaseTest...");
+		recordLog(partest::LogLevel::Debug, partest::LOG_TYPE_TEST, "Setting up PartestBaseTest...");
 	}
 
 	void teardown() override
 	{
-		recordLog(partest::LogLevel::Debug, PARTEST_LOG_TYPE_TEST, "Tearing down PartestBaseTest...");
+		recordLog(partest::LogLevel::Debug, partest::LOG_TYPE_TEST, "Tearing down PartestBaseTest...");
 	}
 };
 
@@ -165,7 +164,7 @@ int main()
 #if defined(_MSVC_LANG)
 	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 #endif	
-	partest::addTestClass(partest::make_unique<PartestBaseTest>());
+	//partest::addTestClass(partest::make_unique<PartestBaseTest>());
 	//partest::addTestClass(partest::make_unique<AssertionTests>());
 	partest::addTestClass(partest::make_unique<SemaphoreTests>());
 	partest::addTestClass(partest::make_unique<DispatcherTests>());

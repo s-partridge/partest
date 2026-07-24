@@ -87,7 +87,7 @@ class DispatcherTests : public partest::TestBase
 		// Passthrough log
 		mirrorLog(partest::makeEventPassthrough(nullTestFrame, std::this_thread::get_id(), "Log from user code"));
 		// Normal log
-		mirrorLog(partest::makeEventLog(nullTestFrame, partest::LogEntry(partest::LogLevel::Info, PARTEST_LOG_TYPE_DEFAULT, "Framework log from test code")));
+		mirrorLog(partest::makeEventLog(nullTestFrame, partest::LogEntry(partest::LogLevel::Info, partest::LOG_TYPE_DEFAULT, "Framework log from test code")));
 	}
 
 	void tearDownSerial()
@@ -115,7 +115,7 @@ class DispatcherTests : public partest::TestBase
 			// Passthrough log
 			mirrorLog(partest::makeEventPassthrough(nullTestFrame, std::this_thread::get_id(), "Log from user code"));
 			// Normal log
-			mirrorLog(partest::makeEventLog(nullTestFrame, partest::LogEntry(partest::LogLevel::Info, PARTEST_LOG_TYPE_DEFAULT, "Framework log from test code")));
+			mirrorLog(partest::makeEventLog(nullTestFrame, partest::LogEntry(partest::LogLevel::Info, partest::LOG_TYPE_DEFAULT, "Framework log from test code")));
 		}
 	}
 
@@ -361,7 +361,7 @@ public:
 		dispatcher->registerReporter(&reporter);
 
 		// Add another event following registration.
-		dispatcher->pushEvent(partest::makeEventLog(nullTestFrame, partest::LogEntry(partest::LogLevel::Info, PARTEST_LOG_TYPE_DEFAULT, "Framework log from test code")));
+		dispatcher->pushEvent(partest::makeEventLog(nullTestFrame, partest::LogEntry(partest::LogLevel::Info, partest::LOG_TYPE_DEFAULT, "Framework log from test code")));
 		dispatcher->killDispatcher();
 		dispatcherThread.join();
 

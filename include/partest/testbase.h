@@ -66,7 +66,7 @@ namespace partest
 					m_currentFrame->updateResult(TestResult::Failed);
 
 					resultStream << "Error: Unhandled exception in test '" << m_currentFrame->metadata.name << "': " << e.what() << std::endl;
-					recordLog(LogLevel::Info, PARTEST_LOG_TYPE_DEFAULT, resultStream.str());
+					recordLog(LogLevel::Info, LOG_TYPE_TEST, resultStream.str());
 				}
 				catch(...)
 				{
@@ -77,7 +77,7 @@ namespace partest
 					m_currentFrame->updateResult(TestResult::Failed);
 
 					resultStream << "Error: Unknown exception in test '" << m_currentFrame->metadata.name << "'." << std::endl;
-					recordLog(LogLevel::Error, PARTEST_LOG_TYPE_DEFAULT, resultStream.str());
+					recordLog(LogLevel::Error, LOG_TYPE_TEST, resultStream.str());
 				}
 
 				m_currentFrame->finalizeTest();
@@ -266,6 +266,18 @@ namespace partest
 			const TestFrame *frame = m_testTree.get();
 
 			return frame->getAssertionFailureCount();
+		}
+
+		void traverseTestTree(TestFrameReaderInterface &visitor, const TestFrame &frame)
+		{
+			visitor.readTree(frame);
+
+
+		}
+
+		void traverseTestTree(TestFrameReaderInterface &visitor)
+		{
+			traverseTestTree(visitor, *m_testTree.get());
 		}
 	};
 } // namespace partest
