@@ -6,12 +6,20 @@
 #include <partest/common.h>
 #include <partest/testbase.h>
 #include <partest/runner.h>
+#include <partest/simplelogger.h>
+#include <partest/junitlogger.h>
 
 namespace partest
 {
 	inline partest::PartestRunner &testRunner()
 	{
 		return partest::PartestRunner::getInstance();
+	}
+
+	inline void initializeSuite(int argc, const char*argv)
+	{
+		testRunner().addReporter(partest::make_unique<SimpleLogger>());
+		testRunner().addReporter(partest::make_unique<JUnitLogger>());
 	}
 
 	/**
