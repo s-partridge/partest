@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <cerrno>
 #include <string>
+#include <fstream>
 #include <partest/common.h>
 
 #if PARTEST_CPP_VERSION >= 17
@@ -117,4 +118,27 @@ namespace partest
 }
 
 #endif // PARTEST_CPP_VERSION >= 17
+
+namespace partest
+{
+	/**
+	* Open or create a file and immediately close it
+	* 
+	* @param absolutePath The full path to the file to be opened
+	* @param mode File IO mode used to open the file
+	* 
+	* @returns true if the file was opened successfully, false otherwise
+	*/
+	inline bool maybeOpenFile(PARTEST_STRING_PARAM absolutePath, std::ios_base::openmode mode)
+	{
+		std::fstream handle(absolutePath, mode);
+
+		if(!handle.is_open())
+			return false;
+
+		handle.close();
+		return true;
+	}
+}
+
 #endif // PARTEST_FILEIO_H
