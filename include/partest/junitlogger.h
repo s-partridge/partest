@@ -54,7 +54,7 @@ namespace partest
 
 			while(subtest != test->subtestsEnd())
 			{
-				xml::TestCaseNode *testNode = static_cast<xml::TestCaseNode *>(node->addChild(std::make_unique<xml::TestCaseNode>()));
+				xml::TestCaseNode *testNode = static_cast<xml::TestCaseNode *>(node->addChild(partest::make_unique<xml::TestCaseNode>()));
 				
 				buildTestCaseNode(*subtest, testNode, parentTestName);
 				//readSubtree(*subtest, testNode, testNode->name);
