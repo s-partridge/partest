@@ -90,7 +90,7 @@ namespace partest
 		// Called for each test to be read
 		void readTree(const TestFrame &root) override
 		{
-			xml::TestSuiteNode *node = static_cast<xml::TestSuiteNode *>(m_root->addChild(std::make_unique<xml::TestSuiteNode>()));
+			xml::TestSuiteNode *node = static_cast<xml::TestSuiteNode *>(m_root->addChild(partest::make_unique<xml::TestSuiteNode>()));
 			buildTestSuiteNode(&root, node);
 			readSubtree(&root);
 
