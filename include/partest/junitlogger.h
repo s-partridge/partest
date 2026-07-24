@@ -3,7 +3,6 @@
 
 #include <vector>
 #include <fstream>
-#include <exception>
 
 #include <partest/eventreporter.h>
 #include <partest/testframe.h>
@@ -41,20 +40,24 @@ namespace partest
 			node->time = testFrame->endTime() - testFrame->startTime();
  		}
 
-		void buildTestCaseNode(const TestFrame *testFrame, xml::TestCaseNode *node)
+		void buildTestCaseNode(const TestFrame *testFrame, xml::TestCaseNode *node, PARTEST_STRING_PARAM parentTestName)
 		{
 			node->name = testFrame->metadata.name;
+			node->classname = parentTestName;
 			node->assertions = testFrame->assertionCount();
 			node->time = testFrame->endTime() - testFrame->startTime();
 		}
 
-		void readSubtree(const TestFrame *test)
+		void readSubtree(const TestFrame *test, xml::JUnitXMLNode *node, PARTEST_STRING_PARAM parentTestName)
 		{
 			TestFrame::TestFrameConstIter subtest = test->subtestsBegin();
 
 			while(subtest != test->subtestsEnd())
 			{
-				readSubtree(*subtest);
+				xml::TestCaseNode *testNode = static_cast<xml::TestCaseNode *>(node->addChild(std::make_unique<xml::TestCaseNode>()));
+				
+				buildTestCaseNode(*subtest, testNode, parentTestName);
+				//readSubtree(*subtest, testNode, testNode->name);
 				++subtest;
 			}
 		}
@@ -90,9 +93,10 @@ namespace partest
 		// Called for each test to be read
 		void readTree(const TestFrame &root) override
 		{
+			// addChild always returns a raw pointer to the node it was just passed.
 			xml::TestSuiteNode *node = static_cast<xml::TestSuiteNode *>(m_root->addChild(partest::make_unique<xml::TestSuiteNode>()));
 			buildTestSuiteNode(&root, node);
-			readSubtree(&root);
+			readSubtree(&root, node, node->name);
 
 			std::cout << "Reading test frame: " << root.id() << std::endl;
 		}

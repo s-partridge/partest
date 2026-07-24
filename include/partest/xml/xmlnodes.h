@@ -126,6 +126,24 @@ namespace partest
 			std::string file = "";      // Source code file for this test suite
 
 			TestSuiteNode(PARTEST_STRING_PARAM nodeTag = JUNIT_TESTSUITE) : TestSuitesNode(nodeTag) {}
+
+			std::string openTag() const override
+			{
+				std::chrono::duration<double> seconds = time;
+
+				std::ostringstream out;
+				out << '<' << nodeTag
+					<< " name=\"" << name << "\""
+					<< " tests=\"" << tests << "\""
+					<< " failures=\"" << failures << "\""
+					<< " assertions=\"" << assertions << "\""
+					<< " time=\"" << seconds.count() << "\""
+					<< " timestamp=\"" << toIso8601(timestamp) << "\""
+					<< " file=\"" << file << "\""
+					<< ">";
+
+				return out.str();
+			}
 		};
 
 		struct TestCaseNode : public JUnitXMLNode
@@ -141,6 +159,23 @@ namespace partest
 			int line = 1;					// Source code line number of the start of this test case
 
 			TestCaseNode(PARTEST_STRING_PARAM nodeTag = JUNIT_TESTCASE) : JUnitXMLNode(nodeTag) {}
+
+			std::string openTag() const override
+			{
+				std::chrono::duration<double> seconds = time;
+
+				std::ostringstream out;
+				out << '<' << nodeTag
+					<< " name=\"" << name << "\""
+					<< " classname=\"" << classname << "\""
+					<< " assertions=\"" << assertions << "\""
+					<< " time=\"" << seconds.count() << "\""
+					<< " file=\"" << file << "\""
+					<< " line=\"" << line << "\""
+					<< ">";
+
+				return out.str();
+			}
 		};
 
 		// Properties node, optional, containing individual property nodes
