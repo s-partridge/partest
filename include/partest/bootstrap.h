@@ -8,6 +8,7 @@
 #include <partest/runner.h>
 #include <partest/simplelogger.h>
 #include <partest/junitlogger.h>
+#include <partest/fileops.h>
 
 namespace partest
 {
@@ -18,8 +19,9 @@ namespace partest
 
 	inline void initializeSuite(int argc, const char **argv)
 	{
+		std::string xmlPath = makeAbsolutePath("testResults.xml");
 		testRunner().addReporter(partest::make_unique<SimpleLogger>());
-		testRunner().addReporter(partest::make_unique<JUnitLogger>());
+		testRunner().addReporter(partest::make_unique<JUnitLogger>("testResults.xml"));
 	}
 
 	/**

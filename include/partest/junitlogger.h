@@ -2,6 +2,8 @@
 #define PARTEST_JUNIT_LOGGER_H
 
 #include <vector>
+#include <fstream>
+#include <exception>
 
 #include <partest/eventreporter.h>
 #include <partest/testframe.h>
@@ -13,10 +15,13 @@ namespace partest
 	class JUnitLogger : public EventReporterInterface, public TestFrameReaderInterface
 	{
 		std::unique_ptr<xml::TestSuitesNode> m_root;
+		std::string m_reportPath;
+
 	public:
-		JUnitLogger()
+		JUnitLogger(PARTEST_STRING_PARAM reportPath)
 			: EventReporterInterface(), TestFrameReaderInterface(),
-			  m_root(make_unique<xml::TestSuitesNode>())
+			  m_root(make_unique<xml::TestSuitesNode>()),
+			  m_reportPath(reportPath)
 		{ }
 
 		// EventReporter functions
@@ -47,12 +52,32 @@ namespace partest
 		void onDie(const Event &event, const DiePayload &payload) override
 		{
 			PartestRunner::getInstance().readAllTests(this);
+			m_root->timestamp = event.getTimestamp();
+			writeToFile();
 		}
 
 		// Called for each test to be read
 		void readTree(const TestFrame &root) override
 		{
 			std::cout << "Reading test frame: " << root.id() << std::endl;
+		}
+
+		void writeToFile()
+		{
+			std::ofstream xmlFile(m_reportPath);
+
+			if(!xmlFile.is_open())
+			{
+				std::cerr << "ERROR: Could not open path for JUnit report: " << m_reportPath << std::endl;
+				return;
+			}
+
+			xmlFile << *m_root;
+
+			if (xmlFile.fail())
+			{
+				std::cerr << "ERROR: An error occurred while attempting to write to JUnit report: " << m_reportPath << std::endl;
+			}
 		}
 	};
 }
