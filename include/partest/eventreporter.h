@@ -1,10 +1,6 @@
 #ifndef PARTEST_REPORTER_H
 #define PARTEST_REPORTER_H
 
-#include <unordered_map>
-#include <vector>
-#include <string>
-
 #include <partest/event.h>
 
 namespace partest

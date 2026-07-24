@@ -54,6 +54,9 @@ namespace partest
 		
 		TestStatus status() const noexcept;
 		TestResult result() const noexcept;
+
+		std::chrono::steady_clock::duration duration() const noexcept { return endTime() - startTime(); }
+
 		std::chrono::steady_clock::time_point startTime() const noexcept;
 		std::chrono::steady_clock::time_point endTime() const noexcept;
 	};
@@ -419,7 +422,7 @@ namespace partest
 	inline unsigned TestFrameView::subtestCount() const noexcept { return m_testFrame->subtestCount(); }
 
 	inline unsigned TestFrameView::assertionFailureCount() const noexcept { return m_testFrame->getAssertionFailureCount(); }
-	inline unsigned TestFrameView::subtestFailureCount(unsigned depth = 1) const noexcept { return m_testFrame->getTestFailureCount(depth); }
+	inline unsigned TestFrameView::subtestFailureCount(unsigned depth) const noexcept { return m_testFrame->getTestFailureCount(depth); }
 
 	inline const TestInfo &TestFrameView::info() const noexcept { return m_testFrame->metadata; }
 	inline PARTEST_STRING_PARAM TestFrameView::name() const noexcept { return m_testFrame->metadata.name; }
