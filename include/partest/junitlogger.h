@@ -40,6 +40,7 @@ namespace partest
 			node->time = testFrame->endTime() - testFrame->startTime();
  		}
 
+		// ReSharper disable once CppMemberFunctionMayBeStatic
 		void buildTestCaseNode(const TestFrame *testFrame, xml::TestCaseNode *node, PARTEST_STRING_PARAM parentTestName)
 		{
 			node->name = testFrame->metadata.name;
@@ -54,7 +55,7 @@ namespace partest
 
 			while(subtest != test->subtestsEnd())
 			{
-				xml::TestCaseNode *testNode = static_cast<xml::TestCaseNode *>(node->addChild(partest::make_unique<xml::TestCaseNode>()));
+				xml::TestCaseNode *testNode = static_cast<xml::TestCaseNode *>(node->addChild(partest::make_unique<xml::TestCaseNode>())); // NOLINT(*-pro-type-static-cast-downcast)
 				
 				buildTestCaseNode(*subtest, testNode, parentTestName);
 				//readSubtree(*subtest, testNode, testNode->name);
@@ -63,7 +64,7 @@ namespace partest
 		}
 
 	public:
-		JUnitLogger(PARTEST_STRING_PARAM reportPath)
+		explicit JUnitLogger(PARTEST_STRING_PARAM reportPath)
 			: EventReporterInterface(), TestFrameReaderInterface(),
 			  m_root(make_unique<xml::TestSuitesNode>()),
 			  m_reportPath(reportPath)
@@ -94,14 +95,14 @@ namespace partest
 		void readTree(const TestFrame &root) override
 		{
 			// addChild always returns a raw pointer to the node it was just passed.
-			xml::TestSuiteNode *node = static_cast<xml::TestSuiteNode *>(m_root->addChild(partest::make_unique<xml::TestSuiteNode>()));
+			xml::TestSuiteNode *node = static_cast<xml::TestSuiteNode *>(m_root->addChild(partest::make_unique<xml::TestSuiteNode>())); // NOLINT(*-pro-type-static-cast-downcast)
 			buildTestSuiteNode(&root, node);
 			readSubtree(&root, node, node->name);
 
 			std::cout << "Reading test frame: " << root.id() << std::endl;
 		}
 
-		void writeToFile()
+		void writeToFile() const
 		{
 			std::ofstream xmlFile(m_reportPath);
 
@@ -111,6 +112,9 @@ namespace partest
 				return;
 			}
 
+			// XML Header
+			xmlFile << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" << std::endl;
+			// File body
 			xmlFile << *m_root;
 
 			if (xmlFile.fail())

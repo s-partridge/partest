@@ -26,7 +26,7 @@ namespace partest
 
 		// Standard datetime expected by JUnit
 		// TODO: Move this to a common location
-		std::string toIso8601(std::chrono::system_clock::time_point timePoint)
+		inline std::string toIso8601(std::chrono::system_clock::time_point timePoint)
 		{
 			time_t time = std::chrono::system_clock::to_time_t(timePoint);
 			// TODO: replace gmtime call with centralized alternative that uses gmtime_s/_r as available.
@@ -61,7 +61,7 @@ namespace partest
 		public:
 			std::string nodeTag;
 
-			JUnitXMLNode(PARTEST_STRING_PARAM nodeTag) : nodeTag(nodeTag) {}
+			explicit JUnitXMLNode(PARTEST_STRING_PARAM nodeTag) : nodeTag(nodeTag) {}
 			virtual ~JUnitXMLNode() = default;
 
 			/**
@@ -76,7 +76,7 @@ namespace partest
 			friend std::ostream &operator<<(std::ostream &out, const JUnitXMLNode &rhs);
 		};
 
-		std::ostream &operator<<(std::ostream &out, const JUnitXMLNode &rhs)
+		inline std::ostream &operator<<(std::ostream &out, const JUnitXMLNode &rhs)
 		{
 			out << rhs.openTag();
 			rhs.bodyText(out);
@@ -87,20 +87,7 @@ namespace partest
 		// Root node for a JUnit XML file, contains metrics for the entire test suite
 		struct TestSuitesNode : public JUnitXMLNode
 		{
-			std::string name = "";		// Name of the test suite (e.g. class name or folder name)
-			size_t tests = 0;			// Total number of tests
-			size_t failures = 0;		// Total number of failed tests
-			size_t errors = 0;			// Total number of errored tests
-			size_t skipped = 0;			// Total number of skipped tests
-			size_t assertions = 0;		// Total number of assertions for all tests
-
-			// Aggregated time of all tests in this file in seconds
-			std::chrono::steady_clock::duration time = std::chrono::steady_clock::duration(0);
-			// Date and time of when the test suite was executed (in ISO 8601 format)
-			std::chrono::system_clock::time_point timestamp;
-
-			TestSuitesNode(PARTEST_STRING_PARAM nodeTag = JUNIT_TESTSUITES) : JUnitXMLNode(nodeTag) {}
-
+		protected:
 			std::string openTag() const override
 			{
 				std::chrono::duration<double> seconds = time;
@@ -117,16 +104,28 @@ namespace partest
 
 				return out.str();
 			}
+
+		public:
+			std::string name;			// Name of the test suite (e.g. class name or folder name)
+			size_t tests = 0;			// Total number of tests
+			size_t failures = 0;		// Total number of failed tests
+			size_t errors = 0;			// Total number of errored tests
+			size_t skipped = 0;			// Total number of skipped tests
+			size_t assertions = 0;		// Total number of assertions for all tests
+
+			// Aggregated time of all tests in this file in seconds
+			std::chrono::steady_clock::duration time = std::chrono::steady_clock::duration(0);
+			// Date and time of when the test suite was executed (in ISO 8601 format)
+			std::chrono::system_clock::time_point timestamp;
+
+			explicit TestSuitesNode(PARTEST_STRING_PARAM nodeTag = JUNIT_TESTSUITES) : JUnitXMLNode(nodeTag) {}
 		};
 
 		// Root node for an individual suite within a JUnit XML file, representing (generally) one test file
 		// TestSuite nodes can contain other TestSuite nodes
 		struct TestSuiteNode : public TestSuitesNode
 		{
-			std::string file = "";      // Source code file for this test suite
-
-			TestSuiteNode(PARTEST_STRING_PARAM nodeTag = JUNIT_TESTSUITE) : TestSuitesNode(nodeTag) {}
-
+		protected:
 			std::string openTag() const override
 			{
 				std::chrono::duration<double> seconds = time;
@@ -144,22 +143,17 @@ namespace partest
 
 				return out.str();
 			}
+
+		public:
+
+			std::string file;      // Source code file for this test suite
+
+			explicit TestSuiteNode(PARTEST_STRING_PARAM nodeTag = JUNIT_TESTSUITE) : TestSuitesNode(nodeTag) {}
 		};
 
 		struct TestCaseNode : public JUnitXMLNode
 		{
-			std::string name = "";		// The name of this test case, often the function name
-			std::string classname = "";	// The name of the parent class/folder, often the same as the suite's name
-			size_t assertions = 0;	// Number of assertions checked during test case execution
-        
-			// Execution time of the test in seconds
-			std::chrono::steady_clock::duration time = std::chrono::steady_clock::duration(0);
-
-			std::string file = "";		// Source code file of this test case
-			int line = 1;					// Source code line number of the start of this test case
-
-			TestCaseNode(PARTEST_STRING_PARAM nodeTag = JUNIT_TESTCASE) : JUnitXMLNode(nodeTag) {}
-
+		protected:
 			std::string openTag() const override
 			{
 				std::chrono::duration<double> seconds = time;
@@ -176,23 +170,31 @@ namespace partest
 
 				return out.str();
 			}
+
+		public:
+			std::string name;		// The name of this test case, often the function name
+			std::string classname;	// The name of the parent class/folder, often the same as the suite's name
+			size_t assertions = 0;	// Number of assertions checked during test case execution
+        
+			// Execution time of the test in seconds
+			std::chrono::steady_clock::duration time = std::chrono::steady_clock::duration(0);
+
+			std::string file;		// Source code file of this test case
+			int line = 1;					// Source code line number of the start of this test case
+
+			explicit TestCaseNode(PARTEST_STRING_PARAM nodeTag = JUNIT_TESTCASE) : JUnitXMLNode(nodeTag) {}
 		};
 
 		// Properties node, optional, containing individual property nodes
 		struct PropertiesNode : public JUnitXMLNode
 		{
-			PropertiesNode(PARTEST_STRING_PARAM nodeTag = JUNIT_PROPERTIES) : JUnitXMLNode(nodeTag) {}
+			explicit PropertiesNode(PARTEST_STRING_PARAM nodeTag = JUNIT_PROPERTIES) : JUnitXMLNode(nodeTag) {}
 		};
 
 		// Property node, may contain either a value in the XML, or a text body
 		struct PropertyNode : public PropertiesNode
 		{
-			std::string name = "";
-			std::string value = "";
-			bool valueAsBody = false;
-
-			PropertyNode(PARTEST_STRING_PARAM nodeTag = JUNIT_PROPERTY) : PropertiesNode(nodeTag) {}
-
+		protected:
 			std::string openTag() const override
 			{
 				if(valueAsBody)
@@ -206,39 +208,49 @@ namespace partest
 				if(valueAsBody)
 					out << value;
 			}
+
+		public:
+			std::string name;
+			std::string value;
+			bool valueAsBody = false;
+
+			explicit PropertyNode(PARTEST_STRING_PARAM nodeTag = JUNIT_PROPERTY) : PropertiesNode(nodeTag) {}
 		};
 
 		// Suite or Test level log from stdout
 		struct SystemOutNode : public JUnitXMLNode
 		{
-			std::string body = "";
-			SystemOutNode(PARTEST_STRING_PARAM nodeTag = JUNIT_SYSTEM_OUT) : JUnitXMLNode(nodeTag) {}
-
+		protected:
 			void bodyText(std::ostream &out) const override
 			{
 				out << body;
 			}
+
+		public:
+			std::string body;
+
+			explicit SystemOutNode(PARTEST_STRING_PARAM nodeTag = JUNIT_SYSTEM_OUT) : JUnitXMLNode(nodeTag) {}
 		};
 
 		// Suite or Test level log from stderr
 		struct SystemErrNode : public JUnitXMLNode
 		{
-			std::string body = "";
-			SystemErrNode(PARTEST_STRING_PARAM nodeTag = JUNIT_SYSTEM_ERR) : JUnitXMLNode(nodeTag) {}
-
+		protected:
 			void bodyText(std::ostream &out) const override
 			{
 				out << body;
 			}
+
+		public:
+			std::string body;
+
+			explicit SystemErrNode(PARTEST_STRING_PARAM nodeTag = JUNIT_SYSTEM_ERR) : JUnitXMLNode(nodeTag) {}
 		};
 
 		// Used to report that a test was skipped
 		struct SkippedNode : public JUnitXMLNode
 		{
-			std::string message = "";
-
-			SkippedNode(PARTEST_STRING_PARAM nodeTag = JUNIT_SKIPPED) : JUnitXMLNode(nodeTag) {}
-
+		protected:
 			std::string openTag() const override
 			{
 				// TODO: Escape message
@@ -249,17 +261,17 @@ namespace partest
 			{
 				return "";
 			}
+
+		public:
+			std::string message;
+
+			explicit SkippedNode(PARTEST_STRING_PARAM nodeTag = JUNIT_SKIPPED) : JUnitXMLNode(nodeTag) {}
 		};
 
 		// Used to report the results of a failed test, usually from a failed assertion
 		struct FailureNode : public JUnitXMLNode
 		{
-			std::string message = "";
-			std::string type = "";
-			std::string body = "";
-
-			FailureNode(PARTEST_STRING_PARAM nodeTag = JUNIT_FAILURE) : JUnitXMLNode(nodeTag) {}
-
+		protected:
 			std::string openTag() const override
 			{
 				// TODO: Escape message
@@ -273,17 +285,19 @@ namespace partest
 			{
 				out << body;
 			}
+
+		public:
+			std::string message;
+			std::string type;
+			std::string body;
+
+			explicit FailureNode(PARTEST_STRING_PARAM nodeTag = JUNIT_FAILURE) : JUnitXMLNode(nodeTag) {}
 		};
 
 		// Same as failure node, but represents an unexpected error during test execution
 		struct ErrorNode : public JUnitXMLNode
 		{
-			std::string message = "";
-			std::string type = "";
-			std::string body = "";
-
-			ErrorNode(PARTEST_STRING_PARAM nodeTag = JUNIT_ERROR) : JUnitXMLNode(nodeTag) {}
-
+		protected:
 			std::string openTag() const override
 			{
 				// TODO: Escape message
@@ -297,6 +311,13 @@ namespace partest
 			{
 				out << body;
 			}
+
+		public:
+			std::string message;
+			std::string type;
+			std::string body;
+
+			explicit ErrorNode(PARTEST_STRING_PARAM nodeTag = JUNIT_ERROR) : JUnitXMLNode(nodeTag) {}
 		};
 	}
 }

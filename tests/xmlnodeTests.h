@@ -10,11 +10,11 @@ class XMLNodeTests : public partest::TestBase
 public:
 	XMLNodeTests() : partest::TestBase("XMLNodeTests", "Validation for JUnit XML node types")
 	{
-		addTest("TestTimeConversion", "Ensure that clock to string conversion is correct",
+		addTest("Test Time Conversion", "Ensure that clock to string conversion is correct",
 			partest::TEST_FLAGS_INHERIT,
 			[this]() { testTimeConversion(); });
 
-		addTest("TestBasicXMLNode", "Ensure base node functionality is correct",
+		addTest("Test Basic XMLNode", "Ensure base node functionality is correct",
 			partest::TEST_FLAGS_INHERIT,
 			[this]() { tesXMLNode(); });
 	}
