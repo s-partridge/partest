@@ -1,11 +1,11 @@
 // Entry point for testing the partest framework
 #include <iostream>
-#include <vector>
 
 #include <partest/bootstrap.h>
 #include "assertionTests.h"
 #include "semaphoreTests.h"
 #include "dispatcherTests.h"
+#include "xmlnodeTests.h"
 
 // For memory leak validation on MSVC
 #if defined(_MSVC_LANG)
@@ -169,6 +169,7 @@ int main(int argc, const char **argv)
 	//partest::addTestClass(partest::make_unique<AssertionTests>());
 	partest::addTestClass(partest::make_unique<SemaphoreTests>());
 	partest::addTestClass(partest::make_unique<DispatcherTests>());
+	partest::addTestClass(partest::make_unique<XMLNodeTests>());
 
 	partest::runAllTests();
 	partest::displayAllTests();

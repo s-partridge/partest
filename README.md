@@ -19,7 +19,7 @@ Partest provides a lightweight testing framework designed to be usable and easy 
 
 This is an early implementation with manual setup requirements. The framework is functional but still under active development to improve usability and add automation features.
 
-Planned scope:
+### Planned scope
  - Better event logging
  - JUnit post-test reporting
  - Extended set of Assertion types
@@ -29,7 +29,7 @@ Planned scope:
  
  - Parameterized testing: this is available for free via lambda closures, but could be supported explicitly with better constraints
  
-Implemented features:
+### Implemented features
 
  - Core functionality complete: Tests can be created, configured, and run with assertions across test and subtest scope
  - Test fixtures: Test functions can optionally be invoked with setup and teardown functions. TestBase also provides top-level fixtures 
@@ -109,3 +109,17 @@ int main(int argc, char **argv)
 ```
 
 More comprehensive examples of test use cases can be found in `/tests`, which contains the current suite of tests that ParTest runs on itself.
+
+## Test configuration
+Any test or subtest can be configured with a name, a description, and execution flags. Test suites, test functions, and subtests can be individually configured with their own values.
+
+### Test Flags
+TestFlags currently contains the following flags:
+- skip: When enabled, the test or subtest will not be run
+- stopOnFail: When enabled, the test or subtest will stop on first failure
+
+The following flags also exist, but they are currently unused:
+- stopSubtestOnFail
+- verbose
+
+By default, all flags are disabled. Each flag can be set to `enabled`, `disabled`, or `inherit`. Inherited flags will resolve to their parents' values.
