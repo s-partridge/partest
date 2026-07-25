@@ -86,8 +86,10 @@ public:
 
 int main(int argc, char **argv)
 {
+	// Initialize the test suite with the current configuration
+	partest::initializeSuite(argc, argv);
+	
 	// Create an instance of the test class and pass it to the runner
-	// The test runner will bootstrap itself on first invocation
 	partest::addTestClass(partest::make_unique<UnitTest>());
 	partest::runAllTests();
 	

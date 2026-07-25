@@ -57,16 +57,15 @@ Consider whatever is here to be the absolute maximum scope for now, with potenti
 - [ ] Support log filtering by level
 
 ### 2.2 Test Results Reporting
-- [ ] Enhance `printTestTree()` to show assertion details
-- [ ] Create summary statistics (total tests, passed, failed, skipped)
+- [~] Create summary statistics (total tests, passed, failed, skipped)
 - [ ] Add color-coded console output (if terminal supports it)
 - [ ] Implement hierarchical result display with indentation
 - [ ] Show failure details inline with test tree
 
 ### 2.3 Output Formatters
-- [ ] Console formatter (human-readable, current default)
+- [~] Console formatter (human-readable, current default)
 - [ ] JSON formatter (for CI/tooling integration)
-- [ ] XML formatter (JUnit-compatible for Jenkins, etc.)
+- [~] XML formatter (JUnit-compatible for Jenkins, etc.)
 - [ ] TAP (Test Anything Protocol) formatter
 - [ ] Allow user to select formatter at runtime
 
@@ -78,10 +77,10 @@ Consider whatever is here to be the absolute maximum scope for now, with potenti
 ### 3.1 Timing Infrastructure (Foundation)
 - [x] Add timing to each test frame
   - Record begin/end test timestamps with events
-- [ ] Store duration in test frame/result
+- [~] Store duration in test frame/result
 - [ ] Add optional macros to manually start/stop timing
 - [ ] Support different time units (ms, μs, ns)
-- [ ] Display execution time in test reports
+- [~] Display execution time in test reports
 
 ### 3.2 Benchmarking Utilities
 - [ ] Create utilities to run tests multiple times
@@ -161,21 +160,21 @@ Consider whatever is here to be the absolute maximum scope for now, with potenti
 - [ ] Support header-only mode (current implementation)
 
 ### 6.2 Cross-Platform Testing
-- [ ] Verify Windows (MSVC) support
-- [ ] Verify Linux (GCC/Clang) support
+- [x] Verify Windows (MSVC) support
+- [x] Verify Linux (GCC/Clang) support
 - [ ] Verify macOS (Clang) support
-- [ ] Test on multiple compiler versions
-- [ ] Verify C++14, C++17, C++20 compatibility
+- [x] Test on multiple compiler versions
+- [x] Verify C++11, C++14, C++17, C++20 compatibility
 
 ### 6.3 Local Build Automation
-- [ ] Create build configurations for C++14, 17, 20 in Visual Studio
+- [x] Create build configurations for C++14, 17, 20 in Visual Studio
 - [ ] Set up Batch Build or PowerShell script for local multi-standard testing
 - [ ] Configure post-build events to run tests automatically
 
 ### 6.4 CI/CD Pipeline (GitHub Actions)
-- [ ] Set up GitHub Actions workflow for cloud-based automated builds
-- [ ] Configure multi-platform builds (Windows/MSVC, Linux/GCC, macOS/Clang)
-- [ ] Test across C++ standards on each platform
+- [x] Set up GitHub Actions workflow for cloud-based automated builds
+- [x] Configure multi-platform builds (Windows/MSVC, Linux/GCC, macOS/Clang)
+- [x] Test across C++ standards on each platform
 
 ---
 
@@ -184,12 +183,12 @@ Consider whatever is here to be the absolute maximum scope for now, with potenti
 
 ### 7.1 API Documentation
 - [ ] Document all public functions and macros
-- [ ] Document flag system and inheritance
-- [ ] Document test structure and lifecycle
+- [~] Document flag system and inheritance
+- [~] Document test structure and lifecycle
 - [ ] Create Doxygen or similar documentation
 
 ### 7.2 User Guide
-- [ ] Getting started tutorial
+- [~] Getting started tutorial
 - [ ] Best practices guide
 - [ ] Advanced features guide
 
@@ -203,7 +202,7 @@ Consider whatever is here to be the absolute maximum scope for now, with potenti
 ---
 
 ## Section 8: Polish and Release Preparation
-**Priority: High (before public release)**
+**Priority: High (before 1.0 release)**
 
 ### 8.1 API Stability
 - [ ] Finalize public API (no more breaking changes)
@@ -237,10 +236,7 @@ Consider whatever is here to be the absolute maximum scope for now, with potenti
   - Consolidate results after thread join
   - Enables testing thread-safety without framework locks hiding race conditions
 - Enforce Test Registration
-  - Create internal mechanism to mark test classes as registered when addTest is called
-  - Optionally halt program if not all tests have been registered when runAllTests is called
-  - Add statistics for number of times each test is registered and run
-  - Can be handled by managing a static set of created and registered tests in PartestBase
+  - Add statistics for number of times each test is run
   - Each test name gets added to the created set in its constructor
   - Each test name gets added to the registered set when addTest is called, incrementing counter
   - Can include a globl flag to halt/warn/do nothing when a test is not registered
