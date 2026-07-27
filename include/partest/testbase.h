@@ -281,6 +281,11 @@ namespace partest
 		void setFlags(const TestFlags &flags) noexcept { m_testTree->flags.setFlags(flags); }
 		const TestFlags &getFlags() const noexcept { return m_testTree->flags; }
 
+		bool containsTest(PARTEST_STRING_PARAM testName)
+		{
+			return m_testTree->getSubtest(testName) != nullptr;
+		}
+
 		void run()
 		{
 			runTest(m_testTree.get());
@@ -298,6 +303,26 @@ namespace partest
 			const TestFrame *frame = m_testTree.get();
 
 			return frame->getAssertionFailureCount();
+		}
+
+		unsigned getTestFailureCount(PARTEST_STRING_PARAM testName, unsigned depth = 0) const
+		{
+			const TestFrame *subtest = m_testTree->getSubtest(testName);
+			
+			if(!subtest)
+				return 0;
+
+			return subtest->getTestFailureCount(depth);
+		}
+
+		unsigned getAssertionFailureCount(PARTEST_STRING_PARAM testName) const
+		{
+			const TestFrame *subtest = m_testTree->getSubtest(testName);
+			
+			if(!subtest)
+				return 0;
+
+			return subtest->getAssertionFailureCount();
 		}
 
 		void readTestTree(TestFrameReaderInterface *reader)

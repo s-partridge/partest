@@ -228,6 +228,17 @@ namespace partest
 		bool hasParent() const noexcept { return m_parent != nullptr; }
 		bool hasSubtests() const noexcept { return !m_subtests.empty(); }
 
+		const TestFrame *getSubtest(PARTEST_STRING_PARAM subtestName)
+		{
+			for(TestFrame *subtest: m_subtests)
+			{
+				if(subtest && subtest->metadata.name == subtestName)
+					return subtest;
+			}
+
+			return nullptr;
+		}
+
 		/**
 		* Add a subtest to the current test frame.
 		* 
