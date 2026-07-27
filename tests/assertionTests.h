@@ -23,6 +23,8 @@ class AssertionTests : public partest::TestBase
 		
 		void testAssertionsPass()
 		{
+			std::string testStr = "bonus";
+			const char *testPtr = "pointer";
 			// Boolean
 			ASSERT_TRUE(true);
 			ASSERT_FALSE(false);
@@ -30,6 +32,16 @@ class AssertionTests : public partest::TestBase
 			// Equality
 			ASSERT_EQUAL(1, 1);
 			ASSERT_NOT_EQUAL(1, 2);
+
+			// String equality variants
+			ASSERT_EQUAL("hello", "hello");
+			ASSERT_EQUAL(testStr, "bonus");
+			ASSERT_EQUAL("bonus", testStr);
+			ASSERT_EQUAL(testPtr, testPtr);
+
+			ASSERT_NOT_EQUAL("hello", "hellr");
+			ASSERT_NOT_EQUAL(testStr, "bonuz");
+			ASSERT_NOT_EQUAL("bonuz", testStr);
 
 			// Comparison
 			ASSERT_GREATER(2, 1);
@@ -39,13 +51,12 @@ class AssertionTests : public partest::TestBase
 			ASSERT_LESS_EQUAL(1, 2);
 			ASSERT_LESS_EQUAL(2, 2);
 		}
-
-		// Hard-coded to the current number of assertions in this subtest.
-		// IMPORTANT: If you add or remove assertions in testAssertionsFail, you MUST update this value accordingly.
-		unsigned expectedFailureCount = 10;
 		
 		void testAssertionsFail()
 		{
+			std::string testStr = "bonus";
+			const char *testPtr = "pointer";
+
 			// Boolean
 			ASSERT_TRUE(false);
 			ASSERT_FALSE(true);
@@ -53,6 +64,16 @@ class AssertionTests : public partest::TestBase
 			// Equality
 			ASSERT_EQUAL(1, 2);
 			ASSERT_NOT_EQUAL(1, 1);
+
+			// String equality variants
+			ASSERT_NOT_EQUAL("hello", "hello");
+			ASSERT_NOT_EQUAL(testStr, "bonus");
+			ASSERT_NOT_EQUAL("bonus", testStr);
+			ASSERT_NOT_EQUAL(testPtr, testPtr);
+
+			ASSERT_EQUAL("hello", "hellr");
+			ASSERT_EQUAL(testStr, "bonuz");
+			ASSERT_EQUAL("bonuz", testStr);
 
 			// Comparison
 			ASSERT_GREATER(1, 2);
@@ -85,13 +106,14 @@ public:
 		ASSERT_TRUE(m_innerTests.containsTest(PASSING_TEST));
 		ASSERT_TRUE(m_innerTests.containsTest(FAILING_TEST));
 
-		unsigned failureCount = m_innerTests.getAssertionFailureCount(PASSING_TEST);
+		size_t failureCount = m_innerTests.getAssertionFailureCount(PASSING_TEST);
 		// If no assertions fail, this subtest passed.
 		ASSERT_EQUAL(failureCount, 0); // Ensure that no assertions have failed in this subtest
 
 		failureCount = m_innerTests.getAssertionFailureCount(FAILING_TEST);
+		size_t expectedCount = m_innerTests.getAssertionCount(FAILING_TEST);
 		// If any assertions passed, this subtest failed
-		ASSERT_EQUAL(failureCount, m_innerTests.expectedFailureCount);
+		ASSERT_EQUAL(failureCount, expectedCount);
 	}
 };
 

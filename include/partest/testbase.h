@@ -291,21 +291,37 @@ namespace partest
 			runTest(m_testTree.get());
 		}
 
-		unsigned getTestFailureCount(unsigned depth = 1) const
+		size_t getTestCount() const
 		{
-			const TestFrame *frame = m_testTree.get();
-
-			return frame->getTestFailureCount(depth);
+			return m_testTree->subtestCount();
 		}
 
-		unsigned getAssertionFailureCount() const
+		size_t getAssertionCount() const
 		{
-			const TestFrame *frame = m_testTree.get();
-
-			return frame->getAssertionFailureCount();
+			m_testTree->getAssertionCount();
 		}
 
-		unsigned getTestFailureCount(PARTEST_STRING_PARAM testName, unsigned depth = 0) const
+		size_t getAssertionCount(PARTEST_STRING_PARAM testName) const
+		{
+			const TestFrame *subtest = m_testTree->getSubtest(testName);
+
+			if(!subtest)
+				return 0;
+
+			return subtest->getAssertionCount();
+		}
+
+		size_t getTestFailureCount(unsigned depth = 1) const
+		{
+			return m_testTree->getTestFailureCount(depth);
+		}
+
+		size_t getAssertionFailureCount() const
+		{
+			return m_testTree->getAssertionFailureCount();
+		}
+
+		size_t getTestFailureCount(PARTEST_STRING_PARAM testName, unsigned depth = 0) const
 		{
 			const TestFrame *subtest = m_testTree->getSubtest(testName);
 			
@@ -315,7 +331,7 @@ namespace partest
 			return subtest->getTestFailureCount(depth);
 		}
 
-		unsigned getAssertionFailureCount(PARTEST_STRING_PARAM testName) const
+		size_t getAssertionFailureCount(PARTEST_STRING_PARAM testName) const
 		{
 			const TestFrame *subtest = m_testTree->getSubtest(testName);
 			

@@ -61,12 +61,12 @@ namespace partest
 		testRunner().printAllTestTrees();
 	}
 
-	inline unsigned getTopLevelFailures()
+	inline size_t getTopLevelFailures()
 	{
 		return testRunner().getTopLevelFailures();
 	}
 
-	inline unsigned getAssertionFailureCount()
+	inline size_t getAssertionFailureCount()
 	{
 		return testRunner().getAllAssertionFailures();
 	}

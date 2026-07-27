@@ -349,13 +349,13 @@ namespace partest
 		* @param depth Subtest depth to drill down to, from the current test frame
 		* @returns Number of tests below this one that failed at specified depth
 		*/
-		unsigned getTestFailureCount(unsigned depth = 1) const
+		size_t getTestFailureCount(unsigned depth = 1) const
 		{
 			// Only evaluate this frame's result if we're at evaluation depth, or if no subtests exist.
 			if(depth == 0 || m_subtests.empty())
 				return hasFailures() ? 1 : 0;
 			
-			unsigned failureCount = 0;
+			size_t failureCount = 0;
 
 			for(TestFrame *subtest : m_subtests)
 			{
@@ -365,9 +365,9 @@ namespace partest
 			return failureCount;
 		}
 
-		unsigned getAssertionCount() const
+		size_t getAssertionCount() const
 		{
-			unsigned total = (unsigned)m_assertions.size();
+			size_t total = (unsigned)m_assertions.size();
 			for(TestFrame *subtest : m_subtests)
 			{
 				total += subtest->getAssertionCount();
@@ -381,9 +381,9 @@ namespace partest
 		* 
 		* @returns Sum total of all assertions that failed for this frame and all of its descendants
 		*/
-		unsigned getAssertionFailureCount() const
+		size_t getAssertionFailureCount() const
 		{
-			unsigned failureCount = 0;
+			size_t failureCount = 0;
 
 			for(const AssertionResult &result : m_assertions)
 			{

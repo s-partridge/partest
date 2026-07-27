@@ -150,9 +150,9 @@ namespace partest
 			}*/
 		}
 
-		unsigned getTopLevelFailures() const
+		size_t getTopLevelFailures() const
 		{
-			unsigned failureCount = 0;
+			size_t failureCount = 0;
 			for(TestBase *test : m_tests)
 			{
 				failureCount += test->getTestFailureCount();
@@ -161,9 +161,9 @@ namespace partest
 			return failureCount;
 		}
 
-		unsigned getAllAssertionFailures() const
+		size_t getAllAssertionFailures() const
 		{
-			unsigned failureCount = 0;
+			size_t failureCount = 0;
 			for(TestBase *test : m_tests)
 			{
 				failureCount += test->getAssertionFailureCount();
