@@ -16,14 +16,14 @@
 /**
 * Basic assertion macros for equality checks. Must be called within a TestFrame context.
 */
-#define ASSERT_EQUAL(expected, actual) commitAssertion(partest::handleAssertEqual((expected), (actual), ASSERT_EQUAL_STR, #expected ", " #actual, __FILE__, __LINE__))
-#define ASSERT_NOT_EQUAL(expected, actual) commitAssertion(partest::handleAssertNotEqual((expected), (actual), ASSERT_NOT_EQUAL_STR, #expected ", " #actual, __FILE__, __LINE__))
+#define ASSERT_EQUAL(actual, expected) commitAssertion(partest::handleAssertEqual((actual), (expected), ASSERT_EQUAL_STR, #actual ", " #expected, __FILE__, __LINE__))
+#define ASSERT_NOT_EQUAL(actual, expected) commitAssertion(partest::handleAssertNotEqual((actual), (expected), ASSERT_NOT_EQUAL_STR, #actual ", " #expected, __FILE__, __LINE__))
 
 /**
 * Assertion macros for approximate equality checks. Must be called within a TestFrame context.
 */
-// #define ASSERT_APPROX_EQUAL(expected, actual, tolerance) handleAssertApproxEqual((expected), (actual), (tolerance), ASSERT_APPROX_EQUAL_STR, #expected ", " #actual ", " #tolerance, __FILE__, __LINE__)
-// #define ASSERT_APPROX_NOT_EQUAL(expected, actual, tolerance) handleAssertApproxNotEqual((expected), (actual), (tolerance), ASSERT_APPROX_NOT_EQUAL_STR, #expected ", " #actual ", " #tolerance, __FILE__, __LINE__)
+// #define ASSERT_APPROX_EQUAL(actual, expected, tolerance) handleAssertApproxEqual((actual), (expected), (tolerance), ASSERT_APPROX_EQUAL_STR, #actual ", " #expected ", " #tolerance, __FILE__, __LINE__)
+// #define ASSERT_APPROX_NOT_EQUAL(actual, expected, tolerance) handleAssertApproxNotEqual((actual), (expected), (tolerance), ASSERT_APPROX_NOT_EQUAL_STR, #actual ", " #expected ", " #tolerance, __FILE__, __LINE__)
 
 /**
 * Assertion macros for relational checks. Must be called within a TestFrame context.
@@ -88,9 +88,9 @@ namespace partest
 	* @param line The line number where the assertion is made
 	*/
 	template <typename T, typename U>
-	AssertionResult handleAssertEqual(const T &expected, const U &actual, const char *type, const char *conditionStr, const char *file, int line)
+	AssertionResult handleAssertEqual(const T &actual, const U &expected, const char *type, const char *conditionStr, const char *file, int line)
 	{
-		bool passed = (expected == actual);
+		bool passed = (actual == expected);
 		AssertionResult result(passed, type, conditionStr, file, line);
 		std::ostringstream message;
 
@@ -102,8 +102,8 @@ namespace partest
 		{
 			message << "Assertion failed at " << file << ":" << line
 				<< ": " << type << "(" << conditionStr << ")\n"
-				<< "  Expected: " << maybeStringify(expected) << "\n"
-				<< "  Actual:   " << maybeStringify(actual) << "\n";
+				<< "  Actual: " << maybeStringify(actual) << "\n"
+				<< "  Expected:   " << maybeStringify(expected) << "\n";
 		}
  		// Write the message to the AssertionResult for logging
  		result.message = message.str();
@@ -111,10 +111,10 @@ namespace partest
 	}
 
 	// C-string specialization for string comparisons
-	inline AssertionResult handleAssertEqual(const char* expected, const char* actual, const char *type, const char *conditionStr, const char* file, int line)
+	inline AssertionResult handleAssertEqual(const char* actual, const char* expected, const char *type, const char *conditionStr, const char* file, int line)
 	{
-		bool passed = (expected != nullptr && actual != nullptr && std::strcmp(expected, actual) == 0
-			|| expected == nullptr && actual == nullptr);
+		bool passed = (actual != nullptr && expected != nullptr && std::strcmp(actual, expected) == 0
+			|| actual == nullptr && expected == nullptr);
 
 		AssertionResult result(passed, type, conditionStr, file, line);
 		std::ostringstream message;
@@ -127,8 +127,8 @@ namespace partest
 		{
 			message << "Assertion failed at " << file << ":" << line
 				<< type << "(" << conditionStr << ")\n"
-				<< "  Expected: \"" << expected << "\"\n"
-				<< "  Actual:   \"" << actual << "\"\n";
+				<< "  Actual: \"" << actual << "\"\n"
+				<< "  Expected:   \"" << expected << "\"\n";
 		}
 			
 		result.message = message.str();
@@ -144,9 +144,9 @@ namespace partest
 	* @param line The line number where the assertion is made
 	*/
 	template<typename T, typename U>
-	AssertionResult handleAssertNotEqual(const T &expected, const U &actual, const char *type, const char *conditionStr, const char *file, int line)
+	AssertionResult handleAssertNotEqual(const T &actual, const U &expected, const char *type, const char *conditionStr, const char *file, int line)
 	{
-		bool passed = (expected != actual);
+		bool passed = (actual != expected);
 		AssertionResult result(passed, type, conditionStr, file, line);
 		std::ostringstream message;
 
@@ -158,7 +158,7 @@ namespace partest
 		{
 			message << "Assertion failed at " << file << ":" << line
 				<< type << "(" << conditionStr << ")\n"
-				<< "\"" << expected << "\" should not have been " << expected << "\n";
+				<< "\"" << actual << "\" should not have been " << expected << "\n";
 		}
 
 		result.message = message.str();
@@ -166,11 +166,11 @@ namespace partest
 	}
 
 	// C-string specialization for string comparisons
-	inline AssertionResult handleAssertNotEqual(const char* expected, const char* actual, const char* type, const char* conditionStr, const char* file, int line)
+	inline AssertionResult handleAssertNotEqual(const char* actual, const char* expected, const char* type, const char* conditionStr, const char* file, int line)
 	{
-		bool passed = (expected != nullptr && actual != nullptr && std::strcmp(expected, actual) != 0)
-			|| (expected == nullptr && actual != nullptr)
-			|| (expected != nullptr && actual == nullptr);
+		bool passed = (actual != nullptr && expected != nullptr && std::strcmp(actual, expected) != 0)
+			|| (actual == nullptr && expected != nullptr)
+			|| (actual != nullptr && expected == nullptr);
 
 		AssertionResult result(passed, type, conditionStr, file, line);
 		std::ostringstream message;
@@ -183,8 +183,7 @@ namespace partest
 		{
 			message << "Assertion failed at " << file << ":" << line
 				<< ": " << type << "(" << conditionStr << ")\n"
-				<< "  Expected: " << maybeStringify(expected) << "\n"
-				<< "  Actual:   " << maybeStringify(actual) << "\n";
+				<< "\"" << maybeStringify(actual) << "\" should not have been " << maybeStringify(expected) << "\n";
 		}
 
 		result.message = message.str();

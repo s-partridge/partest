@@ -215,13 +215,13 @@ public:
 			}
 		}
 		// All events should be identical across every firstReporter and the local reference log
-		ASSERT_EQUAL(0, invalidEvents);
+		ASSERT_EQUAL(invalidEvents, 0);
 
 		for(MockReporter &reporter: m_reporters)
 		{
 			// Size should be the same as the reference log + the DIE event
-			ASSERT_EQUAL(m_logs.size() + 1, reporter.logs().size());
-			ASSERT_EQUAL(partest::EventType::Die, reporter.logs().back()->getEventType());
+			ASSERT_EQUAL(reporter.logs().size(), m_logs.size() + 1);
+			ASSERT_EQUAL(reporter.logs().back()->getEventType(), partest::EventType::Die);
 		}
 	}
 
@@ -288,9 +288,9 @@ public:
 				++uncopiedEvents;
 		}
 
-		ASSERT_EQUAL(0, uncopiedEvents);
+		ASSERT_EQUAL(uncopiedEvents, 0);
 		// Last event should always be the kill event
-		ASSERT_EQUAL(partest::EventType::Die, firstReporter.logs().back()->getEventType());
+		ASSERT_EQUAL(firstReporter.logs().back()->getEventType(), partest::EventType::Die);
 
 		unsigned invalidEventCounts = 0;
 		// Ensure all reporters have the correct number of events (eventCount + DIE)
@@ -299,7 +299,7 @@ public:
 			if(reporter.logs().size() != eventCount + 1)
 				++invalidEventCounts;
 		}
-		ASSERT_EQUAL(0, invalidEventCounts);
+		ASSERT_EQUAL(invalidEventCounts, 0);
 
 		unsigned invalidEvents = 0;
  		// Check that all reporters contain identical event logs and event order
@@ -315,7 +315,7 @@ public:
 					++invalidEvents;
 			}
 		}
-		ASSERT_EQUAL(0, invalidEvents);
+		ASSERT_EQUAL(invalidEvents, 0);
 	}
 
 	void eventsWithoutReportersSerial()
@@ -333,8 +333,8 @@ public:
 
 		dispatcher->killDispatcher();
 
-		ASSERT_EQUAL(1, reporter.logs().size());
-		ASSERT_EQUAL(partest::EventType::Die, reporter.logs().back()->getEventType());
+		ASSERT_EQUAL(reporter.logs().size(), 1);
+		ASSERT_EQUAL(reporter.logs().back()->getEventType(), partest::EventType::Die);
 	}
 
 	void eventsWithoutReportersConcurrent()
@@ -365,9 +365,9 @@ public:
 		dispatcher->killDispatcher();
 		dispatcherThread.join();
 
-		ASSERT_EQUAL(2, reporter.logs().size());
-		ASSERT_EQUAL(partest::EventType::Log, reporter.logs().front()->getEventType());
-		ASSERT_EQUAL(partest::EventType::Die, reporter.logs().back()->getEventType());
+		ASSERT_EQUAL(reporter.logs().size(), 2);
+		ASSERT_EQUAL(reporter.logs().front()->getEventType(), partest::EventType::Log);
+		ASSERT_EQUAL(reporter.logs().back()->getEventType(), partest::EventType::Die);
 	}
 
 	void eventsPushedBeforeBeginDispatch()
@@ -398,10 +398,10 @@ public:
 				++invalidEvents;
 		}
 		// All events should be identical across every firstReporter and the local reference log
-		ASSERT_EQUAL(0, invalidEvents);
+		ASSERT_EQUAL(invalidEvents, 0);
 
-		ASSERT_EQUAL(m_logs.size() + 1, reporter.logs().size());
-		ASSERT_EQUAL(partest::EventType::Die, reporter.logs().back()->getEventType());
+		ASSERT_EQUAL(reporter.logs().size(), m_logs.size() + 1);
+		ASSERT_EQUAL(reporter.logs().back()->getEventType(), partest::EventType::Die);
 	}
 };
 
