@@ -10,13 +10,13 @@
 namespace partest
 {
 	// For logs from assert statements, used internally
-	constexpr const char *LOG_TYPE_ASSERT = "Assertion";
+	PARTEST_INLINE_VAR_17 constexpr const char *LOG_TYPE_ASSERT = "Assertion";
 	// For general test and subtest-level logs
-	constexpr const char *LOG_TYPE_TEST = "Test";
+	PARTEST_INLINE_VAR_17 constexpr const char *LOG_TYPE_TEST = "Test";
 	// For general test and subtest-level logs
-	constexpr const char *LOG_TYPE_SUBTEST = "Subtest";
+	PARTEST_INLINE_VAR_17 constexpr const char *LOG_TYPE_SUBTEST = "Subtest";
 	// For all other logs
-	constexpr const char *LOG_TYPE_DEFAULT = "Default";
+	PARTEST_INLINE_VAR_17 constexpr const char *LOG_TYPE_DEFAULT = "Default";
 
 	enum class LogLevel : uint8_t
 	{

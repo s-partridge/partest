@@ -1,6 +1,8 @@
 #ifndef PARTEST_COMMON_H
 #define PARTEST_COMMON_H
 
+#include <partest/compat.h>
+
 // Macro pair to stringify a macro value. The first macro is needed to ensure that the argument is expanded before stringification.
 #define PARTEST_STRINGIFY_HELPER(x) #x
 #define PARTEST_STRINGIFY_MACRO(x) PARTEST_STRINGIFY_HELPER(x)
@@ -12,11 +14,11 @@
 // Expand the version numbers into a string literal
 // This requires first converting the numbers to string literals, then concatenating them
 
-constexpr unsigned PARTEST_VERSION_MAJOR = _PARTEST_VERSION_MAJOR;
-constexpr unsigned PARTEST_VERSION_MINOR = _PARTEST_VERSION_MINOR;
-constexpr unsigned PARTEST_VERSION_PATCH = _PARTEST_VERSION_PATCH;
+PARTEST_INLINE_VAR_17 constexpr unsigned PARTEST_VERSION_MAJOR = _PARTEST_VERSION_MAJOR;
+PARTEST_INLINE_VAR_17 constexpr unsigned PARTEST_VERSION_MINOR = _PARTEST_VERSION_MINOR;
+PARTEST_INLINE_VAR_17 constexpr unsigned PARTEST_VERSION_PATCH = _PARTEST_VERSION_PATCH;
 
-static constexpr const char* PARTEST_VERSION_STRING = 
+PARTEST_INLINE_VAR_17 constexpr const char* PARTEST_VERSION_STRING = 
     PARTEST_STRINGIFY_MACRO(_PARTEST_VERSION_MAJOR) "." 
     PARTEST_STRINGIFY_MACRO(_PARTEST_VERSION_MINOR) "." 
     PARTEST_STRINGIFY_MACRO(_PARTEST_VERSION_PATCH);
@@ -24,37 +26,6 @@ static constexpr const char* PARTEST_VERSION_STRING =
 #undef _PARTEST_VERSION_MAJOR
 #undef _PARTEST_VERSION_MINOR
 #undef _PARTEST_VERSION_PATCH
-
-#if defined(_MSVC_LANG)
-    // _MSVC_LANG is the definitive way to check for MSVC.
-    // It's defined regardless of the /Zc:__cplusplus flag.
-    #if _MSVC_LANG >= 202002L
-        #define PARTEST_CPP_VERSION 20
-    #elif _MSVC_LANG >= 201703L
-        #define PARTEST_CPP_VERSION 17
-    #elif _MSVC_LANG >= 201402L
-        #define PARTEST_CPP_VERSION 14
-	#else
-		// Default to 11 (Should only be possible with very old versions of MSVC, but just in case)
-		#define PARTEST_CPP_VERSION 11
-    #endif
-#elif defined(__cplusplus)
-    // For Clang, GCC, and other compliant compilers.
-    #if __cplusplus >= 202002L
-        #define PARTEST_CPP_VERSION 20
-    #elif __cplusplus >= 201703L
-        #define PARTEST_CPP_VERSION 17
-	#elif __cplusplus >= 201402L
-        #define PARTEST_CPP_VERSION 14
-	#else
-		// Default to 11 for older versions.
-		#define PARTEST_CPP_VERSION 11
-	#endif
-#else
-    // Fallback if we can't determine the version. Assume the minimum.
-    #define PARTEST_CPP_VERSION 11
-#endif // defined(_MSVC_LANG)
-
 
 // Includes required regardless of C++ version
 #include <memory>
@@ -74,43 +45,6 @@ static constexpr const char* PARTEST_VERSION_STRING =
 // Includes required for C++17 and later
 #if PARTEST_CPP_VERSION >= 17
 #include <string_view>
-#endif
-
-/**
-* constexpr usage by C++ standard version
-C++11	Keyword introduced.
-        Only a single return statement. No locals, no loops, no branching except ternary operator. Simple compile-time math, basic constant objects.
-C++14	Allowed local variables, loops, if/switch. Writing normal-looking functions that run at compile time.
-C++17	if constexpr, constexpr lambdas. Cleaner and more powerful template metaprogramming.
-C++20	Allowed mutation of *this, virtual, new/delete, try/catch. Modifying objects at compile time, compile-time containers (std::vector, std::string).
-*/
-
-// --- C++20 constexpr support ---
-#if PARTEST_CPP_VERSION >= 20
-    #define PARTEST_CONSTEXPR_20 constexpr
-#else
-    #define PARTEST_CONSTEXPR_20
-#endif
-
-// --- C++17 constexpr support ---
-#if PARTEST_CPP_VERSION >= 17
-    #define PARTEST_CONSTEXPR_17 constexpr
-#else
-    #define PARTEST_CONSTEXPR_17
-#endif
-
-// --- C++14 constexpr support ---
-#if PARTEST_CPP_VERSION >= 14
-    #define PARTEST_CONSTEXPR_14 constexpr
-#else
-    #define PARTEST_CONSTEXPR_14
-#endif
-
-// --- C++11 constexpr support ---
-#if PARTEST_CPP_VERSION >= 11
-    #define PARTEST_CONSTEXPR_11 constexpr
-#else
-    #define PARTEST_CONSTEXPR_11
 #endif
 
 // Use std::string_view for C++17 and later, const std::string& for C++11 and C++14

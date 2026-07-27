@@ -36,22 +36,22 @@
 /**
 * Stringified names for each assert type, used for filtering test results
 */
-constexpr const char *ASSERT_TRUE_STR = "ASSERT_TRUE";
-constexpr const char *ASSERT_FALSE_STR = "ASSERT_FALSE";
-constexpr const char *ASSERT_EQUAL_STR = "ASSERT_EQUAL";
-constexpr const char *ASSERT_NOT_EQUAL_STR = "ASSERT_NOT_EQUAL";
+PARTEST_INLINE_VAR_17 constexpr const char *ASSERT_TRUE_STR = "ASSERT_TRUE";
+PARTEST_INLINE_VAR_17 constexpr const char *ASSERT_FALSE_STR = "ASSERT_FALSE";
+PARTEST_INLINE_VAR_17 constexpr const char *ASSERT_EQUAL_STR = "ASSERT_EQUAL";
+PARTEST_INLINE_VAR_17 constexpr const char *ASSERT_NOT_EQUAL_STR = "ASSERT_NOT_EQUAL";
 
 
-constexpr const char *ASSERT_APPROX_EQUAL_STR = "ASSERT_APPROX_EQUAL";
-constexpr const char *ASSERT_APPROX_NOT_EQUAL_STR = "ASSERT_APPROX_NOT_EQUAL";
+PARTEST_INLINE_VAR_17 constexpr const char *ASSERT_APPROX_EQUAL_STR = "ASSERT_APPROX_EQUAL";
+PARTEST_INLINE_VAR_17 constexpr const char *ASSERT_APPROX_NOT_EQUAL_STR = "ASSERT_APPROX_NOT_EQUAL";
 
-constexpr const char *ASSERT_GREATER_STR = "ASSERT_GREATER";
-constexpr const char *ASSERT_LESS_STR = "ASSERT_LESS";
-constexpr const char *ASSERT_GREATER_EQUAL_STR = "ASSERT_GREATER_EQUAL";
-constexpr const char *ASSERT_LESS_EQUAL_STR = "ASSERT_LESS_EQUAL";
+PARTEST_INLINE_VAR_17 constexpr const char *ASSERT_GREATER_STR = "ASSERT_GREATER";
+PARTEST_INLINE_VAR_17 constexpr const char *ASSERT_LESS_STR = "ASSERT_LESS";
+PARTEST_INLINE_VAR_17 constexpr const char *ASSERT_GREATER_EQUAL_STR = "ASSERT_GREATER_EQUAL";
+PARTEST_INLINE_VAR_17 constexpr const char *ASSERT_LESS_EQUAL_STR = "ASSERT_LESS_EQUAL";
 
-constexpr const char *ASSERT_META_EXPECTED = "expected";
-constexpr const char *ASSERT_META_ACTUAL = "actual";
+PARTEST_INLINE_VAR_17 constexpr const char *ASSERT_META_EXPECTED = "expected";
+PARTEST_INLINE_VAR_17 constexpr const char *ASSERT_META_ACTUAL = "actual";
 
 namespace partest
 {

@@ -15,7 +15,7 @@
 
 namespace partest
 {
-	constexpr unsigned NO_TEST_ID = 0;
+	PARTEST_INLINE_VAR_17 constexpr unsigned NO_TEST_ID = 0;
 
 	class TestFrame;
 

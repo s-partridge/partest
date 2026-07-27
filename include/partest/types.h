@@ -441,12 +441,12 @@ namespace partest
 	* Default flag constants for easy reference
 	*/
 	// Disable all flags
-	PARTEST_CONSTEXPR_11 const TestFlags TEST_FLAGS_DISABLED = TestFlags::defaultDisabled();
+	PARTEST_INLINE_VAR_17 PARTEST_CONSTEXPR_11 const TestFlags TEST_FLAGS_DISABLED = TestFlags::defaultDisabled();
 	// Inherit all flags from parent test
-	PARTEST_CONSTEXPR_11 const TestFlags TEST_FLAGS_INHERIT = TestFlags::defaultInherit();
+	PARTEST_INLINE_VAR_17 PARTEST_CONSTEXPR_11 const TestFlags TEST_FLAGS_INHERIT = TestFlags::defaultInherit();
 	// Mask all flags (used for internal purposes)
-	PARTEST_CONSTEXPR_11 const TestFlags TEST_FLAGS_MASKED = TestFlags::defaultMasked();
+	PARTEST_INLINE_VAR_17 PARTEST_CONSTEXPR_11 const TestFlags TEST_FLAGS_MASKED = TestFlags::defaultMasked();
 	// Set flags to skip the test
-	PARTEST_CONSTEXPR_11 const TestFlags TEST_FLAGS_SKIP = TestFlags::defaultSkip();
+	PARTEST_INLINE_VAR_17 PARTEST_CONSTEXPR_11 const TestFlags TEST_FLAGS_SKIP = TestFlags::defaultSkip();
 }
 #endif // PARTESTTYPES_H
