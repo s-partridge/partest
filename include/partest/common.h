@@ -31,6 +31,7 @@ PARTEST_INLINE_VAR_17 constexpr const char* PARTEST_VERSION_STRING =
 #include <memory>
 #include <string>
 #include <sstream>
+#include <type_traits>
 
 // Includes required for C++20 and later
 #if PARTEST_CPP_VERSION >= 20
@@ -39,7 +40,6 @@ PARTEST_INLINE_VAR_17 constexpr const char* PARTEST_VERSION_STRING =
 // Includes only required prior to C++20
 #else 
 #include <cstring>
-#include <type_traits>
 #endif
 
 // Includes required for C++17 and later
@@ -74,6 +74,25 @@ namespace partest
 
 	namespace traits
 	{
+		// Traits for raw character types
+		template <typename T> struct is_char_type : std::false_type {};
+		template <> struct is_char_type<char>     : std::true_type {};
+		template <> struct is_char_type<wchar_t>  : std::true_type {};
+		template <> struct is_char_type<char16_t>  : std::true_type {};
+		template <> struct is_char_type<char32_t>  : std::true_type {};
+
+#if PARTEST_CPP_VERSION >= 20
+		template <> struct is_char_type<char8_t>  : std::true_type {};
+#endif
+
+		// Traits for cstring types
+		template <typename T> struct is_cstring_type_impl : std::false_type {};
+		// Remove low-level const (and volatile) to simply evaluate the basic type
+		template <typename T> struct is_cstring_type_impl<T*> : is_char_type<typename std::remove_cv<T>::type> {};
+
+		// Decay the type first to handle arrays, references, and top-level const (the const keyword in `const T *const`)
+		template <typename T> struct is_cstring_type : is_cstring_type_impl<typename std::decay<T>::type> {};
+
 		// Import std::to_string into this namespace for ADL
 		using std::to_string;
 
@@ -134,7 +153,7 @@ namespace partest
 	*/
 	inline std::string maybeStringify(char *value)
 	{
-		return maybeStringify(static_cast<const char *>(value));
+		return maybeStringify(value);
 	}
 
 #if PARTEST_CPP_VERSION >= 20
@@ -276,13 +295,16 @@ namespace partest
 		{
 		private:
 			// SFINAE test for callable types
+			// decltype is a language keyword, not a function call. When provided, the type is that of the second argument.
+			// If T can't be resolved to a function taking zero parameters,
+			// the entire template is discarded and the only remaining possibility is std::false_type
 			template<typename T>
-			static auto check(int) -> decltype(std::declval<T>()(), std::true_type());
+			static std::true_type check(decltype(std::declval<T>()(), 0));
 			template<typename T>
-			static auto check(...) -> std::false_type;
+			static std::false_type check(...);
 		public:
 			// Value is true if MaybeInvocable is callable, false otherwise
-			// Passing 0 here prefers the first overload of check if it is valid
+			// The 0 here is a dummy value that forces check<T> to be evaluated with one argument, rather than the (...) overload.
 			// if MaybeInvocable is not a callable type with zero arguments, the second overload is chosen because it does not match declval<T>()(),
 			// which requires T to be callable with no arguments.
 			// Thus, it falls back to the ellipsis version, which always returns false_type.
