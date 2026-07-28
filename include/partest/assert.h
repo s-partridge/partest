@@ -189,23 +189,12 @@ namespace partest
 		typename std::enable_if<
 			traits::is_char_type<typename std::remove_cv<chartype>::type>::value
 		, int>::type = 0>
-	AssertionResult handleAssertEqual(const std::basic_string_view<typename std::remove_cv<chartype>::type> &actual, const chartype *expected, const char *type, const char *conditionStr, const char* file, int line)
+	AssertionResult handleAssertEqual(const chartype *actual, const std::basic_string<typename std::remove_cv<chartype>::type> &expected, const char *type, const char *conditionStr, const char* file, int line)
 	{
-		return handleAssertEqual(std::basic_string<typename std::remove_cv<chartype>::type>(actual).c_str(), expected, type, conditionStr, file, line);
+		return handleAssertEqual(actual, expected.c_str(), type, conditionStr, file, line);
 	}
 
 	// C-string specialization for comparisons with std::string
-	template<typename chartype,
-		typename std::enable_if<
-			traits::is_char_type<typename std::remove_cv<chartype>::type>::value
-		, int>::type = 0>
-	AssertionResult handleAssertEqual(const chartype *actual, const std::basic_string_view<typename std::remove_cv<chartype>::type> &expected, const char *type, const char *conditionStr, const char* file, int line)
-	{
-		return handleAssertEqual(actual, std::basic_string<typename std::remove_cv<chartype>::type>(expected).c_str(), type, conditionStr, file, line);
-	}
-
-#if PARTEST_CPP_VERSION >= 17
-	// C-string specialization for comparisons with std::string_view
 	template<typename chartype,
 		typename std::enable_if<
 			traits::is_char_type<typename std::remove_cv<chartype>::type>::value
@@ -215,14 +204,25 @@ namespace partest
 		return handleAssertEqual(actual.c_str(), expected, type, conditionStr, file, line);
 	}
 
+#if PARTEST_CPP_VERSION >= 17
 	// C-string specialization for comparisons with std::string_view
 	template<typename chartype,
 		typename std::enable_if<
 			traits::is_char_type<typename std::remove_cv<chartype>::type>::value
 		, int>::type = 0>
-	AssertionResult handleAssertEqual(const chartype *actual, const std::basic_string<typename std::remove_cv<chartype>::type> &expected, const char *type, const char *conditionStr, const char* file, int line)
+	AssertionResult handleAssertEqual(const chartype *actual, const std::basic_string_view<typename std::remove_cv<chartype>::type> &expected, const char *type, const char *conditionStr, const char* file, int line)
 	{
-		return handleAssertEqual(actual, expected.c_str(), type, conditionStr, file, line);
+		return handleAssertEqual(actual, std::basic_string<typename std::remove_cv<chartype>::type>(expected).c_str(), type, conditionStr, file, line);
+	}
+
+	// C-string specialization for comparisons with std::string_view
+	template<typename chartype,
+		typename std::enable_if<
+			traits::is_char_type<typename std::remove_cv<chartype>::type>::value
+		, int>::type = 0>
+	AssertionResult handleAssertEqual(const std::basic_string_view<typename std::remove_cv<chartype>::type> &actual, const chartype *expected, const char *type, const char *conditionStr, const char* file, int line)
+	{
+		return handleAssertEqual(std::basic_string<typename std::remove_cv<chartype>::type>(actual).c_str(), expected, type, conditionStr, file, line);
 	}
 #endif
 
