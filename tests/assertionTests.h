@@ -7,24 +7,529 @@
 class AssertionTests : public partest::TestBase
 {
 	static constexpr const char *PASSING_TEST = "Test Passing Assertions";
+	static constexpr const char *PASSING_STRING_TEST = "Test Passing String Assertions";
 	static constexpr const char *FAILING_TEST = "Test Failing Assertions";
 	class IsolatedTests : public partest::TestBase
 	{
 	public:
 		IsolatedTests() : TestBase("IsolatedTests", "Internal validation for assertions, run separately from suite") 
 		{
-			addTest(PASSING_TEST, "Validate that all assert macros pass when handling true conditions.",
-			partest::TEST_FLAGS_INHERIT,
+			
+			partest::TestFlags noStopOnFail = partest::TestFlags::defaultInherit().withStopOnFail(partest::FlagState::Disabled);
+
+			addTest(PASSING_TEST, "Validate that all basic assert macros pass when handling true conditions.",
+			noStopOnFail,
 			[this]() { return this->testAssertionsPass(); });
+			addTest(PASSING_STRING_TEST, "Validate that all string-specialized macros pass when handling true conditions.",
+			noStopOnFail,
+			[this]() { return this->testStringAssertionsPass(); });
 			addTest(FAILING_TEST, "Validate that all assert macros fail when handling false conditions.",
-			partest::TEST_FLAGS_INHERIT,
+			noStopOnFail,
 			[this]() { return this->testAssertionsFail(); });
 		}
-		
-		void testAssertionsPass()
+
+		template<typename chartype>
+		struct TestStringLiterals;
+
+		template<>
+		struct TestStringLiterals<char>{
+			static constexpr const char *stringA = "StringA";
+			static constexpr const char *stringB = "StringB";
+		};
+
+		template<>
+		struct TestStringLiterals<wchar_t>{
+			static constexpr const wchar_t *stringA = L"StringA";
+			static constexpr const wchar_t *stringB = L"StringB";
+		};
+
+		template<>
+		struct TestStringLiterals<char16_t>{
+			static constexpr const char16_t *stringA = u"StringA";
+			static constexpr const char16_t *stringB = u"StringB";
+		};
+
+		template<>
+		struct TestStringLiterals<char32_t>{
+			static constexpr const char32_t *stringA = U"StringA";
+			static constexpr const char32_t *stringB = U"StringB";
+		};
+
+#if PARTEST_CPP_VERSION >= 20
+		template<>
+		struct TestStringLiterals<char8_t>{
+			static constexpr const char8_t *stringA = u8"StringA";
+			static constexpr const char8_t *stringB = u8"StringB";
+		};
+#endif
+		template <typename chartype>
+		void testCharStringsPass()
+		{
+			using strs = TestStringLiterals<chartype>;
+			// Tests with matching strings
+			const chartype *firstConstPointer = strs::stringA;
+			const chartype *secondConstPointer = strs::stringA;
+			const chartype *diffConstPointer = strs::stringB;
+
+			const chartype *const firstDoubleConstPointer = strs::stringA;
+			const chartype *const secondDoubleConstPointer = strs::stringA;
+			const chartype *const diffDoubleConstPointer = strs::stringB;
+
+			chartype firstArray[] = strs::stringA;
+			chartype secondArray[] = strs::stringA;
+			chartype diffArray[] = strs::stringB;
+
+			chartype char firstConstArray[] = strs::stringA;
+			chartype char secondConstArray[] = strs::stringA;
+			chartype char diffConstArray[] = strs::stringB;
+
+			chartype firstArrayFixed[8] = strs::stringA;
+			chartype secondArrayFixed[8] = strs::stringA;
+			chartype diffArrayFixed[8] = strs::stringB;
+
+			const chartype firstConstArrayFixed[8] = strs::stringA;
+			const chartype secondConstArrayFixed[8] = strs::stringA;
+			const chartype diffConstArrayFixed[8] = strs::stringB;
+
+			std::basic_string<chartype> firstString = strs::stringA;
+			std::basic_string<chartype> secondString = strs::stringA;
+			std::basic_string<chartype> diffString = strs::stringB;
+
+			const std::basic_string<chartype> firstConstString = strs::stringA;
+			const std::basic_string<chartype> secondConstString = strs::stringA;
+			const std::basic_string<chartype> diffConstString = strs::stringB;
+
+#if PARTEST_CPP_VERSION >= 17
+
+			std::basic_string_view<chartype> firstStringView = strs::stringA;
+			std::basic_string_view<chartype> secondStringView = strs::stringA;
+			std::basic_string_view<chartype> diffStringView = strs::stringB;
+
+			const std::basic_string_view<chartype> firstConstStringView = strs::stringA;
+			const std::basic_string_view<chartype> secondConstStringView = strs::stringA;
+			const std::basic_string_view<chartype> diffConstStringView = strs::stringB;
+#endif
+
+			// All pairs match with themselves
+			ASSERT_EQUAL(firstConstPointer, firstConstPointer);
+			ASSERT_EQUAL(firstDoubleConstPointer, firstDoubleConstPointer);
+			ASSERT_EQUAL(firstArray, firstArray);
+			ASSERT_EQUAL(firstConstArray, firstConstArray);
+			ASSERT_EQUAL(firstArrayFixed, firstArrayFixed);
+			ASSERT_EQUAL(firstConstArrayFixed, firstConstArrayFixed);
+			ASSERT_EQUAL(firstString, firstString);
+			ASSERT_EQUAL(firstConstString, firstConstString);
+
+#if PARTEST_CPP_VERSION >= 17
+			ASSERT_EQUAL(firstStringView, firstStringView);
+			ASSERT_EQUAL(firstConstStringView, firstConstStringView);
+#endif
+
+			// With others of same type
+			ASSERT_EQUAL(firstConstPointer, secondConstPointer);
+			ASSERT_EQUAL(firstDoubleConstPointer, secondDoubleConstPointer);
+			
+			//This validates that cstrings are being compared by value rather than address
+			ASSERT_NOT_EQUAL((void *)firstArray, (void *)secondArray);
+			ASSERT_EQUAL(firstArray, secondArray);
+
+			ASSERT_NOT_EQUAL((void *)firstConstArray, (void *)secondConstArray);
+			ASSERT_EQUAL(firstConstArray, secondConstArray);
+
+			ASSERT_NOT_EQUAL((void *)firstArrayFixed, (void *)secondArrayFixed);
+			ASSERT_EQUAL(firstArrayFixed, secondArrayFixed);
+
+			ASSERT_NOT_EQUAL((void *)firstConstArrayFixed, (void *)secondConstArrayFixed);
+			ASSERT_EQUAL(firstConstArrayFixed, secondConstArrayFixed);
+
+			ASSERT_EQUAL(firstString, secondString);
+			ASSERT_EQUAL(firstConstString, secondConstString);
+
+#if PARTEST_CPP_VERSION >= 17
+			ASSERT_EQUAL(firstStringView, secondStringView);
+			ASSERT_EQUAL(firstConstStringView, secondConstStringView);
+#endif
+			/////////////////////////////
+			// With others on either side
+
+			///////////////
+			// const char * with const char* const
+			ASSERT_EQUAL(firstConstPointer, secondDoubleConstPointer);
+			ASSERT_EQUAL(firstDoubleConstPointer, secondConstPointer);
+			// with arr
+			ASSERT_EQUAL(firstConstPointer, secondArray);
+			ASSERT_EQUAL(firstArray, secondConstPointer);
+			// with const arr
+			ASSERT_EQUAL(firstConstPointer, secondConstArray);
+			ASSERT_EQUAL(firstConstArray, secondConstPointer);
+			// with fixed arr
+			ASSERT_EQUAL(firstConstPointer, secondArrayFixed);
+			ASSERT_EQUAL(firstArrayFixed, secondConstPointer);
+			// with const fixed arr
+			ASSERT_EQUAL(firstConstPointer, secondConstArrayFixed);
+			ASSERT_EQUAL(firstConstArrayFixed, secondConstPointer);
+			// with string
+			ASSERT_EQUAL(firstConstPointer, secondString);
+			ASSERT_EQUAL(firstString, secondConstPointer);
+			// with const string
+			ASSERT_EQUAL(firstConstPointer, secondConstString);
+			ASSERT_EQUAL(firstConstString, secondConstPointer);
+
+			/////////////////////
+			// const char * const with arr
+			ASSERT_EQUAL(firstDoubleConstPointer, secondArray);
+			ASSERT_EQUAL(firstArray, secondDoubleConstPointer);
+			// with const arr
+			ASSERT_EQUAL(firstDoubleConstPointer, secondConstArray);
+			ASSERT_EQUAL(firstConstArray, secondDoubleConstPointer);
+			// with fixed arr
+			ASSERT_EQUAL(firstDoubleConstPointer, secondArrayFixed);
+			ASSERT_EQUAL(firstArrayFixed, secondDoubleConstPointer);
+			// with const fixed arr
+			ASSERT_EQUAL(firstDoubleConstPointer, secondConstArrayFixed);
+			ASSERT_EQUAL(firstConstArrayFixed, secondDoubleConstPointer);
+			// with string
+			ASSERT_EQUAL(firstDoubleConstPointer, secondString);
+			ASSERT_EQUAL(firstString, secondDoubleConstPointer);
+			// with const string
+			ASSERT_EQUAL(firstDoubleConstPointer, secondConstString);
+			ASSERT_EQUAL(firstConstString, secondDoubleConstPointer);
+
+			//////
+			// arr with const arr
+			ASSERT_EQUAL(firstArray, secondConstArray);
+			ASSERT_EQUAL(firstConstArray, secondArray);
+			// with fixed arr
+			ASSERT_EQUAL(firstArray, secondArrayFixed);
+			ASSERT_EQUAL(firstArrayFixed, secondArray);
+			// with const fixed arr
+			ASSERT_EQUAL(firstArray, secondConstArrayFixed);
+			ASSERT_EQUAL(firstConstArrayFixed, secondArray);
+			// with string
+			ASSERT_EQUAL(firstArray, secondString);
+			ASSERT_EQUAL(firstString, secondArray);
+			// with const string
+			ASSERT_EQUAL(firstArray, secondConstString);
+			ASSERT_EQUAL(firstConstString, secondArray);
+
+			////////////
+			// const arr with fixed arr
+			ASSERT_EQUAL(firstConstArray, secondArrayFixed);
+			ASSERT_EQUAL(firstArrayFixed, secondConstArray);
+			// with const fixed arr
+			ASSERT_EQUAL(firstConstArray, secondConstArrayFixed);
+			ASSERT_EQUAL(firstConstArrayFixed, secondConstArray);
+			// with string
+			ASSERT_EQUAL(firstConstArray, secondString);
+			ASSERT_EQUAL(firstString, secondConstArray);
+			// with const string
+			ASSERT_EQUAL(firstConstArray, secondConstString);
+			ASSERT_EQUAL(firstConstString, secondConstArray);
+
+			////////////
+			// fixed arr with const fixed arr
+			ASSERT_EQUAL(firstArrayFixed, secondConstArrayFixed);
+			ASSERT_EQUAL(firstConstArrayFixed, secondArrayFixed);
+			// with string
+			ASSERT_EQUAL(firstArrayFixed, secondString);
+			ASSERT_EQUAL(firstString, secondArrayFixed);
+			// with const string
+			ASSERT_EQUAL(firstArrayFixed, secondConstString);
+			ASSERT_EQUAL(firstConstString, secondArrayFixed);
+
+			//////////////////
+			// const fixed arr with string
+			ASSERT_EQUAL(firstConstArrayFixed, secondString);
+			ASSERT_EQUAL(firstString, secondConstArrayFixed);
+			// with const string
+			ASSERT_EQUAL(firstConstArrayFixed, secondConstString);
+			ASSERT_EQUAL(firstConstString, secondConstArrayFixed);
+
+			/////////
+			// string with const string
+			ASSERT_EQUAL(firstString, secondConstString);
+			ASSERT_EQUAL(firstConstString, secondString);
+
+#if PARTEST_CPP_VERSION >= 17
+			/////////////
+			// stringview with const char *
+			ASSERT_EQUAL(firstStringView, secondConstPointer);
+			ASSERT_EQUAL(firstConstPointer, secondStringView);
+			// with const char * const
+			ASSERT_EQUAL(firstStringView, secondDoubleConstPointer);
+			ASSERT_EQUAL(firstDoubleConstPointer, secondStringView);
+			// with arr
+			ASSERT_EQUAL(firstStringView, secondArray);
+			ASSERT_EQUAL(firstArray, secondStringView);
+			// with const arr
+			ASSERT_EQUAL(firstStringView, secondConstArray);
+			ASSERT_EQUAL(firstConstArray, secondStringView);
+			// with fixed arr
+			ASSERT_EQUAL(firstStringView, secondArrayFixed);
+			ASSERT_EQUAL(firstArrayFixed, secondStringView);
+			// with const fixed arr
+			ASSERT_EQUAL(firstStringView, secondConstArrayFixed);
+			ASSERT_EQUAL(firstConstArrayFixed, secondStringView);
+			// with string
+			ASSERT_EQUAL(firstStringView, secondString);
+			ASSERT_EQUAL(firstString, secondStringView);
+			// with const string
+			ASSERT_EQUAL(firstStringView, secondConstString);
+			ASSERT_EQUAL(firstConstString, secondStringView);
+			// with const stringview
+			ASSERT_EQUAL(firstStringView, secondConstStringView);
+			ASSERT_EQUAL(firstConstStringView, secondStringView);
+
+			///////////////////
+			// const stringview with const char *
+			ASSERT_EQUAL(firstConstStringView, secondConstPointer);
+			ASSERT_EQUAL(firstConstPointer, secondConstStringView);
+			// with const char * const
+			ASSERT_EQUAL(firstConstStringView, secondDoubleConstPointer);
+			ASSERT_EQUAL(firstDoubleConstPointer, secondConstStringView);
+			// with arr
+			ASSERT_EQUAL(firstConstStringView, secondArray);
+			ASSERT_EQUAL(firstArray, secondConstStringView);
+			// with const arr
+			ASSERT_EQUAL(firstConstStringView, secondConstArray);
+			ASSERT_EQUAL(firstConstArray, secondConstStringView);
+			// with fixed arr
+			ASSERT_EQUAL(firstConstStringView, secondArrayFixed);
+			ASSERT_EQUAL(firstArrayFixed, secondConstStringView);
+			// with const fixed arr
+			ASSERT_EQUAL(firstConstStringView, secondConstArrayFixed);
+			ASSERT_EQUAL(firstConstArrayFixed, secondConstStringView);
+			// with string
+			ASSERT_EQUAL(firstConstStringView, secondString);
+			ASSERT_EQUAL(firstString, secondConstStringView);
+			// with const string
+			ASSERT_EQUAL(firstConstStringView, secondConstString);
+			ASSERT_EQUAL(firstConstString, secondConstStringView);
+#endif
+
+			///////////////////////////
+			// Should Fail
+			// With others of same type
+			ASSERT_NOT_EQUAL(firstConstPointer, diffConstPointer);
+			ASSERT_NOT_EQUAL(firstDoubleConstPointer, diffDoubleConstPointer);
+			ASSERT_NOT_EQUAL(firstArray, diffArray);
+			ASSERT_NOT_EQUAL(firstConstArray, diffConstArray);
+			ASSERT_NOT_EQUAL(firstArrayFixed, diffArrayFixed);
+			ASSERT_NOT_EQUAL(firstConstArrayFixed, diffConstArrayFixed);
+			ASSERT_NOT_EQUAL(firstString, diffString);
+			ASSERT_NOT_EQUAL(firstConstString, diffConstString);
+
+#if PARTEST_CPP_VERSION >= 17
+			ASSERT_NOT_EQUAL(firstStringView, diffStringView);
+			ASSERT_NOT_EQUAL(firstConstStringView, diffConstStringView);
+#endif
+			/////////////////////////////////
+			// Should Fail
+			// With others of different types
+
+			///////////////
+			// const char * with const char* const
+			ASSERT_NOT_EQUAL(firstConstPointer, diffDoubleConstPointer);
+			ASSERT_NOT_EQUAL(diffDoubleConstPointer, firstConstPointer);
+			// with arr
+			ASSERT_NOT_EQUAL(firstConstPointer, diffArray);
+			ASSERT_NOT_EQUAL(diffArray, firstConstPointer);
+			// with const arr
+			ASSERT_NOT_EQUAL(firstConstPointer, diffConstArray);
+			ASSERT_NOT_EQUAL(diffConstArray, firstConstPointer);
+			// with fixed arr
+			ASSERT_NOT_EQUAL(firstConstPointer, diffArrayFixed);
+			ASSERT_NOT_EQUAL(diffArrayFixed, firstConstPointer);
+			// with const fixed arr
+			ASSERT_NOT_EQUAL(firstConstPointer, diffConstArrayFixed);
+			ASSERT_NOT_EQUAL(diffConstArrayFixed, firstConstPointer);
+			// with string
+			ASSERT_NOT_EQUAL(firstConstPointer, diffString);
+			ASSERT_NOT_EQUAL(diffString, firstConstPointer);
+			// with const string
+			ASSERT_NOT_EQUAL(firstConstPointer, diffConstString);
+			ASSERT_NOT_EQUAL(diffConstString, firstConstPointer);
+
+			/////////////////////
+			// const char * const with arr
+			ASSERT_NOT_EQUAL(firstDoubleConstPointer, diffArray);
+			ASSERT_NOT_EQUAL(diffArray, firstDoubleConstPointer);
+			// with const arr
+			ASSERT_NOT_EQUAL(firstDoubleConstPointer, diffConstArray);
+			ASSERT_NOT_EQUAL(diffConstArray, firstDoubleConstPointer);
+			// with fixed arr
+			ASSERT_NOT_EQUAL(firstDoubleConstPointer, diffArrayFixed);
+			ASSERT_NOT_EQUAL(diffArrayFixed, firstDoubleConstPointer);
+			// with const fixed arr
+			ASSERT_NOT_EQUAL(firstDoubleConstPointer, diffConstArrayFixed);
+			ASSERT_NOT_EQUAL(diffConstArrayFixed, firstDoubleConstPointer);
+			// with string
+			ASSERT_NOT_EQUAL(firstDoubleConstPointer, diffString);
+			ASSERT_NOT_EQUAL(diffString, firstDoubleConstPointer);
+			// with const string
+			ASSERT_NOT_EQUAL(firstDoubleConstPointer, diffConstString);
+			ASSERT_NOT_EQUAL(diffConstString, firstDoubleConstPointer);
+
+			//////
+			// arr with const arr
+			ASSERT_NOT_EQUAL(firstArray, diffConstArray);
+			ASSERT_NOT_EQUAL(diffConstArray, firstArray);
+			// with fixed arr
+			ASSERT_NOT_EQUAL(firstArray, diffArrayFixed);
+			ASSERT_NOT_EQUAL(diffArrayFixed, firstArray);
+			// with const fixed arr
+			ASSERT_NOT_EQUAL(firstArray, diffConstArrayFixed);
+			ASSERT_NOT_EQUAL(diffConstArrayFixed, firstArray);
+			// with string
+			ASSERT_NOT_EQUAL(firstArray, diffString);
+			ASSERT_NOT_EQUAL(diffString, firstArray);
+			// with const string
+			ASSERT_NOT_EQUAL(firstArray, diffConstString);
+			ASSERT_NOT_EQUAL(diffConstString, firstArray);
+
+			////////////
+			// const arr with fixed arr
+			ASSERT_NOT_EQUAL(firstConstArray, diffArrayFixed);
+			ASSERT_NOT_EQUAL(diffArrayFixed, firstConstArray);
+			// with const fixed arr
+			ASSERT_NOT_EQUAL(firstConstArray, diffConstArrayFixed);
+			ASSERT_NOT_EQUAL(diffConstArrayFixed, firstConstArray);
+			// with string
+			ASSERT_NOT_EQUAL(firstConstArray, diffString);
+			ASSERT_NOT_EQUAL(diffString, firstConstArray);
+			// with const string
+			ASSERT_NOT_EQUAL(firstConstArray, diffConstString);
+			ASSERT_NOT_EQUAL(diffConstString, firstConstArray);
+
+			////////////
+			// fixed arr with const fixed arr
+			ASSERT_NOT_EQUAL(firstArrayFixed, diffConstArrayFixed);
+			ASSERT_NOT_EQUAL(diffConstArrayFixed, firstArrayFixed);
+			// with string
+			ASSERT_NOT_EQUAL(firstArrayFixed, diffString);
+			ASSERT_NOT_EQUAL(diffString, firstArrayFixed);
+			// with const string
+			ASSERT_NOT_EQUAL(firstArrayFixed, diffConstString);
+			ASSERT_NOT_EQUAL(diffConstString, firstArrayFixed);
+
+			//////////////////
+			// const fixed arr with string
+			ASSERT_NOT_EQUAL(firstConstArrayFixed, diffString);
+			ASSERT_NOT_EQUAL(firstString, firstConstArrayFixed);
+			// with const string
+			ASSERT_NOT_EQUAL(diffString, diffConstString);
+			ASSERT_NOT_EQUAL(diffConstString, firstConstArrayFixed);
+
+			/////////
+			// string with const string
+			ASSERT_NOT_EQUAL(firstString, diffConstString);
+			ASSERT_NOT_EQUAL(diffConstString, firstString);
+
+#if PARTEST_CPP_VERSION >= 17
+			/////////////
+			// stringview with const char *
+			ASSERT_NOT_EQUAL(firstStringView, diffConstPointer);
+			ASSERT_NOT_EQUAL(diffConstPointer, firstStringView);
+			// with const char * const
+			ASSERT_NOT_EQUAL(firstStringView, diffDoubleConstPointer);
+			ASSERT_NOT_EQUAL(diffDoubleConstPointer, firstStringView);
+			// with arr
+			ASSERT_NOT_EQUAL(firstStringView, diffArray);
+			ASSERT_NOT_EQUAL(diffArray, firstStringView);
+			// with const arr
+			ASSERT_NOT_EQUAL(firstStringView, diffConstArray);
+			ASSERT_NOT_EQUAL(diffConstArray, firstStringView);
+			// with fixed arr
+			ASSERT_NOT_EQUAL(firstStringView, diffArrayFixed);
+			ASSERT_NOT_EQUAL(diffArrayFixed, firstStringView);
+			// with const fixed arr
+			ASSERT_NOT_EQUAL(firstStringView, diffConstArrayFixed);
+			ASSERT_NOT_EQUAL(diffConstArrayFixed, firstStringView);
+			// with string
+			ASSERT_NOT_EQUAL(firstStringView, diffString);
+			ASSERT_NOT_EQUAL(diffString, firstStringView);
+			// with const string
+			ASSERT_NOT_EQUAL(firstStringView, diffConstString);
+			ASSERT_NOT_EQUAL(diffConstString, firstStringView);
+			// with const stringview
+			ASSERT_NOT_EQUAL(firstStringView, diffConstStringView);
+			ASSERT_NOT_EQUAL(diffConstStringView, firstStringView);
+
+			///////////////////
+			// const stringview with const char *
+			ASSERT_NOT_EQUAL(firstConstStringView, diffConstPointer);
+			ASSERT_NOT_EQUAL(diffConstPointer, firstConstStringView);
+			// with const char * const
+			ASSERT_NOT_EQUAL(firstConstStringView, diffDoubleConstPointer);
+			ASSERT_NOT_EQUAL(diffDoubleConstPointer, firstConstStringView);
+			// with arr
+			ASSERT_NOT_EQUAL(firstConstStringView, diffArray);
+			ASSERT_NOT_EQUAL(diffArray, firstConstStringView);
+			// with const arr
+			ASSERT_NOT_EQUAL(firstConstStringView, diffConstArray);
+			ASSERT_NOT_EQUAL(diffConstArray, firstConstStringView);
+			// with fixed arr
+			ASSERT_NOT_EQUAL(firstConstStringView, diffArrayFixed);
+			ASSERT_NOT_EQUAL(diffArrayFixed, firstConstStringView);
+			// with const fixed arr
+			ASSERT_NOT_EQUAL(firstConstStringView, diffConstArrayFixed);
+			ASSERT_NOT_EQUAL(diffConstArrayFixed, firstConstStringView);
+			// with string
+			ASSERT_NOT_EQUAL(firstConstStringView, diffString);
+			ASSERT_NOT_EQUAL(diffString, firstConstStringView);
+			// with const string
+			ASSERT_NOT_EQUAL(firstConstStringView, diffConstString);
+			ASSERT_NOT_EQUAL(diffConstString, firstConstStringView);
+#endif
+		}
+
+		void testStringAssertionsPass()
+		{
+			subtest("Char String Assertions", [this]() {
+				this->testCharStringsPass<char>();
+			});
+			
+			subtest("Wide Char String Assertions", [this]() {
+				this->testCharStringsPass<wchar_t>();
+			});
+
+			subtest("Char16 String Assertions", [this]() {
+				this->testCharStringsPass<char16_t>();
+			});
+
+			subtest("Char32 String Assertions", [this]() {
+				this->testCharStringsPass<char32_t>();
+			});
+
+#if PARTEST_CPP_VERSION >= 20
+			subtest("Char8 String Assertions", [this]() {
+				this->testCharStringsPass<char8_t>();
+			});
+#endif
+		}
+
+		void testStringAssertionsFail()
 		{
 			std::string testStr = "bonus";
 			const char *testPtr = "pointer";
+
+			// Loaded into stack, guaranteed to have unique memory addresses.
+			char charArrayA[] = "pointer";
+			char charArrayB[] = "pointer";
+
+			// String equality variants
+			ASSERT_NOT_EQUAL("hello", "hello");
+			ASSERT_NOT_EQUAL(testStr, "bonus");
+			ASSERT_NOT_EQUAL("bonus", testStr);
+			ASSERT_NOT_EQUAL(testPtr, testPtr);
+
+			ASSERT_EQUAL("hello", "hellr");
+			ASSERT_EQUAL(testStr, "bonuz");
+			ASSERT_EQUAL("bonuz", testStr);
+		}
+
+		void testAssertionsPass()
+		{
 			// Boolean
 			ASSERT_TRUE(true);
 			ASSERT_FALSE(false);
@@ -32,16 +537,6 @@ class AssertionTests : public partest::TestBase
 			// Equality
 			ASSERT_EQUAL(1, 1);
 			ASSERT_NOT_EQUAL(1, 2);
-
-			// String equality variants
-			ASSERT_EQUAL("hello", "hello");
-			ASSERT_EQUAL(testStr, "bonus");
-			ASSERT_EQUAL("bonus", testStr);
-			ASSERT_EQUAL(testPtr, testPtr);
-
-			ASSERT_NOT_EQUAL("hello", "hellr");
-			ASSERT_NOT_EQUAL(testStr, "bonuz");
-			ASSERT_NOT_EQUAL("bonuz", testStr);
 
 			// Comparison
 			ASSERT_GREATER(2, 1);
@@ -54,9 +549,6 @@ class AssertionTests : public partest::TestBase
 		
 		void testAssertionsFail()
 		{
-			std::string testStr = "bonus";
-			const char *testPtr = "pointer";
-
 			// Boolean
 			ASSERT_TRUE(false);
 			ASSERT_FALSE(true);
@@ -64,16 +556,6 @@ class AssertionTests : public partest::TestBase
 			// Equality
 			ASSERT_EQUAL(1, 2);
 			ASSERT_NOT_EQUAL(1, 1);
-
-			// String equality variants
-			ASSERT_NOT_EQUAL("hello", "hello");
-			ASSERT_NOT_EQUAL(testStr, "bonus");
-			ASSERT_NOT_EQUAL("bonus", testStr);
-			ASSERT_NOT_EQUAL(testPtr, testPtr);
-
-			ASSERT_EQUAL("hello", "hellr");
-			ASSERT_EQUAL(testStr, "bonuz");
-			ASSERT_EQUAL("bonuz", testStr);
 
 			// Comparison
 			ASSERT_GREATER(1, 2);
