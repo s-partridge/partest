@@ -37,7 +37,7 @@ namespace partest
 	// For assertions
 	struct AssertionPayload : public EventPayload
 	{
-		AssertionPayload(TestFrameView testFrame, AssertionResultView assertionResult)
+		AssertionPayload(TestFrameView testFrame, AssertionResult assertionResult)
 			: EventPayload(testFrame), assertionResult(assertionResult) {}
 
 		virtual std::unique_ptr<EventPayload> clone() const
@@ -45,7 +45,7 @@ namespace partest
 			return partest::make_unique<AssertionPayload>(*this);
 		}
 
-		AssertionResultView assertionResult;
+		AssertionResult assertionResult;
 	};
 
 	struct LogPayload : public EventPayload
@@ -191,7 +191,7 @@ namespace partest
 		return partest::make_unique<Event>(EventType::EndTest, std::move(payload));
 	}
 
-	inline std::unique_ptr<Event> makeEventAssertion(TestFrameView testFrame, AssertionResultView assertionResult)
+	inline std::unique_ptr<Event> makeEventAssertion(TestFrameView testFrame, AssertionResult assertionResult)
 	{
 		std::unique_ptr<AssertionPayload> payload = partest::make_unique<AssertionPayload>(testFrame, assertionResult);
 		return partest::make_unique<Event>(EventType::Assertion, std::move(payload));

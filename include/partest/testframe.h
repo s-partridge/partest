@@ -175,9 +175,9 @@ namespace partest
 
 		void processAssertion(const AssertionResult &result)
 		{
-			updateResult(result.passed ? TestResult::Passed : TestResult::Failed);
+			updateResult(result.passed() ? TestResult::Passed : TestResult::Failed);
 			m_assertions.push_back(result);
-			m_eventEmitter->emitAssertion(m_testFrameView, AssertionResultView(m_assertions.back()));
+			m_eventEmitter->emitAssertion(m_testFrameView, m_assertions.back());
 		}
 
 		PARTEST_CONSTEXPR_14 void updateStatus(TestStatus status) noexcept { state.updateStatus(status); }
@@ -387,7 +387,7 @@ namespace partest
 
 			for(const AssertionResult &result : m_assertions)
 			{
-				if(!result.passed)
+				if(!result.passed())
 					++failureCount;
 			}
 

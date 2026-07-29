@@ -79,31 +79,17 @@ namespace partest
 		static const MetaKey ExprC = detail::getExprC();			// Used for the third expression passed to an assertion
 	}
 
-	class AssertionResultView
-	{
-		using MetadataConstIter = std::unordered_map<MetaKey, std::string>::const_iterator;
-		const AssertionResult *m_assertionResult;
-
-	public:
-		AssertionResultView(const AssertionResult &assertionResult);
-
-		unsigned id() const noexcept;
-		bool passed() const noexcept;
-		PARTEST_STRING_PARAM assertType() const noexcept;
-		PARTEST_STRING_PARAM file() const noexcept;
-		int line() const noexcept;
-
-		bool hasMetadata(const MetaKey &key) const noexcept;
-		std::string getMetadata(const MetaKey &key) const;
-		MetadataConstIter metadataBegin() const noexcept;
-		MetadataConstIter metadataEnd() const noexcept;
-	};
-
 	class AssertionResult
 	{
 	private:
 		std::unordered_map<MetaKey, std::string> m_metadata; // Custom metadata associated with this assertion result
 		
+		// Whether the assertion passed or failed
+		bool m_passed;
+		// The string name of the assertion type (e.g., "ASSERT_TRUE", "ASSERT_EQUAL")
+		// This is provided by ASSERT_TRUE_STR, ASSERT_EQUAL_STR, etc.
+		std::string m_assertType;
+
 		unsigned int m_id; // Unique ID for this assertion result, used for tracking and filtering
 		/**
 		* Get a globally incrementing counter. Used internally to assign IDs to newly created test frames.
@@ -121,11 +107,6 @@ namespace partest
 		// Get the unique ID for this assertion result
 		unsigned int id() const noexcept { return m_id; }
 
-		// Whether the assertion passed or failed
-		bool passed;
-		// The string name of the assertion type (e.g., "ASSERT_TRUE", "ASSERT_EQUAL")
-		// This is provided by ASSERT_TRUE_STR, ASSERT_EQUAL_STR, etc.
-		std::string assertType;
 		// The file where the assertion was made. Typically provided by the __FILE__ macros
 		std::string file;
 		// The line number where the assertion was made. Typically provided by the __LINE__ macros
@@ -145,12 +126,15 @@ namespace partest
 			PARTEST_STRING_PARAM assertType,
 			PARTEST_STRING_PARAM file,
 			int line)
-				: m_id(nextId()), passed(passed), assertType(assertType),
+				: m_id(nextId()), m_passed(passed), m_assertType(assertType),
 				 file(file), line(line) {}
 
 		virtual ~AssertionResult() = default;
 
 		std::string getCondition() const { return getMetadata(MetaKeys::FullExpr); }
+
+		bool passed() const noexcept { return m_passed; }
+		const std::string &assertType() const { return m_assertType; }
 
 		/**
 		* Set custom metadata key-value pair for this assertion result
@@ -190,23 +174,5 @@ namespace partest
 		MetadataConstIter metadataBegin() const noexcept { return m_metadata.cbegin(); }
 		MetadataConstIter metadataEnd() const noexcept { return m_metadata.cend(); }
 	};
-
-	/**
-	* AssertionResultView function definitions
-	*/
-	inline AssertionResultView::AssertionResultView(const AssertionResult &assertionResult) : m_assertionResult(&assertionResult) {}
-
-	inline unsigned AssertionResultView::id() const noexcept { return m_assertionResult->id(); }
-	inline bool AssertionResultView::passed() const noexcept { return m_assertionResult->passed; }
-	inline PARTEST_STRING_PARAM AssertionResultView::assertType() const noexcept { return m_assertionResult->assertType; }
-
-	inline PARTEST_STRING_PARAM AssertionResultView::file() const noexcept { return m_assertionResult->file; }
-	inline int AssertionResultView::line() const noexcept { return m_assertionResult->line; }
-
-	inline bool AssertionResultView::hasMetadata(const MetaKey &key) const noexcept { return m_assertionResult->hasMetadata(key); }
-	inline std::string AssertionResultView::getMetadata(const MetaKey &key) const {return m_assertionResult->getMetadata(key); }
-
-	inline AssertionResult::MetadataConstIter AssertionResultView::metadataBegin() const noexcept { return m_assertionResult->metadataBegin(); }
-	inline AssertionResult::MetadataConstIter AssertionResultView::metadataEnd() const noexcept { return m_assertionResult->metadataEnd(); }
 }
 #endif

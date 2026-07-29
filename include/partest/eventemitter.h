@@ -39,7 +39,7 @@ namespace partest
 			return emitEvent(makeEventEndTest(testFrame));
 		}
 
-		bool emitAssertion(TestFrameView testFrame, AssertionResultView assertionResult) override
+		bool emitAssertion(TestFrameView testFrame, const AssertionResult &assertionResult) override
 		{
 			return emitEvent(makeEventAssertion(testFrame, assertionResult));
 		}

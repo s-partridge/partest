@@ -9,7 +9,7 @@
 namespace partest
 {
 	class EventDispatcherInterface;
-	class AssertionResultView;
+	class AssertionResult;
 	class TestFrameView;
 	struct LogEntry;
 	class Event;
@@ -39,7 +39,7 @@ namespace partest
 		
 		virtual bool emitBeginTest(TestFrameView testFrame) = 0;
 		virtual bool emitEndTest(TestFrameView testFrame) = 0;
-		virtual bool emitAssertion(TestFrameView testFrame, AssertionResultView assertionResult) = 0;
+		virtual bool emitAssertion(TestFrameView testFrame, const AssertionResult &assertionResult) = 0;
 		virtual bool emitLog(TestFrameView testFrame, const LogEntry &logEntry) = 0;
 		virtual bool emitPassthrough(TestFrameView testFrame, std::thread::id threadId, PARTEST_STRING_PARAM message) = 0;
 	};

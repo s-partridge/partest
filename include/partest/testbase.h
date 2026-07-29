@@ -224,7 +224,7 @@ namespace partest
 			m_currentFrame->processAssertion(result);
 
 			// On failure, allow an exception to be raised if the current test frame is configured to do so.
-			if(!result.passed)
+			if(!result.passed())
 				maybeRaiseOnAssertion(result.file.c_str(), result.line, result.getCondition());
 		}
 
