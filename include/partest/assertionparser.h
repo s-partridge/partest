@@ -3,6 +3,8 @@
 
 #include <unordered_map>
 #include <functional>
+#include <sstream>
+#include <string>
 
 #include <partest/common.h>
 #include <partest/assert.h>
@@ -42,8 +44,6 @@ namespace partest
 			return "ERROR: Unknown assertion type <" + assertion.assertType() + ">";
 		}
 	};
-
-	// Generic assertion parser functions
 }
 
 #endif

@@ -237,7 +237,7 @@ namespace partest
 		const char *file, int line)
 	{
 		bool passed = (actual != expected);
-		AssertionResult result(passed, type, conditionStr, file, line);
+		AssertionResult result(passed, type, file, line);
 
 		result.setMetadata(MetaKeys::Actual, maybeStringify(actual));
 		result.setMetadata(MetaKeys::Expected, maybeStringify(expected));
@@ -282,7 +282,7 @@ namespace partest
 		const char *fullExpr, const char *actualExpr, const char *expectedExpr,
 		const char* file, int line)
 	{
-		return handleAssertNotEqual(actual, expected.c_str(), type, actualExpr, expectedExpr, file, line);
+		return handleAssertNotEqual(actual, expected.c_str(), type, fullExpr, actualExpr, expectedExpr, file, line);
 	}
 
 	// C-string specialization for comparisons with std::string
@@ -308,7 +308,7 @@ namespace partest
 		const char* file, int line)
 	{
 
-		return handleAssertNotEqual(actual, std::basic_string<typename std::remove_cv<chartype>::type>(expected).c_str(), type, actualExpr, expectedExpr, file, line);
+		return handleAssertNotEqual(actual, std::basic_string<typename std::remove_cv<chartype>::type>(expected).c_str(), type, fullExpr, actualExpr, expectedExpr, file, line);
 	}
 
 	// C-string specialization for comparisons with std::string_view
