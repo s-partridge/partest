@@ -127,7 +127,7 @@ namespace partest
 		* @param result Object containing the evaluated result of an assertion
 		* @throws AssertionFailure if the current test has failed and stopOnFail is enabled.
 		*/
-		inline void maybeRaiseOnAssertion(const AssertionResult &result) const { maybeRaiseOnAssertion(result.file.c_str(), result.line, result.condition); }
+		inline void maybeRaiseOnAssertion(const AssertionResult &result) const { maybeRaiseOnAssertion(result.file.c_str(), result.line, result.getCondition()); }
 
 	protected:
 		/** 
@@ -225,7 +225,7 @@ namespace partest
 
 			// On failure, allow an exception to be raised if the current test frame is configured to do so.
 			if(!result.passed)
-				maybeRaiseOnAssertion(result.file.c_str(), result.line, result.condition);
+				maybeRaiseOnAssertion(result.file.c_str(), result.line, result.getCondition());
 		}
 
 		/**

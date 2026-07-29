@@ -64,6 +64,7 @@ class DispatcherTests : public partest::TestBase
 	std::unique_ptr<partest::EventDispatcherInterface> m_dispatcher;
 	std::vector<MockReporter> m_reporters;
 	std::vector<std::unique_ptr<partest::Event>> m_logs;
+	partest::AssertionResult m_genericAssertion;
 
 	void mirrorLog(std::unique_ptr<partest::Event> event)
 	{
@@ -81,7 +82,7 @@ class DispatcherTests : public partest::TestBase
 		// Begin test
 		mirrorLog(partest::makeEventBeginTest(nullTestFrame));
 		// Assert fail
-		mirrorLog(partest::makeEventAssertion(nullTestFrame, partest::AssertionResult()));
+		mirrorLog(partest::makeEventAssertion(nullTestFrame, m_genericAssertion));
 		// End test
 		mirrorLog(partest::makeEventEndTest(nullTestFrame));
 		// Passthrough log
@@ -109,7 +110,7 @@ class DispatcherTests : public partest::TestBase
 			// Begin test
 			mirrorLog(partest::makeEventBeginTest(nullTestFrame));
 			// Assert fail
-			mirrorLog(partest::makeEventAssertion(nullTestFrame, partest::AssertionResult()));
+			mirrorLog(partest::makeEventAssertion(nullTestFrame, m_genericAssertion));
 			// End test
 			mirrorLog(partest::makeEventEndTest(nullTestFrame));
 			// Passthrough log
@@ -138,7 +139,9 @@ class DispatcherTests : public partest::TestBase
 	}
 
 public:
-	DispatcherTests() : TestBase("DispatcherTests", "Tests for the EventDispatcher classes.")
+	DispatcherTests() : TestBase("DispatcherTests", "Tests for the EventDispatcher classes."),
+		// Arbitrary assertion result to be passed to objects for testing
+		m_genericAssertion(partest::handleAssertBoolean(true, true, ASSERT_TRUE_STR, "x == y", "nofile.h", 32))
 	{
 		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
 		unsigned serialReporters = 2;
@@ -197,7 +200,7 @@ public:
 
 		dispatcher->killDispatcher();
 
-		bool success = dispatcher->pushEvent(makeEventAssertion(nullTestFrame, partest::AssertionResult()));
+		bool success = dispatcher->pushEvent(makeEventAssertion(nullTestFrame, m_genericAssertion));
 		// A dead dispatcher should refuse any new events.
 		ASSERT_FALSE(success);
 
@@ -262,13 +265,13 @@ public:
 		}
 		dispatcher->killDispatcher();
 		// Ensure no events propagate after death
-		bool success = dispatcher->pushEvent(partest::makeEventAssertion(nullTestFrame, partest::AssertionResult()));
+		bool success = dispatcher->pushEvent(partest::makeEventAssertion(nullTestFrame, m_genericAssertion));
 
 		ASSERT_FALSE(success);
 
 		dispatcherThread.join();
 
-		success = dispatcher->pushEvent(partest::makeEventAssertion(nullTestFrame, partest::AssertionResult()));
+		success = dispatcher->pushEvent(partest::makeEventAssertion(nullTestFrame, m_genericAssertion));
 		// Ensure no events propagate after join.
 		// This should be impossible because no thread is running the dispatchEvents() call.
 		ASSERT_FALSE(success);
@@ -323,7 +326,7 @@ public:
 		partest::EventDispatcherInterface *dispatcher = m_dispatcher.get();
 		// Initialize a series of events to pass to the logger.
 		partest::TestFrameView nullTestFrame = partest::TestFrameView::getNullTestFrameView();
-		unsigned success = dispatcher->pushEvent(partest::makeEventAssertion(nullTestFrame, partest::AssertionResult()));
+		unsigned success = dispatcher->pushEvent(partest::makeEventAssertion(nullTestFrame, m_genericAssertion));
 
 		// Event without reporters registered, the event should be processed.
 		ASSERT_TRUE(success);
@@ -349,7 +352,7 @@ public:
 		});
 
 
-		unsigned success = dispatcher->pushEvent(partest::makeEventAssertion(nullTestFrame, partest::AssertionResult()));
+		unsigned success = dispatcher->pushEvent(partest::makeEventAssertion(nullTestFrame, m_genericAssertion));
 
 		// Even without reporters registered, the event should be processed.
 		ASSERT_TRUE(success);

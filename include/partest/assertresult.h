@@ -59,10 +59,10 @@ namespace partest
 			inline const MetaKey& getCeiling() noexcept { static const MetaKey ceiling; return ceiling; }
 			inline const MetaKey& getContainer() noexcept { static const MetaKey container; return container; }
 
+			inline const MetaKey& getFullExpr() noexcept { static const MetaKey fullExpr; return fullExpr; }
 			inline const MetaKey& getExprA() noexcept { static const MetaKey exprA; return exprA; }
 			inline const MetaKey& getExprB() noexcept { static const MetaKey exprB; return exprB; }
 			inline const MetaKey& getExprC() noexcept { static const MetaKey exprC; return exprC; }
-
 		}
 
 		static const MetaKey Actual = detail::getActual();		// Used for the actual value evaluated by an assertion
@@ -72,7 +72,8 @@ namespace partest
 		static const MetaKey Ceiling = detail::getCeiling();		// Ceiling value for range assertions
 		static const MetaKey Container = detail::getContainer();	// The container used for ASSERT_CONTAINS
 
-		// For string representations of the raw arguments, in addition to their evaluated values
+		// For string representations of the expression and its raw arguments, in addition to their evaluated values
+		static const MetaKey FullExpr = detail::getFullExpr();			// Used for the first expression passed to an assertion
 		static const MetaKey ExprA = detail::getExprA();			// Used for the first expression passed to an assertion
 		static const MetaKey ExprB = detail::getExprB();			// Used for the second expression passed to an assertion
 		static const MetaKey ExprC = detail::getExprC();			// Used for the third expression passed to an assertion
@@ -139,7 +140,6 @@ namespace partest
 		* @param file The file where the assertion was made. Typically provided by the __FILE__ macro.
 		* @param line The line number where the assertion was made. Typically provided by the __LINE__ macro.
 		*/
-
 		AssertionResult(
 			bool passed,
 			PARTEST_STRING_PARAM assertType,
@@ -149,6 +149,8 @@ namespace partest
 				 file(file), line(line) {}
 
 		virtual ~AssertionResult() = default;
+
+		std::string getCondition() const { return getMetadata(MetaKeys::FullExpr); }
 
 		/**
 		* Set custom metadata key-value pair for this assertion result

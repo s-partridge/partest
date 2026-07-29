@@ -9,20 +9,20 @@
 /**
 * Basic assertion macro for use within tests. Must be called within a TestFrame context.
 */
-#define ASSERT_TRUE(condition) commitAssertion(partest::handleAssertBoolean((condition), true, ASSERT_TRUE_STR, #condition, __FILE__, __LINE__))
-#define ASSERT_FALSE(condition) commitAssertion(partest::handleAssertBoolean((condition), false, ASSERT_FALSE_STR, #condition, __FILE__, __LINE__))
+#define ASSERT_TRUE(actual) commitAssertion(partest::handleAssertBoolean((actual), true, ASSERT_TRUE_STR, #actual, __FILE__, __LINE__))
+#define ASSERT_FALSE(actual) commitAssertion(partest::handleAssertBoolean((actual), false, ASSERT_FALSE_STR, #actual, __FILE__, __LINE__))
 
 /**
 * Basic assertion macros for equality checks. Must be called within a TestFrame context.
 */
-#define ASSERT_EQUAL(lhs, rhs) commitAssertion(partest::handleAssertEqual((lhs), (rhs), ASSERT_EQUAL_STR, #lhs ", " #rhs, __FILE__, __LINE__))
-#define ASSERT_NOT_EQUAL(lhs, rhs) commitAssertion(partest::handleAssertNotEqual((lhs), (rhs), ASSERT_NOT_EQUAL_STR, #lhs ", " #rhs, __FILE__, __LINE__))
+#define ASSERT_EQUAL(actual, expected) commitAssertion(partest::handleAssertEqual((actual), (expected), ASSERT_EQUAL_STR, #actual "==" #expected, #actual , #expected, __FILE__, __LINE__))
+#define ASSERT_NOT_EQUAL(actual, expected) commitAssertion(partest::handleAssertNotEqual((actual), (expected), ASSERT_NOT_EQUAL_STR, #actual "!=" #expected, #actual , #expected, __FILE__, __LINE__))
 
 /**
 * Assertion macros for approximate equality checks. Must be called within a TestFrame context.
 */
-#define ASSERT_APPROX_EQUAL(lhs, rhs, tolerance) handleAssertApproxEqual((lhs), (rhs), (tolerance), ASSERT_APPROX_EQUAL_STR, #lhs ", " #rhs ", " #tolerance, __FILE__, __LINE__)
-#define ASSERT_APPROX_NOT_EQUAL(lhs, rhs, tolerance) handleAssertApproxNotEqual((lhs), (rhs), (tolerance), ASSERT_APPROX_NOT_EQUAL_STR, #lhs ", " #rhs ", " #tolerance, __FILE__, __LINE__)
+#define ASSERT_APPROX_EQUAL(actual, expected, epsilon) handleAssertApproxEqual((actual), (expected), (tolerance), ASSERT_APPROX_EQUAL_STR, #actual "==" #expected ", +/-" #epsilon, #actual, #expected, #epsilon, __FILE__, __LINE__)
+#define ASSERT_APPROX_NOT_EQUAL(actual, expected, epsilon) handleAssertApproxNotEqual((actual), (expected), (tolerance), ASSERT_APPROX_NOT_EQUAL_STR, #actual "==" #expected ", +/-" #epsilon, #actual, #expected, #epsilon, __FILE__, __LINE__)
 
 /**
 * Assertion macros for relational checks. Must be called within a TestFrame context.
@@ -56,7 +56,10 @@ namespace partest
 	/////////////
 	// Helpers //
 	/////////////
-	template <typename CharT>
+	template <typename CharT,
+		typename std::enable_if<
+			traits::is_char_type<CharT>::value
+		, int>::type = 0>
 	bool cstringsEqual(const CharT *lhs, const CharT *rhs)
 	{
 		if(lhs == rhs)
@@ -92,27 +95,20 @@ namespace partest
 		return std::char_traits<CharT>::compare(lhs, rhs) != 0;
 	}
 
-
 	////////////////
 	// Assertions //
 	////////////////
-	template<typename T>
-	AssertionResult handleAssertBoolean(const T &condition, bool assertTrue, const char *type, const char *conditionStr, const char *file, int line)
+	AssertionResult handleAssertBoolean(bool actual, bool assertTrue, const char *type,
+		const char *fullExpr,
+		const char *file, int line)
 	{
-		bool passed = (condition == assertTrue);
-		AssertionResult result(passed, type, conditionStr, file, line);
-		std::ostringstream message;
+		bool passed = (actual == assertTrue);
+		AssertionResult result(passed, type, file, line);
+		
+		result.setMetadata(MetaKeys::Actual, maybeStringify(actual));
+		result.setMetadata(MetaKeys::FullExpr, fullExpr);
+		result.setMetadata(MetaKeys::Expected, maybeStringify(assertTrue));
 
-		if(passed)
-		{
-			message << type << "(" << conditionStr << ") passed.";
-		}
-		else
-		{
-			message << "Assertion failed at " << file << ":" << line
-				<< ": " << type << "(" << conditionStr << ") was " << (assertTrue ? "false\n" : "true.\n");
-		}
-		result.message = message.str();
 		return result;
 	}
 
@@ -131,25 +127,19 @@ namespace partest
 				traits::is_cstring_type<U>::value
 			), int>::type = 0
 		>
-	AssertionResult handleAssertEqual(const T &actual, const U &expected, const char *type, const char *conditionStr, const char *file, int line)
+	AssertionResult handleAssertEqual(const T &actual, const U &expected, const char *type,
+		const char *fullExpr, const char *actualExpr, const char *expectedExpr,
+		const char *file, int line)
 	{
 		bool passed = (actual == expected);
-		AssertionResult result(passed, type, conditionStr, file, line);
-		std::ostringstream message;
+		AssertionResult result(passed, type, file, line);
 
-		if(passed)
-		{
-			message << type << "(" << conditionStr << ") passed.";
-		}
-		else
-		{
-			message << "Assertion failed at " << file << ":" << line
-				<< ": " << type << "(" << conditionStr << ")\n"
-				<< "  Actual: " << maybeStringify(actual) << "\n"
-				<< "  Expected: " << maybeStringify(expected) << "\n";
-		}
- 		// Write the message to the AssertionResult for logging
- 		result.message = message.str();
+		result.setMetadata(MetaKeys::Actual, maybeStringify(actual));
+		result.setMetadata(MetaKeys::Expected, maybeStringify(expected));
+		result.setMetadata(MetaKeys::FullExpr, fullExpr);
+		result.setMetadata(MetaKeys::ExprA, actualExpr);
+		result.setMetadata(MetaKeys::ExprB, expectedExpr);
+
 		return result;
 	}
 
@@ -161,26 +151,20 @@ namespace partest
 				typename std::remove_cv<chartypeB>::type
 			>::value
 		, int>::type = 0>
-	AssertionResult handleAssertEqual(const chartypeA *actual, const chartypeB* expected, const char *type, const char *conditionStr, const char* file, int line)
+	AssertionResult handleAssertEqual(const chartypeA *actual, const chartypeB* expected, const char *type,
+		const char *fullExpr, const char *actualExpr, const char *expectedExpr,
+		const char* file, int line)
 	{
 		bool passed = cstringsEqual(actual, expected);
 
-		AssertionResult result(passed, type, conditionStr, file, line);
-		std::ostringstream message;
+		AssertionResult result(passed, type, file, line);
 
-		if (passed)
-		{
-			message << type << "(" << conditionStr << ") passed.";
-		}
-		else
-		{
-			message << "Assertion failed at " << file << ":" << line
-				<< type << "(" << conditionStr << ")\n"
-				<< "  Actual: \"" << actual << "\"\n"
-				<< "  Expected: \"" << expected << "\"\n";
-		}
-			
-		result.message = message.str();
+		result.setMetadata(MetaKeys::Actual, maybeStringify(actual));
+		result.setMetadata(MetaKeys::Expected, maybeStringify(expected));
+		result.setMetadata(MetaKeys::FullExpr, fullExpr);
+		result.setMetadata(MetaKeys::ExprA, actualExpr);
+		result.setMetadata(MetaKeys::ExprB, expectedExpr);
+
 		return result;
 	}
 
@@ -189,9 +173,11 @@ namespace partest
 		typename std::enable_if<
 			traits::is_char_type<typename std::remove_cv<chartype>::type>::value
 		, int>::type = 0>
-	AssertionResult handleAssertEqual(const chartype *actual, const std::basic_string<typename std::remove_cv<chartype>::type> &expected, const char *type, const char *conditionStr, const char* file, int line)
+	AssertionResult handleAssertEqual(const chartype *actual, const std::basic_string<typename std::remove_cv<chartype>::type> &expected, const char *type,
+		const char *fullExpr, const char *actualExpr, const char *expectedExpr,
+		const char* file, int line)
 	{
-		return handleAssertEqual(actual, expected.c_str(), type, conditionStr, file, line);
+		return handleAssertEqual(actual, expected.c_str(), type, fullExpr, actualExpr, expectedExpr, file, line);
 	}
 
 	// C-string specialization for comparisons with std::string
@@ -199,9 +185,11 @@ namespace partest
 		typename std::enable_if<
 			traits::is_char_type<typename std::remove_cv<chartype>::type>::value
 		, int>::type = 0>
-	AssertionResult handleAssertEqual(const std::basic_string<typename std::remove_cv<chartype>::type> &actual, const chartype *expected, const char *type, const char *conditionStr, const char* file, int line)
+	AssertionResult handleAssertEqual(const std::basic_string<typename std::remove_cv<chartype>::type> &actual, const chartype *expected, const char *type,
+		const char *fullExpr, const char *actualExpr, const char *expectedExpr,
+		const char* file, int line)
 	{
-		return handleAssertEqual(actual.c_str(), expected, type, conditionStr, file, line);
+		return handleAssertEqual(actual.c_str(), expected, type, fullExpr, actualExpr, expectedExpr, file, line);
 	}
 
 #if PARTEST_CPP_VERSION >= 17
@@ -210,9 +198,11 @@ namespace partest
 		typename std::enable_if<
 			traits::is_char_type<typename std::remove_cv<chartype>::type>::value
 		, int>::type = 0>
-	AssertionResult handleAssertEqual(const chartype *actual, const std::basic_string_view<typename std::remove_cv<chartype>::type> &expected, const char *type, const char *conditionStr, const char* file, int line)
+	AssertionResult handleAssertEqual(const chartype *actual, const std::basic_string_view<typename std::remove_cv<chartype>::type> &expected, const char *type,
+		const char *fullExpr, const char *actualExpr, const char *expectedExpr,
+		const char* file, int line)
 	{
-		return handleAssertEqual(actual, std::basic_string<typename std::remove_cv<chartype>::type>(expected).c_str(), type, conditionStr, file, line);
+		return handleAssertEqual(actual, std::basic_string<typename std::remove_cv<chartype>::type>(expected).c_str(), type, fullExpr, actualExpr, expectedExpr, file, line);
 	}
 
 	// C-string specialization for comparisons with std::string_view
@@ -220,9 +210,11 @@ namespace partest
 		typename std::enable_if<
 			traits::is_char_type<typename std::remove_cv<chartype>::type>::value
 		, int>::type = 0>
-	AssertionResult handleAssertEqual(const std::basic_string_view<typename std::remove_cv<chartype>::type> &actual, const chartype *expected, const char *type, const char *conditionStr, const char* file, int line)
+	AssertionResult handleAssertEqual(const std::basic_string_view<typename std::remove_cv<chartype>::type> &actual, const chartype *expected, const char *type,
+		const char *fullExpr, const char *actualExpr, const char *expectedExpr,
+		const char* file, int line)
 	{
-		return handleAssertEqual(std::basic_string<typename std::remove_cv<chartype>::type>(actual).c_str(), expected, type, conditionStr, file, line);
+		return handleAssertEqual(std::basic_string<typename std::remove_cv<chartype>::type>(actual).c_str(), expected, type, fullExpr, actualExpr, expectedExpr, file, line);
 	}
 #endif
 
@@ -240,24 +232,19 @@ namespace partest
 				traits::is_cstring_type<U>::value
 			), int>::type = 0
 		>
-	AssertionResult handleAssertNotEqual(const T &actual, const U &expected, const char *type, const char *conditionStr, const char *file, int line)
+	AssertionResult handleAssertNotEqual(const T &actual, const U &expected, const char *type,
+		const char *fullExpr, const char *actualExpr, const char *expectedExpr,
+		const char *file, int line)
 	{
 		bool passed = (actual != expected);
 		AssertionResult result(passed, type, conditionStr, file, line);
-		std::ostringstream message;
 
-		if(passed)
-		{
-			message << type << "(" << conditionStr << ") passed.";
-		}
-		else
-		{
-			message << "Assertion failed at " << file << ":" << line
-				<< ": " << type << "(" << conditionStr << ")\n"
-				<< "\"" << maybeStringify(actual) << "\" should not have been " << maybeStringify(expected) << "\n";
-		}
+		result.setMetadata(MetaKeys::Actual, maybeStringify(actual));
+		result.setMetadata(MetaKeys::Expected, maybeStringify(expected));
+		result.setMetadata(MetaKeys::FullExpr, fullExpr);
+		result.setMetadata(MetaKeys::ExprA, actualExpr);
+		result.setMetadata(MetaKeys::ExprB, expectedExpr);
 
-		result.message = message.str();
 		return result;
 	}
 
@@ -269,25 +256,20 @@ namespace partest
 				typename std::remove_cv<chartypeB>::type
 			>::value
 		, int>::type = 0>
-	inline AssertionResult handleAssertNotEqual(const chartypeA* actual, const chartypeB* expected, const char* type, const char* conditionStr, const char* file, int line)
+	inline AssertionResult handleAssertNotEqual(const chartypeA* actual, const chartypeB* expected, const char* type,
+		const char *fullExpr, const char* actualExpr, const char *expectedExpr,
+		const char* file, int line)
 	{
 		bool passed = !cstringsEqual(actual, expected);
 
-		AssertionResult result(passed, type, conditionStr, file, line);
-		std::ostringstream message;
+		AssertionResult result(passed, type, file, line);
 
-		if(passed)
-		{
-			message << type << "(" << conditionStr << ") passed.";
-		}
-		else
-		{
-			message << "Assertion failed at " << file << ":" << line
-				<< type << "(" << conditionStr << ")\n"
-				<< "\"" << actual << "\" should not have been " << expected << "\n";
-		}
+		result.setMetadata(MetaKeys::Actual, maybeStringify(actual));
+		result.setMetadata(MetaKeys::Expected, maybeStringify(expected));
+		result.setMetadata(MetaKeys::FullExpr, actualExpr);
+		result.setMetadata(MetaKeys::ExprA, actualExpr);
+		result.setMetadata(MetaKeys::ExprB, actualExpr);
 
-		result.message = message.str();
 		return result;
 	}
 
@@ -296,9 +278,11 @@ namespace partest
 		typename std::enable_if<
 			traits::is_char_type<typename std::remove_cv<chartype>::type>::value
 		, int>::type = 0>
-	AssertionResult handleAssertNotEqual(const chartype *actual, const std::basic_string<typename std::remove_cv<chartype>::type> &expected, const char *type, const char *conditionStr, const char* file, int line)
+	AssertionResult handleAssertNotEqual(const chartype *actual, const std::basic_string<typename std::remove_cv<chartype>::type> &expected, const char *type,
+		const char *fullExpr, const char *actualExpr, const char *expectedExpr,
+		const char* file, int line)
 	{
-		return handleAssertNotEqual(actual, expected.c_str(), type, conditionStr, file, line);
+		return handleAssertNotEqual(actual, expected.c_str(), type, actualExpr, expectedExpr, file, line);
 	}
 
 	// C-string specialization for comparisons with std::string
@@ -306,9 +290,11 @@ namespace partest
 		typename std::enable_if<
 			traits::is_char_type<typename std::remove_cv<chartype>::type>::value
 		, int>::type = 0>
-	AssertionResult handleAssertNotEqual(const std::basic_string<typename std::remove_cv<chartype>::type> &actual, const chartype *expected, const char *type, const char *conditionStr, const char* file, int line)
+	AssertionResult handleAssertNotEqual(const std::basic_string<typename std::remove_cv<chartype>::type> &actual, const chartype *expected, const char *type,
+		const char *fullExpr, const char *actualExpr, const char *expectedExpr,
+		const char* file, int line)
 	{
-		return handleAssertNotEqual(actual.c_str(), expected, type, conditionStr, file, line);
+		return handleAssertNotEqual(actual.c_str(), expected, type, fullExpr, actualExpr, expectedExpr, file, line);
 	}
 
 #if PARTEST_CPP_VERSION >= 17
@@ -317,10 +303,12 @@ namespace partest
 		typename std::enable_if<
 			traits::is_char_type<typename std::remove_cv<chartype>::type>::value
 		, int>::type = 0>
-	AssertionResult handleAssertNotEqual(const chartype *actual, const std::basic_string_view<typename std::remove_cv<chartype>::type> &expected, const char *type, const char *conditionStr, const char* file, int line)
+	AssertionResult handleAssertNotEqual(const chartype *actual, const std::basic_string_view<typename std::remove_cv<chartype>::type> &expected, const char *type,
+		const char *fullExpr, const char *actualExpr, const char *expectedExpr,
+		const char* file, int line)
 	{
 
-		return handleAssertNotEqual(actual, std::basic_string<typename std::remove_cv<chartype>::type>(expected).c_str(), type, conditionStr, file, line);
+		return handleAssertNotEqual(actual, std::basic_string<typename std::remove_cv<chartype>::type>(expected).c_str(), type, actualExpr, expectedExpr, file, line);
 	}
 
 	// C-string specialization for comparisons with std::string_view
@@ -328,9 +316,11 @@ namespace partest
 		typename std::enable_if<
 			traits::is_char_type<typename std::remove_cv<chartype>::type>::value
 		, int>::type = 0>
-	AssertionResult handleAssertNotEqual(const std::basic_string_view<typename std::remove_cv<chartype>::type> &actual, const chartype *expected, const char *type, const char *conditionStr, const char* file, int line)
+	AssertionResult handleAssertNotEqual(const std::basic_string_view<typename std::remove_cv<chartype>::type> &actual, const chartype *expected, const char *type,
+		const char *fullExpr, const char *actualExpr, const char *expectedExpr,
+		const char* file, int line)
 	{
-		return handleAssertNotEqual(std::basic_string<typename std::remove_cv<chartype>::type>(actual).c_str(), expected, type, conditionStr, file, line);
+		return handleAssertNotEqual(std::basic_string<typename std::remove_cv<chartype>::type>(actual).c_str(), expected, type, fullExpr, actualExpr, expectedExpr, file, line);
 	}
 #endif
 
@@ -343,30 +333,25 @@ namespace partest
 	* @param line The line number where the assertion is made
 	*/
 	template<typename T, typename U>
-	AssertionResult handleAssertApproxEqual(const T &actual, const U &expected, const U &tolerance, const char *type, const char* conditionStr, const char* file, int line)
+	AssertionResult handleAssertApproxEqual(const T &actual, const U &expected,
+		const U &epsilon, const char *type,
+		const char *fullExpr, const char* actualExpr, const char *expectedExpr,
+		const char *epsilonExpr, const char* file, int line)
 	{
-		U min = expected - tolerance;
-		U max = expected + tolerance;
+		U min = expected - epsilon;
+		U max = expected + epsilon;
 		bool passed = min <= actual && actual <= max;
 
-		AssertionResult result(passed, type, conditionStr, file, line);
+		AssertionResult result(passed, type, file, line);
 
-		std::ostringstream message;
+		result.setMetadata(MetaKeys::Actual, maybeStringify(actual));
+		result.setMetadata(MetaKeys::Expected, maybeStringify(expected));
+		result.setMetadata(MetaKeys::Epsilon, maybeStringify(epsilon));
+		result.setMetadata(MetaKeys::FullExpr, fullExpr);
+		result.setMetadata(MetaKeys::ExprA, actualExpr);
+		result.setMetadata(MetaKeys::ExprB, expectedExpr);
+		result.setMetadata(MetaKeys::ExprC, epsilonExpr);
 
-		if(passed)
-		{
-			message << type << "(" << conditionStr << ") passed.";
-		}
-		else
-		{
-			message << "Assertion failed at " << file << ":" << line
-				<< type << "(" << conditionStr << ")\n"
-				<< "  Actual: \"" << maybeStringify(actual) << "\"\n"
-				<< "  Expected: \"" << maybeStringify(expected) << "\"\n"
-				<< "  Tolerance: \"" << maybeStringify(tolerance) << "\"\n";
-		}
-
-		result.message = message.str();
 		return result;
 	}
 
@@ -379,30 +364,25 @@ namespace partest
 	* @param line The line number where the assertion is made
 	*/
 	template<typename T, typename U>
-	AssertionResult handleAssertApproxNotEqual(const T &actual, const U &expected, const U &tolerance, const char *type, const char* conditionStr, const char* file, int line)
+	AssertionResult handleAssertApproxNotEqual(const T &actual, const U &expected,
+		const U &epsilon, const char *type,
+		const char *fullExpr, const char* actualExpr, const char *expectedExpr,
+		const char *epsilonExpr, const char* file, int line)
 	{
-		U min = expected - tolerance;
-		U max = expected + tolerance;
+		U min = expected - epsilon;
+		U max = expected + epsilon;
 		bool passed = actual < min || max < actual;
 
-		AssertionResult result(passed, type, conditionStr, file, line);
+		AssertionResult result(passed, type, file, line);
 
-		std::ostringstream message;
+		result.setMetadata(MetaKeys::Actual, maybeStringify(actual));
+		result.setMetadata(MetaKeys::Expected, maybeStringify(expected));
+		result.setMetadata(MetaKeys::Epsilon, maybeStringify(epsilon));
+		result.setMetadata(MetaKeys::FullExpr, fullExpr);
+		result.setMetadata(MetaKeys::ExprA, actualExpr);
+		result.setMetadata(MetaKeys::ExprB, expectedExpr);
+		result.setMetadata(MetaKeys::ExprC, epsilonExpr);
 
-		if(passed)
-		{
-			message << type << "(" << conditionStr << ") passed.";
-		}
-		else
-		{
-			message << "Assertion failed at " << file << ":" << line
-				<< type << "(" << conditionStr << ")\n"
-				<< "  Actual: \"" << maybeStringify(actual) << "\"\n"
-				<< "  Expected: \"" << maybeStringify(expected) << "\"\n"
-				<< "  Tolerance: \"" << maybeStringify(tolerance) << "\"\n";
-		}
-
-		result.message = message.str();
 		return result;
 	}
 }
