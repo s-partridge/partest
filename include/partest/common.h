@@ -98,7 +98,7 @@ namespace partest
 
 # if PARTEST_CPP_VERSION >= 20
 		template <typename T>
-		concept has_to_string = requires(T t) { std::to_string(t); };
+		concept has_to_string = requires(T t) { to_string(t); };
 		template <typename T>
 		concept is_streamable = requires(T t, std::ostream & os) { os << t; };
 #else
@@ -109,7 +109,7 @@ namespace partest
 		// Specialization that does the checking. Checks for std::to_string(T)
 		// but also allows for ADL to find a to_string in the same namespace as T
 		template<typename T>
-		struct has_to_string<T, decltype(void(to_string(std::declval<T>())))>
+		struct has_to_string<T, decltype(void(static_cast<std::string>(to_string(std::declval<T>()))))>
 			: std::true_type {};
 
 		// Trait to check if T can be streamed to an std::ostream
@@ -168,15 +168,17 @@ namespace partest
 	template<typename T>
 	std::string maybeStringify(const T& value)
 	{
-		if constexpr(traits::has_to_string<T>)
-		{
-			return std::to_string(value);
-		}
-		else if constexpr(traits::is_streamable<T>)
+		if constexpr(traits::is_streamable<T>)
 		{
 			std::ostringstream out;
 			out << value;
 			return out.str();
+		}
+		else if constexpr(traits::has_to_string<T>)
+		{
+			// For correct ADL lookup
+			using std::to_string;
+			return static_cast<std::string>(to_string(value));
 		}
 		else
 		{
@@ -197,15 +199,17 @@ namespace partest
 	template<typename T>
 	std::string maybeStringify(const T& value)
 	{
-		if constexpr(traits::has_to_string<T>::value)
-		{
-			return std::to_string(value);
-		}
-		else if constexpr(traits::is_streamable<T>::value)
+		if constexpr(traits::is_streamable<T>::value)
 		{
 			std::ostringstream out;
 			out << value;
 			return out.str();
+		}
+		else	if constexpr(traits::has_to_string<T>::value)
+		{
+			// For correct ADL lookup
+			using std::to_string;
+			return static_cast<std::string>(to_string(value));
 		}
 		else
 		{
@@ -229,10 +233,12 @@ namespace partest
 	* @return The string representation of the value, or a placeholder if not convertible
 	*/
 	template <typename T>
-	typename std::enable_if<traits::has_to_string<T>::value, std::string>::type
+	typename std::enable_if<traits::is_streamable<T>::value, std::string>::type
 	maybeStringify(const T& value)
 	{
-		return std::to_string(value);
+		std::ostringstream out;
+		out << value;
+		return out.str();
 	}
 
 	/**
@@ -243,12 +249,12 @@ namespace partest
 	* @return The string representation of the value, or a placeholder if not convertible
 	*/
 	template <typename T>
-	typename std::enable_if<!traits::has_to_string<T>::value && traits::is_streamable<T>::value, std::string>::type
+	typename std::enable_if<!traits::is_streamable<T>::value && traits::has_to_string<T>::value, std::string>::type
 	maybeStringify(const T& value)
 	{
-		std::ostringstream out;
-		out << value;
-		return out.str();
+		// For correct ADL lookup
+		using std::to_string;
+		return static_cast<std::string>(to_string(value));
 	}
 
 	/**
