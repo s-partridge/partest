@@ -15,14 +15,14 @@
 /**
 * Basic assertion macros for equality checks. Must be called within a TestFrame context.
 */
-#define ASSERT_EQUAL(actual, expected) commitAssertion(partest::handleAssertEqual((actual), (expected), ASSERT_EQUAL_STR, #actual "==" #expected, #actual , #expected, __FILE__, __LINE__))
-#define ASSERT_NOT_EQUAL(actual, expected) commitAssertion(partest::handleAssertNotEqual((actual), (expected), ASSERT_NOT_EQUAL_STR, #actual "!=" #expected, #actual , #expected, __FILE__, __LINE__))
+#define ASSERT_EQUAL(actual, expected) commitAssertion(partest::handleAssertEqual((actual), (expected), ASSERT_EQUAL_STR, #actual " == " #expected, #actual , #expected, __FILE__, __LINE__))
+#define ASSERT_NOT_EQUAL(actual, expected) commitAssertion(partest::handleAssertNotEqual((actual), (expected), ASSERT_NOT_EQUAL_STR, #actual " != " #expected, #actual , #expected, __FILE__, __LINE__))
 
 /**
 * Assertion macros for approximate equality checks. Must be called within a TestFrame context.
 */
-#define ASSERT_APPROX_EQUAL(actual, expected, epsilon) handleAssertApproxEqual((actual), (expected), (tolerance), ASSERT_APPROX_EQUAL_STR, #actual "==" #expected ", +/-" #epsilon, #actual, #expected, #epsilon, __FILE__, __LINE__)
-#define ASSERT_APPROX_NOT_EQUAL(actual, expected, epsilon) handleAssertApproxNotEqual((actual), (expected), (tolerance), ASSERT_APPROX_NOT_EQUAL_STR, #actual "==" #expected ", +/-" #epsilon, #actual, #expected, #epsilon, __FILE__, __LINE__)
+#define ASSERT_APPROX_EQUAL(actual, expected, epsilon) handleAssertApproxEqual((actual), (expected), (tolerance), ASSERT_APPROX_EQUAL_STR, #actual " == " #expected ", +/- " #epsilon, #actual, #expected, #epsilon, __FILE__, __LINE__)
+#define ASSERT_APPROX_NOT_EQUAL(actual, expected, epsilon) handleAssertApproxNotEqual((actual), (expected), (tolerance), ASSERT_APPROX_NOT_EQUAL_STR, #actual " == " #expected ", +/- " #epsilon, #actual, #expected, #epsilon, __FILE__, __LINE__)
 
 /**
 * Assertion macros for relational checks. Must be called within a TestFrame context.
@@ -56,6 +56,14 @@ namespace partest
 	/////////////
 	// Helpers //
 	/////////////
+	inline const char *boolToString(bool value)
+	{
+		static const char *trueStr = "True";
+		static const char *falseStr = "False";
+
+		return value ? trueStr : falseStr;
+	}
+
 	template <typename CharT,
 		typename std::enable_if<
 			traits::is_char_type<CharT>::value
@@ -98,16 +106,16 @@ namespace partest
 	////////////////
 	// Assertions //
 	////////////////
-	AssertionResult handleAssertBoolean(bool actual, bool assertTrue, const char *type,
+	inline AssertionResult handleAssertBoolean(bool actual, bool assertTrue, const char *type,
 		const char *fullExpr,
 		const char *file, int line)
 	{
 		bool passed = (actual == assertTrue);
 		AssertionResult result(passed, type, file, line);
 		
-		result.setMetadata(MetaKeys::Actual, maybeStringify(actual));
+		result.setMetadata(MetaKeys::Actual, boolToString(actual));
 		result.setMetadata(MetaKeys::FullExpr, fullExpr);
-		result.setMetadata(MetaKeys::Expected, maybeStringify(assertTrue));
+		result.setMetadata(MetaKeys::Expected, boolToString(assertTrue));
 
 		return result;
 	}
@@ -266,9 +274,9 @@ namespace partest
 
 		result.setMetadata(MetaKeys::Actual, maybeStringify(actual));
 		result.setMetadata(MetaKeys::Expected, maybeStringify(expected));
-		result.setMetadata(MetaKeys::FullExpr, actualExpr);
+		result.setMetadata(MetaKeys::FullExpr, fullExpr);
 		result.setMetadata(MetaKeys::ExprA, actualExpr);
-		result.setMetadata(MetaKeys::ExprB, actualExpr);
+		result.setMetadata(MetaKeys::ExprB, expectedExpr);
 
 		return result;
 	}

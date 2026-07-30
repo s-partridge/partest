@@ -20,7 +20,7 @@ namespace partest
 	inline void initializeSuite(int argc, const char **argv)
 	{
 		std::string xmlPath = makeAbsolutePath("testResults.xml");
-		testRunner().addReporter(partest::make_unique<SimpleLogger>());
+		testRunner().addReporter(partest::make_unique<SimpleLogger>(std::cout, false, partest::LogLevel::Debug));
 		testRunner().addReporter(partest::make_unique<JUnitLogger>("testResults.xml"));
 
 		if(!maybeOpenFile(xmlPath, std::ios::out))

@@ -28,6 +28,13 @@ namespace partest
 		std::filesystem::path fullPath = relativePath;
 		return std::filesystem::absolute(fullPath).string();
 	}
+
+	inline std::string getFilename(PARTEST_STRING_PARAM filePath)
+	{
+		std::filesystem::path fullPath = filePath;
+
+		return fullPath.filename().string();
+	}
 }
 #else
 #include <cctype>
@@ -56,6 +63,12 @@ namespace partest
 
 namespace partest
 {
+#if defined(PARTEST_GETCWD_WINDOWS)
+	static constexpr char separator = '\\';
+#else
+	static constexpr char separator = '/';
+#endif
+
 	inline constexpr bool canGetWorkingDirectory() noexcept
 	{
 	#if defined(PARTEST_GETCWD_WINDOWS) || defined(PARTEST_GETCWD_POSIX)
@@ -103,17 +116,38 @@ namespace partest
 
 		// Concatenate and return
 		std::string cwd = getWorkingDirectory();
-	#if defined(PARTEST_GETCWD_WINDOWS)
-		char separator = '\\';
-	#else
-		char separator = '/';
-	#endif
 
 		// Add separator if no trailing slash exists
 		if(!cwd.empty() && cwd.back() != separator)
 			cwd += separator;
 
 		return cwd + relativePath;
+	}
+
+	inline std::string getFilename(const std::string &filePath)
+	{
+		if(filePath.empty())
+			return "";
+
+		size_t found = filePath.length();
+
+		// Walk back from the end of the string.
+		
+		for(int idx = (int)found - 1; idx >= 0; --idx)
+		{
+			if(filePath[idx] == separator)
+			{
+				found = (size_t)idx;
+				break;
+			}
+		}
+
+		if(found < filePath.length() - 1)
+			return filePath.substr(found);
+		else if(found == filePath.length() - 1)
+			return "";
+		else
+			return filePath;
 	}
 }
 
