@@ -33,9 +33,9 @@ class AssertionTests : public partest::TestBase
 			subtest("Test Char Arrays", [&]() {
 				std::string equalString = "stringA";
 				std::string unequalString = "stringB";
-				const char firstConstArray[] = "stringA";
-				const char equalConstArray[] = "stringA";
-				const char unequalConstArray[] = "stringB";
+				constexpr char firstConstArray[] = "stringA";
+				constexpr char equalConstArray[] = "stringA";
+				constexpr char unequalConstArray[] = "stringB";
 				char equalArray[] = "stringA";
 				char unequalArray[] = "stringB";
 

@@ -13,9 +13,19 @@ namespace partest
 {
 	namespace simple
 	{
-		inline void appendFileLine(std::ostream &s, const partest::AssertionResult &assertion)
+		inline bool isProbablyLambda(PARTEST_STRING_PARAM func)
 		{
-			s << "\n at: " << getFilename(assertion.file) << ":" << assertion.line << std::endl;
+			return func == "operator ()" || func == "operator()";
+		}
+
+		inline void appendSourceInfo(std::ostream &s, const partest::AssertionResult &assertion)
+		{
+			s << " at: " << getFilename(assertion.file);
+			s << ":" << assertion.line;
+			
+			// Include function name if it's not anonymous scope
+			if(!isProbablyLambda(assertion.func))
+				s << " in: " << assertion.func;
 		}
 		
 		// Generic assertion parser functions
@@ -25,16 +35,17 @@ namespace partest
 
 			if(assertion.passed())
 			{
-				oss << "PASSED: " << assertion.getCondition();
+				oss << "PASSED: " << assertion.assertType() << "(" << assertion.getCondition() << ')';
 			}
 			else
 			{
-				oss << "FAILED: " << assertion.getMetadata(MetaKeys::ExprA) 
-					<< " was: " << assertion.getMetadata(MetaKeys::Actual)
-					<< "; expected: " << assertion.getMetadata(MetaKeys::Expected);
+				oss << "FAILED: " << assertion.assertType() << '(' << assertion.getMetadata(MetaKeys::FullExpr) << ')'
+					<< "\n actual: " << assertion.getMetadata(MetaKeys::Actual)
+					<< "\n expected: " << assertion.getMetadata(MetaKeys::Expected);
 			}
 
-			appendFileLine(oss, assertion);
+			oss << std::endl;
+			appendSourceInfo(oss, assertion);
 
 			return oss.str();
 		}
@@ -47,24 +58,66 @@ namespace partest
 
 			if(assertion.passed())
 			{
-				oss << "PASSED: " << assertion.getCondition();
+				oss << assertion.assertType() << " PASSED:\n (" << assertion.getCondition() << ')';
 			}
 			else
 			{
-				oss << "FAILED: " << assertion.getMetadata(MetaKeys::ExprA) 
-					<< " was: " << assertion.getMetadata(MetaKeys::Actual)
-					<< "\n expected: " << assertion.getMetadata(MetaKeys::ExprB)
-					<< " as: " << assertion.getMetadata(MetaKeys::Expected);
+				oss << "FAILED: " << assertion.assertType() << '(' << assertion.getMetadata(MetaKeys::FullExpr) << ')'
+					<< "\n (" << assertion.getMetadata(MetaKeys::ExprA) 
+					<< ") == " << assertion.getMetadata(MetaKeys::Actual)
+					<< "\n expected: (" << assertion.getMetadata(MetaKeys::ExprB)
+					<< ") as: " << assertion.getMetadata(MetaKeys::Expected);
 			}
-
-			appendFileLine(oss, assertion);
+			oss << std::endl;
+			appendSourceInfo(oss, assertion);
 
 			return oss.str();
 		}
 		inline std::string parseAssertNotEqual(const partest::AssertionResult &assertion) { return parseAssertEqual(assertion); }
 
-		inline std::string parseAssertApproxEqual(const partest::AssertionResult &assertion) { return ""; }
-		inline std::string parseAssertApproxNotEqual(const partest::AssertionResult &assertion) { return ""; }
+		inline std::string parseAssertApproxEqual(const partest::AssertionResult &assertion)
+		{
+			std::ostringstream oss;
+
+			if(assertion.passed())
+			{
+				oss << assertion.assertType() << " PASSED:\n (" << assertion.getCondition() << ')';
+			}
+			else
+			{
+				oss << "FAILED: " << assertion.assertType() << '(' << assertion.getMetadata(MetaKeys::FullExpr) << ')'
+					<< "\n (" << assertion.getMetadata(MetaKeys::ExprA) 
+					<< ") == " << assertion.getMetadata(MetaKeys::Actual)
+					<< "\n Not within tolerance: (" << assertion.getMetadata(MetaKeys::ExprB) << ") +- (" << assertion.getMetadata(MetaKeys::ExprC)
+					<< ")\n as: " << assertion.getMetadata(MetaKeys::Expected) << " +-" << assertion.getMetadata(MetaKeys::Epsilon);
+			}
+			oss << std::endl;
+			appendSourceInfo(oss, assertion);
+
+			return oss.str();
+
+		}
+		inline std::string parseAssertApproxNotEqual(const partest::AssertionResult &assertion) 
+		{
+			std::ostringstream oss;
+
+			if(assertion.passed())
+			{
+				oss << assertion.assertType() << " PASSED:\n (" << assertion.getCondition() << ')';
+			}
+			else
+			{
+				oss << "FAILED: " << assertion.assertType() << '(' << assertion.getMetadata(MetaKeys::FullExpr) << ')'
+					<< "\n (" << assertion.getMetadata(MetaKeys::ExprA) 
+					<< ") was: " << assertion.getMetadata(MetaKeys::Actual)
+					<< "\n Should not be within tolerance: (" << assertion.getMetadata(MetaKeys::ExprB) << ") +- (" << assertion.getMetadata(MetaKeys::ExprC)
+					<< ")\n as: " << assertion.getMetadata(MetaKeys::Expected) << " +-" << assertion.getMetadata(MetaKeys::Epsilon);
+			}
+			oss << std::endl;
+			appendSourceInfo(oss, assertion);
+
+			return oss.str();
+		}
 
 		inline std::string parseAssertGreater(const partest::AssertionResult &assertion) { return ""; }
 		inline std::string parseAssertGreaterEqual(const partest::AssertionResult &assertion) { return ""; }

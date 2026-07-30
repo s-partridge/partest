@@ -133,21 +133,25 @@ namespace partest
 
 		// Walk back from the end of the string.
 		
-		for(int idx = (int)found - 1; idx >= 0; --idx)
+		size_t idx;
+		for(idx = found; idx > 0; --idx)
 		{
-			if(filePath[idx] == separator)
+			//Check whether previous char is a path separator
+			if(filePath[idx - 1] == separator)
 			{
-				found = (size_t)idx;
+				found = idx;
 				break;
 			}
 		}
-
-		if(found < filePath.length() - 1)
-			return filePath.substr(found);
-		else if(found == filePath.length() - 1)
+		
+		// If found is the same as length, then there is no filename
+		if(found == filePath.length())
 			return "";
-		else
+		// If idx is 0, no separator was found
+		else if(idx == 0)
 			return filePath;
+		else
+			return filePath.substr(found);
 	}
 }
 

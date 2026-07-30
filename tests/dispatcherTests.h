@@ -141,7 +141,7 @@ class DispatcherTests : public partest::TestBase
 public:
 	DispatcherTests() : TestBase("DispatcherTests", "Tests for the EventDispatcher classes."),
 		// Arbitrary assertion result to be passed to objects for testing
-		m_genericAssertion(partest::handleAssertBoolean(true, true, ASSERT_TRUE_STR, "x == y", "nofile.h", 32))
+		m_genericAssertion(partest::handleAssertBoolean(true, true, ASSERT_TRUE_STR, "x == y", __FILE__, __func__, __LINE__))
 	{
 		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
 		unsigned serialReporters = 2;

@@ -9,28 +9,28 @@
 /**
 * Basic assertion macro for use within tests. Must be called within a TestFrame context.
 */
-#define ASSERT_TRUE(actual) commitAssertion(partest::handleAssertBoolean((actual), true, ASSERT_TRUE_STR, #actual, __FILE__, __LINE__))
-#define ASSERT_FALSE(actual) commitAssertion(partest::handleAssertBoolean((actual), false, ASSERT_FALSE_STR, #actual, __FILE__, __LINE__))
+#define ASSERT_TRUE(actual) commitAssertion(partest::handleAssertBoolean((actual), true, ASSERT_TRUE_STR, #actual, __FILE__, __func__, __LINE__))
+#define ASSERT_FALSE(actual) commitAssertion(partest::handleAssertBoolean((actual), false, ASSERT_FALSE_STR, #actual, __FILE__, __func__, __LINE__))
 
 /**
 * Basic assertion macros for equality checks. Must be called within a TestFrame context.
 */
-#define ASSERT_EQUAL(actual, expected) commitAssertion(partest::handleAssertEqual((actual), (expected), ASSERT_EQUAL_STR, #actual " == " #expected, #actual , #expected, __FILE__, __LINE__))
-#define ASSERT_NOT_EQUAL(actual, expected) commitAssertion(partest::handleAssertNotEqual((actual), (expected), ASSERT_NOT_EQUAL_STR, #actual " != " #expected, #actual , #expected, __FILE__, __LINE__))
+#define ASSERT_EQUAL(actual, expected) commitAssertion(partest::handleAssertEqual((actual), (expected), ASSERT_EQUAL_STR, #actual " == " #expected, #actual , #expected, __FILE__, __func__, __LINE__))
+#define ASSERT_NOT_EQUAL(actual, expected) commitAssertion(partest::handleAssertNotEqual((actual), (expected), ASSERT_NOT_EQUAL_STR, #actual " != " #expected, #actual , #expected, __FILE__, __func__, __LINE__))
 
 /**
 * Assertion macros for approximate equality checks. Must be called within a TestFrame context.
 */
-#define ASSERT_APPROX_EQUAL(actual, expected, epsilon) handleAssertApproxEqual((actual), (expected), (tolerance), ASSERT_APPROX_EQUAL_STR, #actual " == " #expected ", +/- " #epsilon, #actual, #expected, #epsilon, __FILE__, __LINE__)
-#define ASSERT_APPROX_NOT_EQUAL(actual, expected, epsilon) handleAssertApproxNotEqual((actual), (expected), (tolerance), ASSERT_APPROX_NOT_EQUAL_STR, #actual " == " #expected ", +/- " #epsilon, #actual, #expected, #epsilon, __FILE__, __LINE__)
+#define ASSERT_APPROX_EQUAL(actual, expected, epsilon) handleAssertApproxEqual((actual), (expected), (tolerance), ASSERT_APPROX_EQUAL_STR, #actual " == " #expected ", +/- " #epsilon, #actual, #expected, #epsilon, __FILE__, __func__, __LINE__)
+#define ASSERT_APPROX_NOT_EQUAL(actual, expected, epsilon) handleAssertApproxNotEqual((actual), (expected), (tolerance), ASSERT_APPROX_NOT_EQUAL_STR, #actual " == " #expected ", +/- " #epsilon, #actual, #expected, #epsilon, __FILE__, __func__, __LINE__)
 
 /**
 * Assertion macros for relational checks. Must be called within a TestFrame context.
 */
-#define ASSERT_GREATER(lhs, rhs) commitAssertion(partest::handleAssertBoolean((lhs) > (rhs), true, ASSERT_GREATER_STR, #lhs " > " #rhs, __FILE__, __LINE__))
-#define ASSERT_LESS(lhs, rhs) commitAssertion(partest::handleAssertBoolean((lhs) < (rhs), true, ASSERT_LESS_STR, #lhs " < " #rhs, __FILE__, __LINE__))
-#define ASSERT_GREATER_EQUAL(lhs, rhs) commitAssertion(partest::handleAssertBoolean((lhs) >= (rhs), true, ASSERT_GREATER_EQUAL_STR, #lhs " >= " #rhs, __FILE__, __LINE__))
-#define ASSERT_LESS_EQUAL(lhs, rhs) commitAssertion(partest::handleAssertBoolean((lhs) <= (rhs), true, ASSERT_LESS_EQUAL_STR, #lhs " <= " #rhs, __FILE__, __LINE__))
+#define ASSERT_GREATER(lhs, rhs) commitAssertion(partest::handleAssertBoolean((lhs) > (rhs), true, ASSERT_GREATER_STR, #lhs " > " #rhs, __FILE__, __func__, __LINE__))
+#define ASSERT_LESS(lhs, rhs) commitAssertion(partest::handleAssertBoolean((lhs) < (rhs), true, ASSERT_LESS_STR, #lhs " < " #rhs, __FILE__, __func__, __LINE__))
+#define ASSERT_GREATER_EQUAL(lhs, rhs) commitAssertion(partest::handleAssertBoolean((lhs) >= (rhs), true, ASSERT_GREATER_EQUAL_STR, #lhs " >= " #rhs, __FILE__, __func__, __LINE__))
+#define ASSERT_LESS_EQUAL(lhs, rhs) commitAssertion(partest::handleAssertBoolean((lhs) <= (rhs), true, ASSERT_LESS_EQUAL_STR, #lhs " <= " #rhs, __FILE__, __func__, __LINE__))
 
 /**
 * Stringified names for each assert type, used for filtering test results
@@ -58,8 +58,8 @@ namespace partest
 	/////////////
 	inline const char *boolToString(bool value)
 	{
-		static const char *trueStr = "True";
-		static const char *falseStr = "False";
+		static const char *trueStr = "true";
+		static const char *falseStr = "false";
 
 		return value ? trueStr : falseStr;
 	}
@@ -108,13 +108,14 @@ namespace partest
 	////////////////
 	inline AssertionResult handleAssertBoolean(bool actual, bool assertTrue, const char *type,
 		const char *fullExpr,
-		const char *file, int line)
+		const char *file, const char *func, int line)
 	{
 		bool passed = (actual == assertTrue);
-		AssertionResult result(passed, type, file, line);
+		AssertionResult result(passed, type, file, func, line);
 		
 		result.setMetadata(MetaKeys::Actual, boolToString(actual));
 		result.setMetadata(MetaKeys::FullExpr, fullExpr);
+		result.setMetadata(MetaKeys::ExprA, fullExpr);
 		result.setMetadata(MetaKeys::Expected, boolToString(assertTrue));
 
 		return result;
@@ -137,10 +138,10 @@ namespace partest
 		>
 	AssertionResult handleAssertEqual(const T &actual, const U &expected, const char *type,
 		const char *fullExpr, const char *actualExpr, const char *expectedExpr,
-		const char *file, int line)
+		const char *file, const char *func, int line)
 	{
 		bool passed = (actual == expected);
-		AssertionResult result(passed, type, file, line);
+		AssertionResult result(passed, type, file, func, line);
 
 		result.setMetadata(MetaKeys::Actual, maybeStringify(actual));
 		result.setMetadata(MetaKeys::Expected, maybeStringify(expected));
@@ -161,11 +162,11 @@ namespace partest
 		, int>::type = 0>
 	AssertionResult handleAssertEqual(const chartypeA *actual, const chartypeB* expected, const char *type,
 		const char *fullExpr, const char *actualExpr, const char *expectedExpr,
-		const char* file, int line)
+		const char *file, const char *func, int line)
 	{
 		bool passed = cstringsEqual(actual, expected);
 
-		AssertionResult result(passed, type, file, line);
+		AssertionResult result(passed, type, file, func, line);
 
 		result.setMetadata(MetaKeys::Actual, maybeStringify(actual));
 		result.setMetadata(MetaKeys::Expected, maybeStringify(expected));
@@ -183,9 +184,9 @@ namespace partest
 		, int>::type = 0>
 	AssertionResult handleAssertEqual(const chartype *actual, const std::basic_string<typename std::remove_cv<chartype>::type> &expected, const char *type,
 		const char *fullExpr, const char *actualExpr, const char *expectedExpr,
-		const char* file, int line)
+		const char *file, const char *func, int line)
 	{
-		return handleAssertEqual(actual, expected.c_str(), type, fullExpr, actualExpr, expectedExpr, file, line);
+		return handleAssertEqual(actual, expected.c_str(), type, fullExpr, actualExpr, expectedExpr, file, func, line);
 	}
 
 	// C-string specialization for comparisons with std::string
@@ -195,9 +196,9 @@ namespace partest
 		, int>::type = 0>
 	AssertionResult handleAssertEqual(const std::basic_string<typename std::remove_cv<chartype>::type> &actual, const chartype *expected, const char *type,
 		const char *fullExpr, const char *actualExpr, const char *expectedExpr,
-		const char* file, int line)
+		const char *file, const char *func, int line)
 	{
-		return handleAssertEqual(actual.c_str(), expected, type, fullExpr, actualExpr, expectedExpr, file, line);
+		return handleAssertEqual(actual.c_str(), expected, type, fullExpr, actualExpr, expectedExpr, file, func, line);
 	}
 
 #if PARTEST_CPP_VERSION >= 17
@@ -208,9 +209,9 @@ namespace partest
 		, int>::type = 0>
 	AssertionResult handleAssertEqual(const chartype *actual, const std::basic_string_view<typename std::remove_cv<chartype>::type> &expected, const char *type,
 		const char *fullExpr, const char *actualExpr, const char *expectedExpr,
-		const char* file, int line)
+		const char *file, const char *func, int line)
 	{
-		return handleAssertEqual(actual, std::basic_string<typename std::remove_cv<chartype>::type>(expected).c_str(), type, fullExpr, actualExpr, expectedExpr, file, line);
+		return handleAssertEqual(actual, std::basic_string<typename std::remove_cv<chartype>::type>(expected).c_str(), type, fullExpr, actualExpr, expectedExpr, file, func, line);
 	}
 
 	// C-string specialization for comparisons with std::string_view
@@ -220,9 +221,9 @@ namespace partest
 		, int>::type = 0>
 	AssertionResult handleAssertEqual(const std::basic_string_view<typename std::remove_cv<chartype>::type> &actual, const chartype *expected, const char *type,
 		const char *fullExpr, const char *actualExpr, const char *expectedExpr,
-		const char* file, int line)
+		const char *file, const char *func, int line)
 	{
-		return handleAssertEqual(std::basic_string<typename std::remove_cv<chartype>::type>(actual).c_str(), expected, type, fullExpr, actualExpr, expectedExpr, file, line);
+		return handleAssertEqual(std::basic_string<typename std::remove_cv<chartype>::type>(actual).c_str(), expected, type, fullExpr, actualExpr, expectedExpr, file, func, line);
 	}
 #endif
 
@@ -242,10 +243,10 @@ namespace partest
 		>
 	AssertionResult handleAssertNotEqual(const T &actual, const U &expected, const char *type,
 		const char *fullExpr, const char *actualExpr, const char *expectedExpr,
-		const char *file, int line)
+		const char *file, const char *func, int line)
 	{
 		bool passed = (actual != expected);
-		AssertionResult result(passed, type, file, line);
+		AssertionResult result(passed, type, file, func, line);
 
 		result.setMetadata(MetaKeys::Actual, maybeStringify(actual));
 		result.setMetadata(MetaKeys::Expected, maybeStringify(expected));
@@ -266,11 +267,11 @@ namespace partest
 		, int>::type = 0>
 	inline AssertionResult handleAssertNotEqual(const chartypeA* actual, const chartypeB* expected, const char* type,
 		const char *fullExpr, const char* actualExpr, const char *expectedExpr,
-		const char* file, int line)
+		const char *file, const char *func, int line)
 	{
 		bool passed = !cstringsEqual(actual, expected);
 
-		AssertionResult result(passed, type, file, line);
+		AssertionResult result(passed, type, file, func, line);
 
 		result.setMetadata(MetaKeys::Actual, maybeStringify(actual));
 		result.setMetadata(MetaKeys::Expected, maybeStringify(expected));
@@ -288,9 +289,9 @@ namespace partest
 		, int>::type = 0>
 	AssertionResult handleAssertNotEqual(const chartype *actual, const std::basic_string<typename std::remove_cv<chartype>::type> &expected, const char *type,
 		const char *fullExpr, const char *actualExpr, const char *expectedExpr,
-		const char* file, int line)
+		const char *file, const char *func, int line)
 	{
-		return handleAssertNotEqual(actual, expected.c_str(), type, fullExpr, actualExpr, expectedExpr, file, line);
+		return handleAssertNotEqual(actual, expected.c_str(), type, fullExpr, actualExpr, expectedExpr, file, func, line);
 	}
 
 	// C-string specialization for comparisons with std::string
@@ -300,9 +301,9 @@ namespace partest
 		, int>::type = 0>
 	AssertionResult handleAssertNotEqual(const std::basic_string<typename std::remove_cv<chartype>::type> &actual, const chartype *expected, const char *type,
 		const char *fullExpr, const char *actualExpr, const char *expectedExpr,
-		const char* file, int line)
+		const char *file, const char *func, int line)
 	{
-		return handleAssertNotEqual(actual.c_str(), expected, type, fullExpr, actualExpr, expectedExpr, file, line);
+		return handleAssertNotEqual(actual.c_str(), expected, type, fullExpr, actualExpr, expectedExpr, file, func, line);
 	}
 
 #if PARTEST_CPP_VERSION >= 17
@@ -313,10 +314,10 @@ namespace partest
 		, int>::type = 0>
 	AssertionResult handleAssertNotEqual(const chartype *actual, const std::basic_string_view<typename std::remove_cv<chartype>::type> &expected, const char *type,
 		const char *fullExpr, const char *actualExpr, const char *expectedExpr,
-		const char* file, int line)
+		const char *file, const char *func, int line)
 	{
 
-		return handleAssertNotEqual(actual, std::basic_string<typename std::remove_cv<chartype>::type>(expected).c_str(), type, fullExpr, actualExpr, expectedExpr, file, line);
+		return handleAssertNotEqual(actual, std::basic_string<typename std::remove_cv<chartype>::type>(expected).c_str(), type, fullExpr, actualExpr, expectedExpr, file, func, line);
 	}
 
 	// C-string specialization for comparisons with std::string_view
@@ -326,9 +327,9 @@ namespace partest
 		, int>::type = 0>
 	AssertionResult handleAssertNotEqual(const std::basic_string_view<typename std::remove_cv<chartype>::type> &actual, const chartype *expected, const char *type,
 		const char *fullExpr, const char *actualExpr, const char *expectedExpr,
-		const char* file, int line)
+		const char *file, const char *func, int line)
 	{
-		return handleAssertNotEqual(std::basic_string<typename std::remove_cv<chartype>::type>(actual).c_str(), expected, type, fullExpr, actualExpr, expectedExpr, file, line);
+		return handleAssertNotEqual(std::basic_string<typename std::remove_cv<chartype>::type>(actual).c_str(), expected, type, fullExpr, actualExpr, expectedExpr, file, func, line);
 	}
 #endif
 
@@ -344,13 +345,13 @@ namespace partest
 	AssertionResult handleAssertApproxEqual(const T &actual, const U &expected,
 		const U &epsilon, const char *type,
 		const char *fullExpr, const char* actualExpr, const char *expectedExpr,
-		const char *epsilonExpr, const char* file, int line)
+		const char *epsilonExpr, const char *file, const char *func, int line)
 	{
 		U min = expected - epsilon;
 		U max = expected + epsilon;
 		bool passed = min <= actual && actual <= max;
 
-		AssertionResult result(passed, type, file, line);
+		AssertionResult result(passed, type, file, func, line);
 
 		result.setMetadata(MetaKeys::Actual, maybeStringify(actual));
 		result.setMetadata(MetaKeys::Expected, maybeStringify(expected));
@@ -375,13 +376,13 @@ namespace partest
 	AssertionResult handleAssertApproxNotEqual(const T &actual, const U &expected,
 		const U &epsilon, const char *type,
 		const char *fullExpr, const char* actualExpr, const char *expectedExpr,
-		const char *epsilonExpr, const char* file, int line)
+		const char *epsilonExpr, const char *file, const char *func, int line)
 	{
 		U min = expected - epsilon;
 		U max = expected + epsilon;
 		bool passed = actual < min || max < actual;
 
-		AssertionResult result(passed, type, file, line);
+		AssertionResult result(passed, type, file, func, line);
 
 		result.setMetadata(MetaKeys::Actual, maybeStringify(actual));
 		result.setMetadata(MetaKeys::Expected, maybeStringify(expected));
