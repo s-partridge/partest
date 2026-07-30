@@ -111,10 +111,9 @@ namespace partest
 		const char *file, const char *func, int line)
 	{
 		bool passed = (actual == assertTrue);
-		AssertionResult result(passed, type, file, func, line);
+		AssertionResult result(passed, type, fullExpr, file, func, line);
 		
 		result.setMetadata(MetaKeys::Actual, boolToString(actual));
-		result.setMetadata(MetaKeys::FullExpr, fullExpr);
 		result.setMetadata(MetaKeys::ExprA, fullExpr);
 		result.setMetadata(MetaKeys::Expected, boolToString(assertTrue));
 
@@ -141,11 +140,10 @@ namespace partest
 		const char *file, const char *func, int line)
 	{
 		bool passed = (actual == expected);
-		AssertionResult result(passed, type, file, func, line);
+		AssertionResult result(passed, type, fullExpr, file, func, line);
 
 		result.setMetadata(MetaKeys::Actual, maybeStringify(actual));
 		result.setMetadata(MetaKeys::Expected, maybeStringify(expected));
-		result.setMetadata(MetaKeys::FullExpr, fullExpr);
 		result.setMetadata(MetaKeys::ExprA, actualExpr);
 		result.setMetadata(MetaKeys::ExprB, expectedExpr);
 
@@ -166,11 +164,10 @@ namespace partest
 	{
 		bool passed = cstringsEqual(actual, expected);
 
-		AssertionResult result(passed, type, file, func, line);
+		AssertionResult result(passed, type, fullExpr, file, func, line);
 
 		result.setMetadata(MetaKeys::Actual, maybeStringify(actual));
 		result.setMetadata(MetaKeys::Expected, maybeStringify(expected));
-		result.setMetadata(MetaKeys::FullExpr, fullExpr);
 		result.setMetadata(MetaKeys::ExprA, actualExpr);
 		result.setMetadata(MetaKeys::ExprB, expectedExpr);
 
@@ -246,11 +243,10 @@ namespace partest
 		const char *file, const char *func, int line)
 	{
 		bool passed = (actual != expected);
-		AssertionResult result(passed, type, file, func, line);
+		AssertionResult result(passed, type, fullExpr, file, func, line);
 
 		result.setMetadata(MetaKeys::Actual, maybeStringify(actual));
 		result.setMetadata(MetaKeys::Expected, maybeStringify(expected));
-		result.setMetadata(MetaKeys::FullExpr, fullExpr);
 		result.setMetadata(MetaKeys::ExprA, actualExpr);
 		result.setMetadata(MetaKeys::ExprB, expectedExpr);
 
@@ -271,11 +267,10 @@ namespace partest
 	{
 		bool passed = !cstringsEqual(actual, expected);
 
-		AssertionResult result(passed, type, file, func, line);
+		AssertionResult result(passed, type, fullExpr, file, func, line);
 
 		result.setMetadata(MetaKeys::Actual, maybeStringify(actual));
 		result.setMetadata(MetaKeys::Expected, maybeStringify(expected));
-		result.setMetadata(MetaKeys::FullExpr, fullExpr);
 		result.setMetadata(MetaKeys::ExprA, actualExpr);
 		result.setMetadata(MetaKeys::ExprB, expectedExpr);
 
@@ -351,12 +346,11 @@ namespace partest
 		U max = expected + epsilon;
 		bool passed = min <= actual && actual <= max;
 
-		AssertionResult result(passed, type, file, func, line);
+		AssertionResult result(passed, type, fullExpr, file, func, line);
 
 		result.setMetadata(MetaKeys::Actual, maybeStringify(actual));
 		result.setMetadata(MetaKeys::Expected, maybeStringify(expected));
 		result.setMetadata(MetaKeys::Epsilon, maybeStringify(epsilon));
-		result.setMetadata(MetaKeys::FullExpr, fullExpr);
 		result.setMetadata(MetaKeys::ExprA, actualExpr);
 		result.setMetadata(MetaKeys::ExprB, expectedExpr);
 		result.setMetadata(MetaKeys::ExprC, epsilonExpr);
@@ -382,12 +376,11 @@ namespace partest
 		U max = expected + epsilon;
 		bool passed = actual < min || max < actual;
 
-		AssertionResult result(passed, type, file, func, line);
+		AssertionResult result(passed, type, fullExpr, file, func, line);
 
 		result.setMetadata(MetaKeys::Actual, maybeStringify(actual));
 		result.setMetadata(MetaKeys::Expected, maybeStringify(expected));
 		result.setMetadata(MetaKeys::Epsilon, maybeStringify(epsilon));
-		result.setMetadata(MetaKeys::FullExpr, fullExpr);
 		result.setMetadata(MetaKeys::ExprA, actualExpr);
 		result.setMetadata(MetaKeys::ExprB, expectedExpr);
 		result.setMetadata(MetaKeys::ExprC, epsilonExpr);

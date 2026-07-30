@@ -119,7 +119,7 @@ namespace partest
 		* 
 		* @param passed Whether the assertion passed or failed.
 		* @param assertType The name of the assertion type (e.g., "ASSERT_TRUE", "ASSERT_EQUAL").
-		* @param condition The condition that was evaluated. This is typically the text of the expression passed to the assertion macro.
+		* @param fullExpr The condition that was evaluated. This is typically the text of the expression passed to the assertion macro.
 		* @param file The file where the assertion was made. Typically provided by the __FILE__ macro.
 		* * @param func The function where the assertion was made. Typically provided by __func__
 		* @param line The line number where the assertion was made. Typically provided by the __LINE__ macro.
@@ -127,11 +127,12 @@ namespace partest
 		AssertionResult(
 			bool passed,
 			PARTEST_STRING_PARAM assertType,
+			PARTEST_STRING_PARAM fullExpr,
 			PARTEST_STRING_PARAM file,
 			PARTEST_STRING_PARAM func,
 			int line)
 				: m_id(nextId()), m_passed(passed), m_assertType(assertType),
-				 file(file), func(func), line(line) {}
+				  file(file), func(func), line(line) { setMetadata(MetaKeys::FullExpr, fullExpr); }
 
 		virtual ~AssertionResult() = default;
 
