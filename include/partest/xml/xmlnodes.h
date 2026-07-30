@@ -3,11 +3,11 @@
 
 #include <string>
 #include <iomanip>
-#include <chrono>
 #include <vector>
 #include <memory>
 
 #include <partest/common.h>
+#include <partest/stringops.h>
 
 namespace partest
 {
@@ -23,18 +23,6 @@ namespace partest
 		constexpr const char *JUNIT_SKIPPED = "skipped";
 		constexpr const char *JUNIT_FAILURE = "failure";
 		constexpr const char *JUNIT_ERROR = "error";
-
-		// Standard datetime expected by JUnit
-		// TODO: Move this to a common location
-		inline std::string toIso8601(std::chrono::system_clock::time_point timePoint)
-		{
-			time_t time = std::chrono::system_clock::to_time_t(timePoint);
-			// TODO: replace gmtime call with centralized alternative that uses gmtime_s/_r as available.
-			std::tm calendarTime = *std::gmtime(&time);
-			std::ostringstream out;
-			out << std::put_time(&calendarTime, "%Y-%m-%dT%H:%M:%S");
-			return out.str();
-		}
 
 		// Root type for any XML node tree.
 		// Any XML node requires a tag and the ability to nest further nodes

@@ -3,6 +3,7 @@
 
 #include <partest/testbase.h>
 #include <partest/xml/xmlnodes.h>
+#include <partest/stringops.h>
 #include <ctime>
 
 class XMLNodeTests : public partest::TestBase
@@ -28,26 +29,25 @@ public:
 		//constexpr const char *JUNIT_SYSTEM_ERR = "system-err";
 		//constexpr const char *JUNIT_SKIPPED = "skipped";
 		//constexpr const char *JUNIT_FAILURE = "failure";
-		//constexpr const char *JUNIT_ERROR = "error";*/
+		//constexpr const char *JUNIT_ERROR = "error";
 
 	void testTimeConversion()
 	{
 		// July 4, 2026, 12:01 AM EST
 		std::chrono::system_clock::time_point date = std::chrono::system_clock::from_time_t(0);
 
-		std::string timestamp = partest::xml::toIso8601(date);
+		std::string timestamp = partest::toIso8601(date);
 
 		ASSERT_EQUAL(timestamp, "1970-01-01T00:00:00");
 
 		// July 4, 2026, 12:01 AM EST
 		date = std::chrono::system_clock::from_time_t(1783141260);
 
-		timestamp = partest::xml::toIso8601(date);
+		timestamp = partest::toIso8601(date);
 
 		ASSERT_EQUAL(timestamp, "2026-07-04T05:01:00");
-
-
 	}
+
 	void tesXMLNode()
 	{
 		const char *rootName = "node";
