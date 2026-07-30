@@ -44,6 +44,136 @@ namespace partest
 			return "ERROR: Unknown assertion type <" + assertion.assertType() + ">";
 		}
 	};
+
+	namespace simple
+	{
+		inline bool isProbablyLambda(PARTEST_STRING_PARAM func)
+		{
+			return func == "operator ()" || func == "operator()";
+		}
+
+		inline void appendSourceInfo(std::ostream &s, const partest::AssertionResult &assertion)
+		{
+			s << " at: " << getFilename(assertion.file);
+			s << ":" << assertion.line;
+			
+			// Include function name if it's not anonymous scope
+			if(!isProbablyLambda(assertion.func))
+				s << " in: " << assertion.func;
+		}
+		
+		// Generic assertion parser functions
+		inline std::string parseAssertTrue(const partest::AssertionResult &assertion)
+		{
+			std::ostringstream oss;
+
+			if(assertion.passed())
+			{
+				oss << "PASSED: " << assertion.assertType() << "(" << assertion.getCondition() << ')';
+			}
+			else
+			{
+				oss << "FAILED: " << assertion.assertType() << '(' << assertion.getMetadata(MetaKeys::FullExpr) << ')'
+					<< "\n actual: " << assertion.getMetadata(MetaKeys::Actual)
+					<< "\n expected: " << assertion.getMetadata(MetaKeys::Expected);
+			}
+
+			oss << std::endl;
+			appendSourceInfo(oss, assertion);
+
+			return oss.str();
+		}
+		// Identical logic to AssertTrue
+		inline std::string parseAssertFalse(const partest::AssertionResult &assertion) { return parseAssertTrue(assertion); }
+
+		inline std::string parseAssertEqual(const partest::AssertionResult &assertion)
+		{
+			std::ostringstream oss;
+
+			if(assertion.passed())
+			{
+				oss << assertion.assertType() << " PASSED:\n (" << assertion.getCondition() << ')';
+			}
+			else
+			{
+				oss << "FAILED: " << assertion.assertType() << '(' << assertion.getMetadata(MetaKeys::FullExpr) << ')'
+					<< "\n (" << assertion.getMetadata(MetaKeys::ExprA) 
+					<< ") == " << assertion.getMetadata(MetaKeys::Actual)
+					<< "\n expected: (" << assertion.getMetadata(MetaKeys::ExprB)
+					<< ") as: " << assertion.getMetadata(MetaKeys::Expected);
+			}
+			oss << std::endl;
+			appendSourceInfo(oss, assertion);
+
+			return oss.str();
+		}
+		inline std::string parseAssertNotEqual(const partest::AssertionResult &assertion) { return parseAssertEqual(assertion); }
+
+		inline std::string parseAssertApproxEqual(const partest::AssertionResult &assertion)
+		{
+			std::ostringstream oss;
+
+			if(assertion.passed())
+			{
+				oss << assertion.assertType() << " PASSED:\n (" << assertion.getCondition() << ')';
+			}
+			else
+			{
+				oss << "FAILED: " << assertion.assertType() << '(' << assertion.getMetadata(MetaKeys::FullExpr) << ')'
+					<< "\n (" << assertion.getMetadata(MetaKeys::ExprA) 
+					<< ") == " << assertion.getMetadata(MetaKeys::Actual)
+					<< "\n Not within tolerance: (" << assertion.getMetadata(MetaKeys::ExprB) << ") +- (" << assertion.getMetadata(MetaKeys::ExprC)
+					<< ")\n as: " << assertion.getMetadata(MetaKeys::Expected) << " +-" << assertion.getMetadata(MetaKeys::Epsilon);
+			}
+			oss << std::endl;
+			appendSourceInfo(oss, assertion);
+
+			return oss.str();
+
+		}
+		inline std::string parseAssertApproxNotEqual(const partest::AssertionResult &assertion) 
+		{
+			std::ostringstream oss;
+
+			if(assertion.passed())
+			{
+				oss << assertion.assertType() << " PASSED:\n (" << assertion.getCondition() << ')';
+			}
+			else
+			{
+				oss << "FAILED: " << assertion.assertType() << '(' << assertion.getMetadata(MetaKeys::FullExpr) << ')'
+					<< "\n (" << assertion.getMetadata(MetaKeys::ExprA) 
+					<< ") was: " << assertion.getMetadata(MetaKeys::Actual)
+					<< "\n Should not be within tolerance: (" << assertion.getMetadata(MetaKeys::ExprB) << ") +- (" << assertion.getMetadata(MetaKeys::ExprC)
+					<< ")\n as: " << assertion.getMetadata(MetaKeys::Expected) << " +-" << assertion.getMetadata(MetaKeys::Epsilon);
+			}
+			oss << std::endl;
+			appendSourceInfo(oss, assertion);
+
+			return oss.str();
+		}
+
+		inline std::string parseAssertGreater(const partest::AssertionResult &assertion) { return ""; }
+		inline std::string parseAssertGreaterEqual(const partest::AssertionResult &assertion) { return ""; }
+		inline std::string parseAssertLess(const partest::AssertionResult &assertion) { return ""; }
+		inline std::string parseAssertLessEqual(const partest::AssertionResult &assertion) { return ""; }
+
+		inline AssertionParser makeAssertionParser()
+		{
+			AssertionParser parser;
+			parser.addFunction(ASSERT_TRUE_STR, parseAssertTrue);
+			parser.addFunction(ASSERT_FALSE_STR, parseAssertFalse);
+			parser.addFunction(ASSERT_EQUAL_STR, parseAssertEqual);
+			parser.addFunction(ASSERT_NOT_EQUAL_STR, parseAssertNotEqual);
+			parser.addFunction(ASSERT_APPROX_EQUAL_STR, parseAssertApproxEqual);
+			parser.addFunction(ASSERT_APPROX_NOT_EQUAL_STR, parseAssertApproxNotEqual);
+			parser.addFunction(ASSERT_GREATER_STR, parseAssertGreater);
+			parser.addFunction(ASSERT_GREATER_EQUAL_STR, parseAssertGreaterEqual);
+			parser.addFunction(ASSERT_LESS_STR, parseAssertLess);
+			parser.addFunction(ASSERT_LESS_EQUAL_STR, parseAssertLessEqual);
+			return parser;
+		}
+	}
 }
 
 #endif
