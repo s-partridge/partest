@@ -46,10 +46,20 @@ namespace partest
 			virtual void bodyText(std::ostream &out) const { walkChildren(out); }
 			virtual std::string closeTag() const { return "</" + nodeTag + '>'; }
 
+			static std::string sanitizeText(PARTEST_STRING_PARAM text)
+			{
+				return sanitizeForXML(text, XMLEscapeTable::Mode::Plaintext);
+			}
+			
+			static std::string sanitizeAttrib(PARTEST_STRING_PARAM attrib)
+			{
+				return sanitizeForXML(attrib, XMLEscapeTable::Mode::DoubleQuoted);
+			}
+
 		public:
 			std::string nodeTag;
 
-			explicit JUnitXMLNode(PARTEST_STRING_PARAM nodeTag) : nodeTag(nodeTag) {}
+			explicit JUnitXMLNode(PARTEST_STRING_PARAM nodeTag) : nodeTag(sanitizeText(nodeTag)) {}
 			virtual ~JUnitXMLNode() = default;
 
 			/**
@@ -82,7 +92,7 @@ namespace partest
 
 				std::ostringstream out;
 				out << '<' << nodeTag
-					<< " name=\"" << name << "\""
+					<< " name=\"" << sanitizeAttrib(name) << "\""
 					<< " tests=\"" << tests << "\""
 					<< " failures=\"" << failures << "\""
 					<< " assertions=\"" << assertions << "\""
@@ -120,13 +130,13 @@ namespace partest
 
 				std::ostringstream out;
 				out << '<' << nodeTag
-					<< " name=\"" << name << "\""
+					<< " name=\"" << sanitizeAttrib(name) << "\""
 					<< " tests=\"" << tests << "\""
 					<< " failures=\"" << failures << "\""
 					<< " assertions=\"" << assertions << "\""
 					<< " time=\"" << seconds.count() << "\""
 					<< " timestamp=\"" << toIso8601(timestamp) << "\""
-					<< " file=\"" << file << "\""
+					<< " file=\"" << sanitizeAttrib(file) << "\""
 					<< ">";
 
 				return out.str();
@@ -148,11 +158,11 @@ namespace partest
 
 				std::ostringstream out;
 				out << '<' << nodeTag
-					<< " name=\"" << name << "\""
-					<< " classname=\"" << classname << "\""
+					<< " name=\"" << sanitizeAttrib(name) << "\""
+					<< " classname=\"" << sanitizeAttrib(classname) << "\""
 					<< " assertions=\"" << assertions << "\""
 					<< " time=\"" << seconds.count() << "\""
-					<< " file=\"" << file << "\""
+					<< " file=\"" << sanitizeAttrib(file) << "\""
 					<< " line=\"" << line << "\""
 					<< ">";
 
@@ -187,14 +197,13 @@ namespace partest
 			{
 				if(valueAsBody)
 					return '<' + nodeTag + '>';
-				// TODO: Escape value when used as part of tag
-				return '<' + nodeTag + " value=\"" + value + "\">";
+				return '<' + nodeTag + " value=\"" + sanitizeAttrib(value) + "\">";
 			}
 
 			void bodyText(std::ostream &out) const override
 			{
 				if(valueAsBody)
-					out << value;
+					out << sanitizeText(value);
 			}
 
 		public:
@@ -211,7 +220,7 @@ namespace partest
 		protected:
 			void bodyText(std::ostream &out) const override
 			{
-				out << body;
+				out << sanitizeText(body);
 			}
 
 		public:
@@ -226,7 +235,7 @@ namespace partest
 		protected:
 			void bodyText(std::ostream &out) const override
 			{
-				out << body;
+				out << sanitizeText(body);
 			}
 
 		public:
@@ -241,8 +250,7 @@ namespace partest
 		protected:
 			std::string openTag() const override
 			{
-				// TODO: Escape message
-				return '<' + nodeTag + " message=\"" + message + "\" />";
+				return '<' + nodeTag + " message=\"" + sanitizeAttrib(message) + "\" />";
 			}
 
 			std::string closeTag() const override
@@ -262,16 +270,15 @@ namespace partest
 		protected:
 			std::string openTag() const override
 			{
-				// TODO: Escape message
 				return '<' + nodeTag
-					+ " message=\"" + message
-					+ "\" type=\"" + type 
+					+ " message=\"" + sanitizeAttrib(message)
+					+ "\" type=\"" + sanitizeAttrib(type)
 					+ "\">";
 			}
 
 			void bodyText(std::ostream &out) const override
 			{
-				out << body;
+				out << sanitizeText(body);
 			}
 
 		public:
@@ -288,16 +295,15 @@ namespace partest
 		protected:
 			std::string openTag() const override
 			{
-				// TODO: Escape message
 				return '<' + nodeTag
-					+ " message=\"" + message
-					+ "\" type=\"" + type 
+					+ " message=\"" + sanitizeAttrib(message)
+					+ "\" type=\"" + sanitizeAttrib(type)
 					+ "\">";
 			}
 
 			void bodyText(std::ostream &out) const override
 			{
-				out << body;
+				out << sanitizeAttrib(body);
 			}
 
 		public:
