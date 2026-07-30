@@ -228,7 +228,7 @@ namespace partest
 		bool hasParent() const noexcept { return m_parent != nullptr; }
 		bool hasSubtests() const noexcept { return !m_subtests.empty(); }
 
-		const TestFrame *getSubtest(PARTEST_STRING_PARAM subtestName)
+		const TestFrame *getSubtest(PARTEST_STRING_PARAM subtestName) const
 		{
 			for(TestFrame *subtest: m_subtests)
 			{

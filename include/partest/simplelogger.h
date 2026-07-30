@@ -5,6 +5,7 @@
 #include <iostream>
 #include <string>
 
+#include <partest/fileops.h>
 #include <partest/eventreporter.h>
 #include <partest/assertionparser.h>
 
@@ -12,6 +13,11 @@ namespace partest
 {
 	namespace simple
 	{
+		inline void appendFileLine(std::ostream &s, const partest::AssertionResult &assertion)
+		{
+			s << "\n at: " << getFilename(assertion.file) << ":" << assertion.line << std::endl;
+		}
+		
 		// Generic assertion parser functions
 		inline std::string parseAssertTrue(const partest::AssertionResult &assertion)
 		{
@@ -19,15 +25,16 @@ namespace partest
 
 			if(assertion.passed())
 			{
-				oss << "PASSED: " << assertion.getCondition() << std::endl;
+				oss << "PASSED: " << assertion.getCondition();
 			}
 			else
 			{
 				oss << "FAILED: " << assertion.getMetadata(MetaKeys::ExprA) 
 					<< " was: " << assertion.getMetadata(MetaKeys::Actual)
-					<< "; expected: " << assertion.getMetadata(MetaKeys::Expected)
-					<< std::endl;
+					<< "; expected: " << assertion.getMetadata(MetaKeys::Expected);
 			}
+
+			appendFileLine(oss, assertion);
 
 			return oss.str();
 		}
@@ -36,9 +43,25 @@ namespace partest
 
 		inline std::string parseAssertEqual(const partest::AssertionResult &assertion)
 		{
-			return "";
+			std::ostringstream oss;
+
+			if(assertion.passed())
+			{
+				oss << "PASSED: " << assertion.getCondition();
+			}
+			else
+			{
+				oss << "FAILED: " << assertion.getMetadata(MetaKeys::ExprA) 
+					<< " was: " << assertion.getMetadata(MetaKeys::Actual)
+					<< "\n expected: " << assertion.getMetadata(MetaKeys::ExprB)
+					<< " as: " << assertion.getMetadata(MetaKeys::Expected);
+			}
+
+			appendFileLine(oss, assertion);
+
+			return oss.str();
 		}
-		inline std::string parseAssertNotEqual(const partest::AssertionResult &assertion) { return ""; }
+		inline std::string parseAssertNotEqual(const partest::AssertionResult &assertion) { return parseAssertEqual(assertion); }
 
 		inline std::string parseAssertApproxEqual(const partest::AssertionResult &assertion) { return ""; }
 		inline std::string parseAssertApproxNotEqual(const partest::AssertionResult &assertion) { return ""; }
@@ -48,7 +71,7 @@ namespace partest
 		inline std::string parseAssertLess(const partest::AssertionResult &assertion) { return ""; }
 		inline std::string parseAssertLessEqual(const partest::AssertionResult &assertion) { return ""; }
 
-		AssertionParser makeAssertionParser()
+		inline AssertionParser makeAssertionParser()
 		{
 			AssertionParser parser;
 			parser.addFunction(ASSERT_TRUE_STR, parseAssertTrue);
@@ -61,6 +84,7 @@ namespace partest
 			parser.addFunction(ASSERT_GREATER_EQUAL_STR, parseAssertGreaterEqual);
 			parser.addFunction(ASSERT_LESS_STR, parseAssertLess);
 			parser.addFunction(ASSERT_LESS_EQUAL_STR, parseAssertLessEqual);
+			return parser;
 		}
 	}
 
@@ -74,7 +98,8 @@ namespace partest
 
 	public:
 		explicit SimpleLogger(std::ostream &out = std::cout, bool showPassedAssertions = false, LogLevel verbosity = LogLevel::Error)
-			: EventReporterInterface(), m_out(out), m_showPassedAssertions(showPassedAssertions), m_verbosity(verbosity) { }
+			: EventReporterInterface(), m_out(out), m_showPassedAssertions(showPassedAssertions), m_verbosity(verbosity), m_assertionParser(simple::makeAssertionParser())
+		{ }
 
 		void onTestBegin(const Event &event, const BeginTestPayload &payload) override
 		{

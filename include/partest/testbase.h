@@ -281,7 +281,7 @@ namespace partest
 		void setFlags(const TestFlags &flags) noexcept { m_testTree->flags.setFlags(flags); }
 		const TestFlags &getFlags() const noexcept { return m_testTree->flags; }
 
-		bool containsTest(PARTEST_STRING_PARAM testName)
+		bool containsTest(PARTEST_STRING_PARAM testName) const
 		{
 			return m_testTree->getSubtest(testName) != nullptr;
 		}
@@ -298,7 +298,7 @@ namespace partest
 
 		size_t getAssertionCount() const
 		{
-			m_testTree->getAssertionCount();
+			return m_testTree->getAssertionCount();
 		}
 
 		size_t getAssertionCount(PARTEST_STRING_PARAM testName) const
