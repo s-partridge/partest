@@ -15,6 +15,7 @@ namespace partest
 	{
 		std::unique_ptr<xml::TestSuitesNode> m_root;
 		std::string m_reportPath;
+		AssertionParser m_assertionParser;
 
 		void sumTestSuitesNode(const TestFrameView *testFrame)
 		{
@@ -47,6 +48,27 @@ namespace partest
 			node->classname = parentTestName;
 			node->assertions = testFrame->assertionCount();
 			node->time = testFrame->endTime() - testFrame->startTime();
+			if(testFrame->getResult() == TestResult::Failed)
+			{
+				xml::FailureNode *failureNode = static_cast<xml::FailureNode *>(node->addChild(partest::make_unique<xml::FailureNode>())); // NOLINT(*-pro-type-static-cast-downcast)
+				buildFailureNode(testFrame, failureNode);
+			}
+		}
+
+		void buildFailureNode(const TestFrame *testFrame, xml::FailureNode *node)
+		{
+			std::string nodeBody;
+			// Record the first failed assertion.
+			for(TestFrame::AssertionConstIter assertion = testFrame->assertionsBegin(); assertion != testFrame->assertionsEnd(); ++assertion)
+			{
+				if(!assertion->passed())
+				{
+					node->message = "Assertion Failed: (" + assertion->getCondition() + ')';
+					node->type = assertion->assertType();
+					node->body = m_assertionParser.parseAssertion(*assertion);
+					break;
+				}
+			}
 		}
 
 		void readSubtree(const TestFrame *test, xml::JUnitXMLNode *node, PARTEST_STRING_PARAM parentTestName)
@@ -67,7 +89,7 @@ namespace partest
 		explicit JUnitLogger(PARTEST_STRING_PARAM reportPath)
 			: EventReporterInterface(), TestFrameReaderInterface(),
 			  m_root(make_unique<xml::TestSuitesNode>()),
-			  m_reportPath(reportPath)
+			  m_reportPath(reportPath), m_assertionParser(simple::makeAssertionParser())
 		{ }
 
 		// EventReporter functions

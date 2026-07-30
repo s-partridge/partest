@@ -50,7 +50,7 @@ namespace partest
 			const LogEntry& logEntry = payload.logEntry;
 
 			if(logEntry.level <= m_verbosity)
-				m_out << logEntry.level << ' ' << logEntry.message;
+				m_out << logEntry.level << ' ' << logEntry.message << std::endl;
 		}
 
 		// Called when a passthrough event is received

@@ -282,9 +282,9 @@ namespace partest
 			}
 
 		public:
-			std::string message;
-			std::string type;
-			std::string body;
+			std::string message;	// General message about the failure
+			std::string type;		// Failure type, generally assertion type
+			std::string body;		// Detailed description of the failure
 
 			explicit FailureNode(PARTEST_STRING_PARAM nodeTag = JUNIT_FAILURE) : JUnitXMLNode(nodeTag) {}
 		};
