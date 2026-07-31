@@ -9,7 +9,7 @@
 
 #define _PARTEST_VERSION_MAJOR 0
 #define _PARTEST_VERSION_MINOR 3
-#define _PARTEST_VERSION_PATCH 0
+#define _PARTEST_VERSION_PATCH 1
 
 // Expand the version numbers into a string literal
 // This requires first converting the numbers to string literals, then concatenating them
