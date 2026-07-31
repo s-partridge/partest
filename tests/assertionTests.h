@@ -510,6 +510,26 @@ class AssertionTests : public partest::TestBase
 			ASSERT_LESS(1, 2);
 			ASSERT_LESS_EQUAL(1, 2);
 			ASSERT_LESS_EQUAL(2, 2);
+
+			// Approx equal
+			ASSERT_APPROX_EQUAL(9, 10, 1);
+			ASSERT_APPROX_EQUAL(10, 10, 1);
+			ASSERT_APPROX_EQUAL(11, 10, 1);
+
+			ASSERT_APPROX_EQUAL(1.1, 1.1, 0.0);
+			ASSERT_APPROX_EQUAL(1.1, 1.1, 0.1);
+			ASSERT_APPROX_EQUAL(1.1 - 0.1, 1.1, 0.1);
+			ASSERT_APPROX_EQUAL(1.1 + 0.1, 1.1, 0.1);
+
+			ASSERT_APPROX_NOT_EQUAL(9, 10, 0);
+			ASSERT_APPROX_NOT_EQUAL(11, 10, 0);
+			ASSERT_APPROX_NOT_EQUAL(1.05, 1.1, 0.01);
+			ASSERT_APPROX_NOT_EQUAL(1.15, 1.1, 0.01);
+			// Exceptions
+
+			ASSERT_THROWS(std::runtime_error, throw std::runtime_error("Oh no!"));
+			unsigned int x;
+			ASSERT_NOTHROW(while(x < 10) ++x);
 		}
 		
 		void testAssertionsFail()
@@ -529,6 +549,25 @@ class AssertionTests : public partest::TestBase
 			ASSERT_LESS(2, 1);
 			ASSERT_LESS(2, 2);
 			ASSERT_LESS_EQUAL(2, 1);
+
+			// Approx equal
+			ASSERT_APPROX_NOT_EQUAL(9, 10, 1);
+			ASSERT_APPROX_NOT_EQUAL(10, 10, 1);
+			ASSERT_APPROX_NOT_EQUAL(11, 10, 1);
+
+			ASSERT_APPROX_NOT_EQUAL(1.1, 1.1, 0.0);
+			ASSERT_APPROX_NOT_EQUAL(1.1, 1.1, 0.1);
+			ASSERT_APPROX_NOT_EQUAL(1.1 - 0.1, 1.1, 0.1);
+			ASSERT_APPROX_NOT_EQUAL(1.1 + 0.1, 1.1, 0.1);
+
+			ASSERT_APPROX_EQUAL(9, 10, 0);
+			ASSERT_APPROX_EQUAL(11, 10, 0);
+			ASSERT_APPROX_EQUAL(1.05, 1.1, 0.01);
+			ASSERT_APPROX_EQUAL(1.15, 1.1, 0.01);
+
+			unsigned int x;
+			ASSERT_THROWS(std::runtime_error, while(x < 10) ++x);
+			ASSERT_NOTHROW(throw std::runtime_error("Oh no!"));
 		}
 	};
 

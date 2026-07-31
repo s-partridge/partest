@@ -90,7 +90,7 @@ namespace partest
 		*/
 		static PARTEST_CONSTEXPR_11 TestFlags defaultSkip() noexcept { return TestFlags(FlagState::Enabled, FlagState::Disabled, FlagState::Disabled, FlagState::Disabled); }
 
-		PARTEST_CONSTEXPR_14 TestFlags withStopOnFail(FlagState enabled) noexcept
+		PARTEST_CONSTEXPR_14 TestFlags withStopOnFail(FlagState enabled) const noexcept
 		{
 			TestFlags newFlags = *this;
 			newFlags.stopOnFail = enabled;

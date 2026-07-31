@@ -11,10 +11,11 @@ namespace partest
 	* Exception class for assertion failures. Includes file and line information for easier debugging.
 	* Used internally by ASSERT macros.
 	*/
-	class AssertionFailure : public std::runtime_error
+	class AssertionFailure
 	{
-		std::string m_file;
-		int m_line;
+		const std::string m_what;
+		const std::string m_file;
+		const int m_line;
 	public:
 		/**
 		* Constructor for AssertionFailure.
@@ -24,12 +25,17 @@ namespace partest
 		* @param message A message describing the assertion failure.
 		*/
 	#if PARTEST_CPP_VERSION >= 17
-		AssertionFailure(PARTEST_STRING_PARAM file, int line, std::string_view message) : AssertionFailure(file, line, std::string(message)) {}
+		AssertionFailure(PARTEST_STRING_PARAM file, int line, std::string_view message) : m_what(message), m_file(file), m_line(line) {}
 	#endif
 
-		AssertionFailure(PARTEST_STRING_PARAM file, int line, const std::string &message) : AssertionFailure(file, line, message.c_str()) {}
+		AssertionFailure(PARTEST_STRING_PARAM file, int line, const std::string &message) : m_what(message), m_file(file), m_line(line) {}
 
-		AssertionFailure(PARTEST_STRING_PARAM file, int line, const char *message) : std::runtime_error(message), m_file(file), m_line(line) {}
+		AssertionFailure(PARTEST_STRING_PARAM file, int line, const char *message) : m_what(message), m_file(file), m_line(line) {}
+
+		/**
+		* Get the message for the assertion
+		*/
+		const char *what() const noexcept { return m_what.c_str(); }
 
 		/**
 		* Get the file where the assertion failed.
@@ -75,6 +81,10 @@ namespace partest
 		try
 		{
 			throw;
+		}
+		catch(const AssertionFailure &e)
+		{
+			return e.what();
 		}
 		catch(const std::exception &e)
 		{

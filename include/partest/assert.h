@@ -5,6 +5,7 @@
 #include <string>
 
 #include <partest/common.h>
+#include <partest/exceptions.h>
 #include <partest/assertresult.h>
 /**
 * Basic assertion macro for use within tests. Must be called within a TestFrame context.
@@ -21,8 +22,8 @@
 /**
 * Assertion macros for approximate equality checks. Must be called within a TestFrame context.
 */
-#define ASSERT_APPROX_EQUAL(actual, expected, epsilon) handleAssertApproxEqual((actual), (expected), (tolerance), ASSERT_APPROX_EQUAL_STR, #actual " == " #expected ", +/- " #epsilon, #actual, #expected, #epsilon, __FILE__, __func__, __LINE__)
-#define ASSERT_APPROX_NOT_EQUAL(actual, expected, epsilon) handleAssertApproxNotEqual((actual), (expected), (tolerance), ASSERT_APPROX_NOT_EQUAL_STR, #actual " == " #expected ", +/- " #epsilon, #actual, #expected, #epsilon, __FILE__, __func__, __LINE__)
+#define ASSERT_APPROX_EQUAL(actual, expected, epsilon) commitAssertion(partest::handleAssertApproxEqual((actual), (expected), (epsilon), ASSERT_APPROX_EQUAL_STR, #actual " == " #expected ", +/- " #epsilon, #actual, #expected, #epsilon, __FILE__, __func__, __LINE__))
+#define ASSERT_APPROX_NOT_EQUAL(actual, expected, epsilon) commitAssertion(partest::handleAssertApproxNotEqual((actual), (expected), (epsilon), ASSERT_APPROX_NOT_EQUAL_STR, #actual " == " #expected ", +/- " #epsilon, #actual, #expected, #epsilon, __FILE__, __func__, __LINE__))
 
 /**
 * Assertion macros for relational checks. Must be called within a TestFrame context.
@@ -32,8 +33,8 @@
 #define ASSERT_GREATER_EQUAL(lhs, rhs) commitAssertion(partest::handleAssertBoolean((lhs) >= (rhs), true, ASSERT_GREATER_EQUAL_STR, #lhs " >= " #rhs, __FILE__, __func__, __LINE__))
 #define ASSERT_LESS_EQUAL(lhs, rhs) commitAssertion(partest::handleAssertBoolean((lhs) <= (rhs), true, ASSERT_LESS_EQUAL_STR, #lhs " <= " #rhs, __FILE__, __func__, __LINE__))
 
-#define ASSERT_THROWS(exceptionType, ...) commitAssertion(handleAssertThrows<exceptionType>([&]() { __VA_ARGS__; },   ASSERT_THROWS_STR, "{ " #__VA_ARGS__ " } throws " #exceptionType, #__VA_ARGS__, #exceptionType, __FILE__, __func__, __LINE__))
-#define ASSERT_NOTHROW(...) commitAssertion(handleAssertNothrow([&]() { __VA_ARGS__; }, ASSERT_NOTHROW_STR, "{ " #__VA_ARGS__ " } doesn't throw", #__VA_ARGS__, __FILE__, __func__, __LINE__))
+#define ASSERT_THROWS(exceptionType, ...) commitAssertion(partest::handleAssertThrows<exceptionType>([&]() { __VA_ARGS__; },   ASSERT_THROWS_STR, "{ " #__VA_ARGS__ " } throws " #exceptionType, #__VA_ARGS__, #exceptionType, __FILE__, __func__, __LINE__))
+#define ASSERT_NOTHROW(...) commitAssertion(partest::handleAssertNothrow([&]() { __VA_ARGS__; }, ASSERT_NOTHROW_STR, "{ " #__VA_ARGS__ " } doesn't throw", #__VA_ARGS__, __FILE__, __func__, __LINE__))
 /**
 * Stringified names for each assert type, used for filtering test results
 */
@@ -393,20 +394,23 @@ namespace partest
 		return result;
 	}
 
-	template<typename E, PARTEST_ENABLE_IF_INVOCABLE(Func)>
+	template<typename E, PARTEST_ENABLE_IF_INVOCABLE(Func),
+		typename std::enable_if<!std::is_base_of<partest::AssertionFailure, E>::value, int>::type = 0>
 	AssertionResult handleAssertThrows(Func &&codeWrapper, const char *type,
 		const char *fullExpr, const char* codeExpr, const char *exceptExpr, const char *file, const char *func, int line)
 	{
 		bool passed = false;
-
+		std::string actual;
 		try
 		{
 			codeWrapper();
+			actual = "none";
 		}
-		catch(const E &e)
+		catch(const E &)
 		{
 			// Nothing to do on success.
 			passed = true;
+			actual = exceptExpr;
 		}
 		// Just rethrow.
 		catch(const AssertionFailure &)
@@ -425,8 +429,46 @@ namespace partest
 
 		AssertionResult result(passed, type, fullExpr, file, func, line);
 
+		result.setMetadata(MetaKeys::Actual, actual);
 		result.setMetadata(MetaKeys::Expected, exceptExpr);
-		result.setMetadata(MetaKeys::exprA, codeExpr);
+		result.setMetadata(MetaKeys::ExprA, codeExpr);
+
+		return result;
+	}
+
+	template<typename E, PARTEST_ENABLE_IF_INVOCABLE(Func),
+		typename std::enable_if<std::is_base_of<partest::AssertionFailure, E>::value, int>::type = 0>
+	AssertionResult handleAssertThrows(Func &&codeWrapper, const char *type,
+		const char *fullExpr, const char* codeExpr, const char *exceptExpr, const char *file, const char *func, int line)
+	{
+		bool passed = false;
+		std::string actual;
+		try
+		{
+			codeWrapper();
+			actual = "none";
+		}
+		catch(const E &)
+		{
+			// Nothing to do on success.
+			passed = true;
+			actual = exceptExpr;
+		}
+		// These are unexpected.
+		catch(const std::exception &)
+		{
+			throw;
+		}
+		catch(...)
+		{
+			throw;
+		}
+
+		AssertionResult result(passed, type, fullExpr, file, func, line);
+
+		result.setMetadata(MetaKeys::Actual, actual);
+		result.setMetadata(MetaKeys::Expected, exceptExpr);
+		result.setMetadata(MetaKeys::ExprA, codeExpr);
 
 		return result;
 	}
@@ -456,8 +498,9 @@ namespace partest
 
 		AssertionResult result(passed, type, fullExpr, file, func, line);
 
-		resutl.setMetadata(MetaKeys::Actual, actual);
-		result.setMetadata(MetaKeys::exprA, codeExpr);
+		result.setMetadata(MetaKeys::Actual, actual);
+		result.setMetadata(MetaKeys::Expected, "none");
+		result.setMetadata(MetaKeys::ExprA, codeExpr);
 
 		return result;
 	}
