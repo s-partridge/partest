@@ -153,10 +153,10 @@ namespace partest
 			return oss.str();
 		}
 
-		inline std::string parseAssertGreater(const partest::AssertionResult &assertion) { return ""; }
-		inline std::string parseAssertGreaterEqual(const partest::AssertionResult &assertion) { return ""; }
-		inline std::string parseAssertLess(const partest::AssertionResult &assertion) { return ""; }
-		inline std::string parseAssertLessEqual(const partest::AssertionResult &assertion) { return ""; }
+		inline std::string parseAssertGreater(const partest::AssertionResult &assertion) { return parseAssertTrue(assertion); }
+		inline std::string parseAssertGreaterEqual(const partest::AssertionResult &assertion) { return parseAssertTrue(assertion); }
+		inline std::string parseAssertLess(const partest::AssertionResult &assertion) { return parseAssertTrue(assertion); }
+		inline std::string parseAssertLessEqual(const partest::AssertionResult &assertion) { return parseAssertTrue(assertion); }
 
 		inline AssertionParser makeAssertionParser()
 		{

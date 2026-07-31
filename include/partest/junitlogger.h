@@ -7,6 +7,7 @@
 #include <partest/eventreporter.h>
 #include <partest/testframe.h>
 #include <partest/runner.h>
+#include <partest/assertionparser.h>
 #include <partest/xml/xmlnodes.h>
 
 namespace partest
