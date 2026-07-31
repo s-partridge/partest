@@ -13,6 +13,8 @@ namespace partest
 	PARTEST_INLINE_VAR_17 constexpr const char *LOG_TYPE_ASSERT = "Assertion";
 	// For general test and subtest-level logs
 	PARTEST_INLINE_VAR_17 constexpr const char *LOG_TYPE_TEST = "Test";
+	// For reporting unexpected exceptions
+	PARTEST_INLINE_VAR_17 constexpr const char *LOG_TYPE_EXCEPTION = "Exception";
 	// For general test and subtest-level logs
 	PARTEST_INLINE_VAR_17 constexpr const char *LOG_TYPE_SUBTEST = "Subtest";
 	// For all other logs

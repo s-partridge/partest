@@ -53,31 +53,20 @@ namespace partest
 				// A test returned early due to an assertion failure with stopOnFail enabled
 				// Nothing special to do here, but this is necessary to prevent the exception from propagating further.
 
-				// Assertion failures indicate that the test has already been marked as Failed, so no additional action is needed here
-				#pragma warning(suppress:4101) 
-				catch(const partest::AssertionFailure &e)
+				// Assertion failures indicate that the test has already been marked as Failed, so no additional action is needed here 
+				catch(const partest::AssertionFailure &)
 				{ }
 				// Unexpected exceptions will generally indicate errors within the user's test code and must be reported
-				catch(const std::exception &e)
-				{
-					// Mark the test as aborted and log a generic message.
-					m_currentFrame->updateStatus(TestStatus::Aborted);
-					// Ensure that the test result was set. A generic exception indicates test failure.
-					m_currentFrame->updateResult(TestResult::Failed);
-
-					resultStream << "Error: Unhandled exception in test '" << m_currentFrame->metadata.name << "': " << e.what() << std::endl;
-					recordLog(LogLevel::Info, LOG_TYPE_TEST, resultStream.str());
-				}
 				catch(...)
 				{
-					// An unknown exception occurred during test execution.
 					// Mark the test as aborted and log a generic message.
 					m_currentFrame->updateStatus(TestStatus::Aborted);
 					// Ensure that the test result was set. A generic exception indicates test failure.
 					m_currentFrame->updateResult(TestResult::Failed);
 
-					resultStream << "Error: Unknown exception in test '" << m_currentFrame->metadata.name << "'." << std::endl;
-					recordLog(LogLevel::Error, LOG_TYPE_TEST, resultStream.str());
+					std::string what = stringFromCurrentException();
+					resultStream << "Error: Unhandled exception in test '" << m_currentFrame->metadata.name << "': " << what << std::endl;
+					recordLog(LogLevel::Error, LOG_TYPE_EXCEPTION, resultStream.str());
 				}
 
 				m_currentFrame->finalizeTest();
