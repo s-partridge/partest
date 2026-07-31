@@ -394,8 +394,9 @@ namespace partest
 		return result;
 	}
 
-	template<typename E, PARTEST_ENABLE_IF_INVOCABLE(Func),
-		typename std::enable_if<!std::is_base_of<partest::AssertionFailure, E>::value, int>::type = 0>
+	template<typename E,
+		typename std::enable_if<!std::is_base_of<partest::AssertionFailure, E>::value, int>::type = 0,
+	    PARTEST_ENABLE_IF_INVOCABLE(Func)>
 	AssertionResult handleAssertThrows(Func &&codeWrapper, const char *type,
 		const char *fullExpr, const char* codeExpr, const char *exceptExpr, const char *file, const char *func, int line)
 	{
@@ -436,8 +437,9 @@ namespace partest
 		return result;
 	}
 
-	template<typename E, PARTEST_ENABLE_IF_INVOCABLE(Func),
-		typename std::enable_if<std::is_base_of<partest::AssertionFailure, E>::value, int>::type = 0>
+	template<typename E,
+		typename std::enable_if<std::is_base_of<partest::AssertionFailure, E>::value, int>::type = 0,
+		PARTEST_ENABLE_IF_INVOCABLE(Func)>
 	AssertionResult handleAssertThrows(Func &&codeWrapper, const char *type,
 		const char *fullExpr, const char* codeExpr, const char *exceptExpr, const char *file, const char *func, int line)
 	{
