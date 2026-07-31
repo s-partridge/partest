@@ -157,6 +157,46 @@ namespace partest
 		inline std::string parseAssertGreaterEqual(const partest::AssertionResult &assertion) { return parseAssertTrue(assertion); }
 		inline std::string parseAssertLess(const partest::AssertionResult &assertion) { return parseAssertTrue(assertion); }
 		inline std::string parseAssertLessEqual(const partest::AssertionResult &assertion) { return parseAssertTrue(assertion); }
+		inline std::string parseAssertThrows(const partest::AssertionResult &assertion)
+		{
+			std::ostringstream oss;
+
+			if(assertion.passed())
+			{
+				oss << assertion.assertType() << " PASSED:\n (" << assertion.getCondition() << ')';
+			}
+			else
+			{
+				oss << "FAILED: " << assertion.assertType() << '(' << assertion.getMetadata(MetaKeys::FullExpr) << ')'
+					<< "\n (" << assertion.getMetadata(MetaKeys::ExprA)
+					<< ") triggered: " << assertion.getMetadata(MetaKeys::Actual)
+					<< "\n Should have triggered: (" << assertion.getMetadata(MetaKeys::Expected) << ")";
+			}
+			oss << std::endl;
+			appendSourceInfo(oss, assertion);
+
+			return oss.str();
+		}
+		inline std::string parseAssertNothrow(const partest::AssertionResult &assertion)
+		{
+			std::ostringstream oss;
+
+			if(assertion.passed())
+			{
+				oss << assertion.assertType() << " PASSED:\n (" << assertion.getCondition() << ')';
+			}
+			else
+			{
+				oss << "FAILED: " << assertion.assertType() << '(' << assertion.getMetadata(MetaKeys::FullExpr) << ')'
+					<< "\n (" << assertion.getMetadata(MetaKeys::ExprA)
+					<< ") triggered: " << assertion.getMetadata(MetaKeys::Actual)
+					<< "\n Should have triggered: (" << assertion.getMetadata(MetaKeys::Expected) << ")";
+			}
+			oss << std::endl;
+			appendSourceInfo(oss, assertion);
+
+			return oss.str();
+		}
 
 		inline AssertionParser makeAssertionParser()
 		{
@@ -171,6 +211,8 @@ namespace partest
 			parser.addFunction(ASSERT_GREATER_EQUAL_STR, parseAssertGreaterEqual);
 			parser.addFunction(ASSERT_LESS_STR, parseAssertLess);
 			parser.addFunction(ASSERT_LESS_EQUAL_STR, parseAssertLessEqual);
+			parser.addFunction(ASSERT_THROWS_STR, parseAssertThrows);
+			parser.addFunction(ASSERT_NOTHROW_STR, parseAssertNothrow);
 			return parser;
 		}
 	}
