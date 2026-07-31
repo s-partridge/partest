@@ -32,6 +32,8 @@
 #define ASSERT_GREATER_EQUAL(lhs, rhs) commitAssertion(partest::handleAssertBoolean((lhs) >= (rhs), true, ASSERT_GREATER_EQUAL_STR, #lhs " >= " #rhs, __FILE__, __func__, __LINE__))
 #define ASSERT_LESS_EQUAL(lhs, rhs) commitAssertion(partest::handleAssertBoolean((lhs) <= (rhs), true, ASSERT_LESS_EQUAL_STR, #lhs " <= " #rhs, __FILE__, __func__, __LINE__))
 
+#define ASSERT_THROWS(exceptionType, ...) commitAssertion(handleAssertThrows<exceptionType>([&]() { __VA_ARGS__; },   ASSERT_THROWS_STR, "{ " #__VA_ARGS__ " } throws " #exceptionType, #__VA_ARGS__, #exceptionType, __FILE__, __func__, __LINE__))
+#define ASSERT_NOTHROW(...) commitAssertion(handleAssertNothrow([&]() { __VA_ARGS__; }, ASSERT_NOTHROW_STR, "{ " #__VA_ARGS__ " } doesn't throw", #__VA_ARGS__, __FILE__, __func__, __LINE__))
 /**
 * Stringified names for each assert type, used for filtering test results
 */
@@ -47,6 +49,9 @@ PARTEST_INLINE_VAR_17 constexpr const char *ASSERT_GREATER_STR = "ASSERT_GREATER
 PARTEST_INLINE_VAR_17 constexpr const char *ASSERT_LESS_STR = "ASSERT_LESS";
 PARTEST_INLINE_VAR_17 constexpr const char *ASSERT_GREATER_EQUAL_STR = "ASSERT_GREATER_EQUAL";
 PARTEST_INLINE_VAR_17 constexpr const char *ASSERT_LESS_EQUAL_STR = "ASSERT_LESS_EQUAL";
+
+PARTEST_INLINE_VAR_17 constexpr const char *ASSERT_THROWS_STR = "ASSERT_THROWS";
+PARTEST_INLINE_VAR_17 constexpr const char *ASSERT_NOTHROW_STR = "ASSERT_NOTHROW";
 
 PARTEST_INLINE_VAR_17 constexpr const char *ASSERT_META_EXPECTED = "expected";
 PARTEST_INLINE_VAR_17 constexpr const char *ASSERT_META_ACTUAL = "actual";
@@ -387,6 +392,77 @@ namespace partest
 
 		return result;
 	}
+
+	template<typename E, PARTEST_ENABLE_IF_INVOCABLE(Func)>
+	AssertionResult handleAssertThrows(Func &&codeWrapper, const char *type,
+		const char *fullExpr, const char* codeExpr, const char *exceptExpr, const char *file, const char *func, int line)
+	{
+		bool passed = false;
+
+		try
+		{
+			codeWrapper();
+		}
+		catch(const E &e)
+		{
+			// Nothing to do on success.
+			passed = true;
+		}
+		// Just rethrow.
+		catch(const AssertionFailure &)
+		{
+			throw;
+		}
+		// These are unexpected.
+		catch(const std::exception &)
+		{
+			throw;
+		}
+		catch(...)
+		{
+			throw;
+		}
+
+		AssertionResult result(passed, type, fullExpr, file, func, line);
+
+		result.setMetadata(MetaKeys::Expected, exceptExpr);
+		result.setMetadata(MetaKeys::exprA, codeExpr);
+
+		return result;
+	}
+
+	template<PARTEST_ENABLE_IF_INVOCABLE(Func)>
+	AssertionResult handleAssertNothrow(Func &&codeWrapper, const char *type,
+		const char *fullExpr, const char* codeExpr, const char *file, const char *func, int line)
+	{
+		bool passed = true;
+		std::string actual;
+		try
+		{
+			codeWrapper();
+		}
+		// Assertionns are framework events and don't count as throwing for this assertion
+		catch(const AssertionFailure &)
+		{
+			throw;
+		}
+		// These are unexpected.
+		catch(...)
+		{
+			passed = false;
+			// Will read and return `what` from a std::exception, as well as other types
+			actual = stringFromCurrentException();
+		}
+
+		AssertionResult result(passed, type, fullExpr, file, func, line);
+
+		resutl.setMetadata(MetaKeys::Actual, actual);
+		result.setMetadata(MetaKeys::exprA, codeExpr);
+
+		return result;
+	}
 }
+
+
 
 #endif //PARTESTASSERT_H
