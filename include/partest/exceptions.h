@@ -65,5 +65,37 @@ namespace partest
 
 		TestIntegrityFailure(const char *message) : std::runtime_error(message) {}
 	};
+
+	/**
+	* Call ONLY from within an exception context.
+	* Returns a string representation of the exception, if one can be derived.
+	*/
+	inline std::string stringFromCurrentException()
+	{
+		try
+		{
+			throw;
+		}
+		catch(const std::exception &e)
+		{
+			return e.what();
+		}
+		catch(const char *s)
+		{
+			return std::string("const char*: ") + (s ? s : "(null)");
+		}
+		catch(const std::string &s)
+		{
+			return "std::string: " + s;
+		}
+		catch(int v)
+		{
+			return "int: " + std::to_string(v);
+		}
+		catch(...)
+		{
+			return "unknown exception";
+		}
+	}
 }
 #endif
