@@ -282,11 +282,11 @@ namespace partest
 
 #if PARTEST_CPP_VERSION >= 20
 // For C++20, use concepts
-	#define PARTEST_ENABLE_IF_INVOCABLE(MaybeInvocable) typename Func> requires std::invocable<MaybeInvocable
+	#define PARTEST_ENABLE_IF_INVOCABLE(MaybeInvocable) std::invocable MaybeInvocable
 
 #elif PARTEST_CPP_VERSION >= 17
 // For C++17, use the standard library trait
-	#define PARTEST_ENABLE_IF_INVOCABLE(MaybeInvocable) typename Func, typename = std::enable_if_t<std::is_invocable_v<MaybeInvocable>>
+	#define PARTEST_ENABLE_IF_INVOCABLE(MaybeInvocable) typename MaybeInvocable, typename = std::enable_if_t<std::is_invocable_v<MaybeInvocable>>
 
 // For C++11, C++14, define our own trait and use it
 #else
