@@ -65,11 +65,30 @@ namespace partest
 	*/
 	struct TestFlags
 	{
-		FlagState skip : 2; // Whether to skip the test
-		FlagState stopOnFail : 2; // Whether to stop execution on failure
-		FlagState stopSubtestOnFail : 2; // Whether to stop subtest execution on failure
-		FlagState expectFailure : 2; // Whether to stop subtest execution on failure
-		FlagState verbose : 2; // Whether to run the test in verbose mode
+#if defined(_MSC_VER)
+    #pragma warning(push)
+    #pragma warning(disable : 4201) // nonstandard extension used: nameless struct/union
+#elif defined(__GNUC__) || defined(__clang__)
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wpedantic"
+#endif
+		union
+		{
+			uint16_t raw;			// For unified access
+			struct
+			{
+				FlagState skip : 2; // Whether to skip the test
+				FlagState stopOnFail : 2; // Whether to stop execution on failure
+				FlagState stopSubtestOnFail : 2; // Whether to stop subtest execution on failure
+				FlagState expectFailure : 2; // Whether to stop subtest execution on failure
+				FlagState verbose : 2; // Whether to run the test in verbose mode
+			};
+		};
+#if defined(_MSC_VER)
+    #pragma warning(pop)
+#elif defined(__GNUC__) || defined(__clang__)
+    #pragma GCC diagnostic pop
+#endif
 
 		PARTEST_CONSTEXPR_11 TestFlags() noexcept
 			: skip(FlagState::Inherit), stopOnFail(FlagState::Inherit),
@@ -179,20 +198,16 @@ namespace partest
 	};
 
 	/**
-	* Equality operator for TestFlags
+	* Equality operators for TestFlags
 	*/
 	inline PARTEST_CONSTEXPR_11 bool operator==(const TestFlags& lhs, const TestFlags& rhs)
 	{
-		return lhs.skip == rhs.skip
-			&& lhs.stopOnFail == rhs.stopOnFail
-			&& lhs.stopSubtestOnFail == rhs.stopSubtestOnFail
-			&& lhs.expectFailure == rhs.expectFailure
-			&& lhs.verbose == rhs.verbose;
+		return lhs.raw == rhs.raw;
 	}
 
 	inline PARTEST_CONSTEXPR_11 bool operator!=(const TestFlags& lhs, const TestFlags& rhs)
 	{
-		return !(lhs == rhs);
+		return lhs.raw != rhs.raw;
 	}
 
 	/**
