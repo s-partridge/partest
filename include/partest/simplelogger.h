@@ -26,13 +26,13 @@ namespace partest
 
 		void onTestBegin(const Event &event, const BeginTestPayload &payload) override
 		{
-			m_out << "Begin: " << payload.testFrame.name() << std::endl;
+			m_out << "Began test \"" << payload.testFrame.name() << "\"" << std::endl;
 		}
 
 		// Called when a test ends
 		void onTestEnd(const Event &event, const EndTestPayload &payload) override
 		{
-			m_out << "Ended: " << payload.testFrame.name() << "; " << payload.testFrame.result() << std::endl;
+			m_out << "Ended test \"" << payload.testFrame.name() << "\" with " << payload.testFrame.result() << std::endl;
 		}
 
 		// Called when an assertion is made
