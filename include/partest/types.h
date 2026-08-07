@@ -39,7 +39,9 @@ namespace partest
 		NoResult = 0,
 		Failed,
 		Passed,
-		Mixed
+		Mixed,
+		ExpectedFailure,
+		UnexpectedPass
 	};
 
 	/**
@@ -66,34 +68,42 @@ namespace partest
 		FlagState skip : 2; // Whether to skip the test
 		FlagState stopOnFail : 2; // Whether to stop execution on failure
 		FlagState stopSubtestOnFail : 2; // Whether to stop subtest execution on failure
+		FlagState expectFailure : 2; // Whether to stop subtest execution on failure
 		FlagState verbose : 2; // Whether to run the test in verbose mode
 
-		PARTEST_CONSTEXPR_11 TestFlags() noexcept : skip(FlagState::Disabled), stopOnFail(FlagState::Inherit), stopSubtestOnFail(FlagState::Inherit), verbose(FlagState::Inherit) {}
-		PARTEST_CONSTEXPR_11 TestFlags(FlagState skip, FlagState stopOnFail, FlagState stopSubtestOnFail, FlagState verbose) noexcept : skip(skip), stopOnFail(stopOnFail), stopSubtestOnFail(stopSubtestOnFail), verbose(verbose) {}
+		PARTEST_CONSTEXPR_11 TestFlags() noexcept : skip(FlagState::Disabled), stopOnFail(FlagState::Inherit), stopSubtestOnFail(FlagState::Inherit), expectFailure(FlagState::Inherit), verbose(FlagState::Inherit) {}
+		PARTEST_CONSTEXPR_11 TestFlags(FlagState skip, FlagState stopOnFail, FlagState stopSubtestOnFail, FlagState expectFailure, FlagState verbose) noexcept : skip(skip), stopOnFail(stopOnFail), stopSubtestOnFail(stopSubtestOnFail), expectFailure(expectFailure), verbose(verbose) {}
 
 		/**
 		* Get a TestFlags instance with all flags set to Disabled
 		*/
-		static PARTEST_CONSTEXPR_11 TestFlags defaultDisabled() noexcept { return TestFlags(FlagState::Disabled, FlagState::Disabled, FlagState::Disabled, FlagState::Disabled); }
+		static PARTEST_CONSTEXPR_11 TestFlags defaultDisabled() noexcept { return TestFlags(FlagState::Disabled, FlagState::Disabled, FlagState::Disabled, FlagState::Disabled, FlagState::Disabled); }
 		/**
 		* Get a TestFlags instance with all flags set to Inherit
 		*/
-		static PARTEST_CONSTEXPR_11 TestFlags defaultInherit() noexcept { return TestFlags(FlagState::Inherit, FlagState::Inherit, FlagState::Inherit, FlagState::Inherit); }
+		static PARTEST_CONSTEXPR_11 TestFlags defaultInherit() noexcept { return TestFlags(FlagState::Inherit, FlagState::Inherit, FlagState::Inherit, FlagState::Disabled, FlagState::Inherit); }
 
 		/**
 		* Get a TestFlags instance with all flags set to Masked. Used for internal purposes.
 		*/
-		static PARTEST_CONSTEXPR_11 TestFlags defaultMasked() noexcept { return TestFlags(FlagState::Masked, FlagState::Masked, FlagState::Masked, FlagState::Masked); }
+		static PARTEST_CONSTEXPR_11 TestFlags defaultMasked() noexcept { return TestFlags(FlagState::Masked, FlagState::Masked, FlagState::Masked, FlagState::Masked, FlagState::Masked); }
 
 		/**
 		* Get a TestFlags instance with skip = true, all other flags set to Disabled
 		*/
-		static PARTEST_CONSTEXPR_11 TestFlags defaultSkip() noexcept { return TestFlags(FlagState::Enabled, FlagState::Disabled, FlagState::Disabled, FlagState::Disabled); }
+		static PARTEST_CONSTEXPR_11 TestFlags defaultSkip() noexcept { return TestFlags(FlagState::Enabled, FlagState::Disabled, FlagState::Disabled, FlagState::Disabled, FlagState::Disabled); }
 
-		PARTEST_CONSTEXPR_14 TestFlags withStopOnFail(FlagState enabled) const noexcept
+		PARTEST_CONSTEXPR_14 TestFlags withStopOnFail(FlagState enabled = FlagState::Enabled) const noexcept
 		{
 			TestFlags newFlags = *this;
 			newFlags.stopOnFail = enabled;
+			return newFlags;
+		}
+
+		PARTEST_CONSTEXPR_14 TestFlags withExpectFailure(FlagState enabled = FlagState::Enabled) const noexcept
+		{
+			TestFlags newFlags = *this;
+			newFlags.expectFailure = enabled;
 			return newFlags;
 		}
 
@@ -115,6 +125,8 @@ namespace partest
 				stopOnFail = other.stopOnFail;
 			if(other.stopSubtestOnFail != FlagState::Masked)
 				stopSubtestOnFail = other.stopSubtestOnFail;
+			if(other.expectFailure != FlagState::Masked)
+				expectFailure = other.expectFailure;
 			if(other.verbose != FlagState::Masked)
 				verbose = other.verbose;
 		}
@@ -136,6 +148,8 @@ namespace partest
 				effectiveFlags.stopOnFail = parentFlags.stopOnFail;
 			if(effectiveFlags.stopSubtestOnFail == FlagState::Inherit)
 				effectiveFlags.stopSubtestOnFail = parentFlags.stopSubtestOnFail;
+			if(effectiveFlags.stopSubtestOnFail == FlagState::Inherit)
+				effectiveFlags.expectFailure = parentFlags.expectFailure;
 			if(effectiveFlags.verbose == FlagState::Inherit)
 				effectiveFlags.verbose = parentFlags.verbose;
 			return effectiveFlags;
@@ -146,9 +160,31 @@ namespace partest
 		*/
 		PARTEST_CONSTEXPR_11 bool isResolved() const noexcept
 		{
-			return skip < FlagState::Inherit && stopOnFail < FlagState::Inherit && stopSubtestOnFail < FlagState::Inherit && verbose < FlagState::Inherit;
+			// Valid values are disabled, enabled, inherit, and masked, beginning at `disabled = 0`. Any value greater than `enabled` is not resolved.
+			return skip < FlagState::Inherit
+				&& stopOnFail < FlagState::Inherit
+				&& stopSubtestOnFail < FlagState::Inherit
+				&& expectFailure < FlagState::Inherit
+				&& verbose < FlagState::Inherit;
 		}
 	};
+
+	/**
+	* Equality operator for TestFlags
+	*/
+	inline PARTEST_CONSTEXPR_11 bool operator==(const TestFlags& lhs, const TestFlags& rhs)
+	{
+		return lhs.skip == rhs.skip
+			&& lhs.stopOnFail == rhs.stopOnFail
+			&& lhs.stopSubtestOnFail == rhs.stopSubtestOnFail
+			&& lhs.expectFailure == rhs.expectFailure
+			&& lhs.verbose == rhs.verbose;
+	}
+
+	inline PARTEST_CONSTEXPR_11 bool operator!=(const TestFlags& lhs, const TestFlags& rhs)
+	{
+		return !(lhs == rhs);
+	}
 
 	/**
 	* Parameters passed to an individual test
@@ -285,8 +321,12 @@ namespace partest
 			return "FAILED";
 		case TestResult::Mixed:
 			return "MIXED";
+		case TestResult::ExpectedFailure:
+			return "FAILED_EXPECTEDLY";
+		case TestResult::UnexpectedPass:
+			return "PASSED_UNEXPECTEDLY";
 		default:
-			return "INVALID RESULT VALUE";
+			return "INVALID_RESULT_VALUE";
 		}
 	}
 
@@ -357,6 +397,10 @@ namespace partest
 			result = TestResult::Failed;
 		else if(statusString == "MIXED")
 			result = TestResult::Mixed;
+		else if(statusString == "FAILED_EXPECTEDLY")
+			result = TestResult::ExpectedFailure;
+		else if(statusString == "PASSED_UNEXPECTEDLY")
+			result = TestResult::UnexpectedPass;
 		else
 			result = TestResult::NoResult; // Default to NoResult for unknown strings
 		return in;
@@ -449,7 +493,7 @@ namespace partest
 	*/
 	// Disable all flags
 	PARTEST_INLINE_VAR_17 PARTEST_CONSTEXPR_11 const TestFlags TEST_FLAGS_DISABLED = TestFlags::defaultDisabled();
-	// Inherit all flags from parent test
+	// Inherit all flags from parent test, except ExpectFailure, which is disabled
 	PARTEST_INLINE_VAR_17 PARTEST_CONSTEXPR_11 const TestFlags TEST_FLAGS_INHERIT = TestFlags::defaultInherit();
 	// Mask all flags (used for internal purposes)
 	PARTEST_INLINE_VAR_17 PARTEST_CONSTEXPR_11 const TestFlags TEST_FLAGS_MASKED = TestFlags::defaultMasked();
