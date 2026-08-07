@@ -28,19 +28,25 @@ public:
 		partest::FlagState flags[5];
 
 		partest::TestFlags ref;
-		ref.skip = partest::FlagState::Disabled;
-		ref.stopOnFail = partest::FlagState::Disabled;
-		ref.stopSubtestOnFail = partest::FlagState::Disabled;
+		ref.skip = partest::FlagState::Inherit;
+		ref.stopOnFail = partest::FlagState::Inherit;
+		ref.stopSubtestOnFail = partest::FlagState::Inherit;
 		ref.expectFailure = partest::FlagState::Disabled;
-		ref.verbose = partest::FlagState::Disabled;
+		ref.verbose = partest::FlagState::Inherit;
+
+		partest::TestFlags defaultFlags;
+		ASSERT_EQUAL(defaultFlags, ref);
 
 		// Validate disabled
 		subtest("TestDefaultDisabled", [&](){
+			ref.skip = partest::FlagState::Disabled;
+			ref.stopOnFail = partest::FlagState::Disabled;
+			ref.stopSubtestOnFail = partest::FlagState::Disabled;
+			ref.expectFailure = partest::FlagState::Disabled;
+			ref.verbose = partest::FlagState::Disabled;
+
 			for(unsigned idx = 0; idx < 5; ++idx)
 				flags[idx] = partest::FlagState::Disabled;
-
-			partest::TestFlags defaultFlags();
-			ASSERT_EQUAL(defaultFlags, ref);
 
 			partest::TestFlags disabledFlags(flags[0], flags[1], flags[2], flags[3], flags[4]);
 			ASSERT_EQUAL(disabledFlags, ref);
@@ -59,7 +65,7 @@ public:
 			for(unsigned idx = 0; idx < 5; ++idx)
 				flags[idx] = partest::FlagState::Enabled;
 
-			partest::TestFlags defaultFlags();
+			partest::TestFlags defaultFlags;
 			ASSERT_NOT_EQUAL(defaultFlags, ref);
 
 			partest::TestFlags enabledFlags(flags[0], flags[1], flags[2], flags[3], flags[4]);

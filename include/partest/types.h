@@ -71,8 +71,17 @@ namespace partest
 		FlagState expectFailure : 2; // Whether to stop subtest execution on failure
 		FlagState verbose : 2; // Whether to run the test in verbose mode
 
-		PARTEST_CONSTEXPR_11 TestFlags() noexcept : skip(FlagState::Disabled), stopOnFail(FlagState::Inherit), stopSubtestOnFail(FlagState::Inherit), expectFailure(FlagState::Inherit), verbose(FlagState::Inherit) {}
-		PARTEST_CONSTEXPR_11 TestFlags(FlagState skip, FlagState stopOnFail, FlagState stopSubtestOnFail, FlagState expectFailure, FlagState verbose) noexcept : skip(skip), stopOnFail(stopOnFail), stopSubtestOnFail(stopSubtestOnFail), expectFailure(expectFailure), verbose(verbose) {}
+		PARTEST_CONSTEXPR_11 TestFlags() noexcept
+			: skip(FlagState::Inherit), stopOnFail(FlagState::Inherit),
+			  stopSubtestOnFail(FlagState::Inherit), expectFailure(FlagState::Disabled),
+			  verbose(FlagState::Inherit) {}
+		PARTEST_CONSTEXPR_11 TestFlags(
+			FlagState skip, FlagState stopOnFail,
+			FlagState stopSubtestOnFail, FlagState expectFailure,
+			FlagState verbose) noexcept
+			: skip(skip), stopOnFail(stopOnFail),
+			  stopSubtestOnFail(stopSubtestOnFail), expectFailure(expectFailure),
+			  verbose(verbose) {}
 
 		/**
 		* Get a TestFlags instance with all flags set to Disabled
@@ -476,6 +485,19 @@ namespace partest
 		default:
 			out << "INVALID FLAG VALUE";
 		}
+		return out;
+	}
+
+	/**
+	* Overloaded stream extraction operator for TestFlags.
+	*/
+	inline std::ostream &operator<<(std::ostream &out, const TestFlags &flags)
+	{
+		out << "Skip: " << flags.skip
+			<< "; StopOnFail: " << flags.stopOnFail
+			<< "; StopOnSubtestFail: " << flags.stopSubtestOnFail
+			<< "; ExpectFailure: " << flags.expectFailure
+			<< "; Verbose: " << flags.verbose;
 		return out;
 	}
 
