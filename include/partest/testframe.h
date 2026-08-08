@@ -42,6 +42,7 @@ namespace partest
 		
 		size_t assertionCount() const noexcept;
 		size_t subtestCount() const noexcept;
+		size_t testSkippedCount() const noexcept;
 		
 		size_t assertionFailureCount() const noexcept;
 		size_t subtestFailureCount(unsigned depth = 1) const noexcept;
@@ -381,6 +382,28 @@ namespace partest
 			return failureCount;
 		}
 
+		/**
+		* Count the total number of subtests that were skipped at a specific tree depth.
+		* 
+		* @param depth Subtest depth to drill down to, from the current test frame
+		* @returns Number of tests below this one that failed at specified depth
+		*/
+		size_t getTestSkippedCount(unsigned depth = 1) const
+		{
+			// Only evaluate this frame's result if we're at evaluation depth, or if no subtests exist.
+			if(depth == 0 || m_subtests.empty())
+				return wasSkipped() ? 1 : 0;
+			
+			size_t skippedCount = 0;
+
+			for(TestFrame *subtest : m_subtests)
+			{
+				skippedCount += subtest->getTestSkippedCount(depth - 1);
+			}
+
+			return skippedCount;
+		}
+
 		size_t getAssertionCount() const
 		{
 			size_t total = (unsigned)m_assertions.size();
@@ -450,6 +473,7 @@ namespace partest
 
 	inline size_t TestFrameView::assertionFailureCount() const noexcept { return m_testFrame->getAssertionFailureCount(); }
 	inline size_t TestFrameView::subtestFailureCount(unsigned depth) const noexcept { return m_testFrame->getTestFailureCount(depth); }
+	inline size_t TestFrameView::testSkippedCount() const noexcept { return m_testFrame->getTestSkippedCount(1); }
 
 	inline const TestInfo &TestFrameView::info() const noexcept { return m_testFrame->metadata; }
 	inline PARTEST_STRING_PARAM TestFrameView::name() const noexcept { return m_testFrame->metadata.name; }

@@ -307,6 +307,11 @@ namespace partest
 			return m_testTree->getTestFailureCount(depth);
 		}
 
+		size_t getTestSkippedCount(unsigned depth = 1) const
+		{
+			return m_testTree->getTestSkippedCount(depth);
+		}
+
 		size_t getAssertionFailureCount() const
 		{
 			return m_testTree->getAssertionFailureCount();
