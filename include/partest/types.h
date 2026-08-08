@@ -187,12 +187,16 @@ namespace partest
 		*/
 		PARTEST_CONSTEXPR_11 bool isResolved() const noexcept
 		{
+			// Each flag is two bits wide. The upper bit of each flag is one 1 when it has not been resolved to Enabled/Disabled.
+			// Bitwise `and` against a mask of 0b10 on each flag validates that the upper bit is unset.
+			// Equivalent 
+			return (raw & 0xAAAA) == 0;
 			// Valid values are disabled, enabled, inherit, and masked, beginning at `disabled = 0`. Any value greater than `enabled` is not resolved.
-			return skip < FlagState::Inherit
+			/*return skip < FlagState::Inherit
 				&& stopOnFail < FlagState::Inherit
 				&& stopSubtestOnFail < FlagState::Inherit
 				&& expectFailure < FlagState::Inherit
-				&& verbose < FlagState::Inherit;
+				&& verbose < FlagState::Inherit;*/			
 		}
 	};
 
