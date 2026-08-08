@@ -370,7 +370,7 @@ namespace partest
 		{
 			// Only evaluate this frame's result if we're at evaluation depth, or if no subtests exist.
 			if(depth == 0 || m_subtests.empty())
-				return (hasFailures() && !setToFail()) ? 1 : 0;
+				return hasFailures() ? 1 : 0;
 			
 			size_t failureCount = 0;
 
