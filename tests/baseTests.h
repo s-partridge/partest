@@ -12,10 +12,10 @@ public:
 		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
 
 		addTest(partest::TestInfo("FailingTest", "A test that always fails."),
-			flags,
+			flags.withExpectFailure(),
 			[this]() { return this->failingTest(); });
 		addTest(partest::TestInfo("MixedTest", "A test that has mixed results."),
-			flags,
+			flags.withExpectFailure(),
 			[this]() { return this->mixedTest(); });
 		addTest(partest::TestInfo("PassedTest", "A test that always passes."),
 			flags,
@@ -33,7 +33,7 @@ public:
 		flags.stopOnFail = partest::FlagState::Enabled;
 
 		addTest(partest::TestInfo("TestWithStopOnFail", "A test with stopOnFail enabled."),
-			flags,
+			flags.withExpectFailure(),
 			[this]() { return this->testWithStopOnFail(); });
 	}
 
@@ -78,7 +78,7 @@ public:
 	// This test should result in a Mixed status due to nested subtests
 	void nestedNestedTest()
 	{
-		subtest(partest::TestInfo("NestedSubtest1", "A nested subtest that always passes."), partest::TEST_FLAGS_INHERIT, [this]()
+		subtest(partest::TestInfo("NestedSubtest1", "A nested subtest that always passes."), partest::TEST_FLAGS_INHERIT.withExpectFailure(), [this]()
 		{
 			ASSERT_TRUE(true); // This assertion will pass
 			
@@ -124,14 +124,14 @@ public:
 			});
 
 			// This assertion will pass, if it is hit, which it shouldn't be if stopOnFail is Enabled
-			std::cout << "Error: This assertion should not run if stopOnFail is ENABLED and a previous assertion failed." << std::endl;
+			recordLog(partest::LogLevel::Error, partest::LOG_TYPE_TEST, "Error: This assertion should not run if stopOnFail is ENABLED and a previous assertion failed.");
 			ASSERT_TRUE(2 + 2 == 4);
 		});
 
 		subtest(partest::TestInfo("Subtest3", "A subtest that checks if 3 + 3 == 6."), stopFlags, [&]()
 		{
-			std::cout << "Error: This subtest should not run if stopOnFail is ENABLED and a previous assertion failed." << std::endl;
-			// This assertion will pass, but may not be reached if stopOnFail is Enabled in Subtest2
+			// This assertion will pass, but should not be reached if stopOnFail is Enabled in Subtest2
+			recordLog(partest::LogLevel::Error, partest::LOG_TYPE_TEST, "Error: This subtest should not run if stopOnFail is ENABLED and a previous assertion failed.");
 			ASSERT_TRUE(3 + 3 == 6);
 		});
 	}

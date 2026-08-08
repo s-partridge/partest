@@ -32,7 +32,19 @@ namespace partest
 		// Called when a test ends
 		void onTestEnd(const Event &event, const EndTestPayload &payload) override
 		{
-			m_out << "Ended test \"" << payload.testFrame.name() << "\" with " << payload.testFrame.result() << std::endl;
+			TestResult result = payload.testFrame.result();
+			payload.testFrame.setToFail();
+			std::string resultString;
+
+			if(payload.testFrame.setToFail())
+				if(result == TestResult::Passed)
+					resultString = "EXPECTED FAIL";
+				else
+					resultString = "UNEXPECTED PASS";
+			else
+				resultString = maybeStringify(result);
+
+			m_out << "Ended test \"" << payload.testFrame.name() << "\" with " << resultString << std::endl;
 		}
 
 		// Called when an assertion is made

@@ -54,6 +54,7 @@ namespace partest
 		
 		TestStatus status() const noexcept;
 		TestResult result() const noexcept;
+		bool setToFail() const noexcept;
 
 		std::chrono::steady_clock::duration duration() const noexcept { return endTime() - startTime(); }
 
@@ -103,11 +104,11 @@ namespace partest
 		using AssertionConstIter = std::deque<AssertionResult>::const_iterator;
 
 		TestFrame(EventEmitterInterface *eventEmitter) : m_eventEmitter(eventEmitter), flags(), metadata(), state(), m_id(nextId()), m_testFrameView(*this) { }
-		TestFrame(EventEmitterInterface *eventEmitter, const TestFlags &flags, const TestInfo &metadata, const TestState &result,
+		TestFrame(EventEmitterInterface *eventEmitter, const TestFlags &flags, const TestInfo &metadata,
 				const std::function<void()> &testFunction = nullptr,
 				const std::function<void()> &testSetup = nullptr,
 				const std::function<void()> &testTeardown = nullptr)
-			: m_eventEmitter(eventEmitter), flags(flags), metadata(metadata), state(result),
+			: m_eventEmitter(eventEmitter), flags(flags), metadata(metadata), state(flags.expectFailure == FlagState::Enabled),
 				m_testFunction(testFunction), m_testSetup(testSetup), m_testTeardown(testTeardown),
 				m_id(nextId()), m_testFrameView(*this) { }
 	
@@ -149,6 +150,25 @@ namespace partest
 		bool hasTestFunction() const noexcept { return m_testFunction != nullptr; }
 		bool hasTeardownFunction() const noexcept { return m_testTeardown != nullptr; }
 
+		PARTEST_CONSTEXPR_14 void updateResultFromSubtest(const TestResult &result) noexcept { state.updateResultFromSubtest(result); }
+		PARTEST_CONSTEXPR_14 void updateStatus(TestStatus status) noexcept { state.updateStatus(status); }
+
+		void processAssertion(const AssertionResult &result)
+		{
+			state.updateResultFromAssertion(result.passed());
+			m_assertions.push_back(result);
+			m_eventEmitter->emitAssertion(m_testFrameView, m_assertions.back());
+		}
+
+		void abortTest(PARTEST_STRING_PARAM message)
+		{
+			// Mark the test as aborted and log a generic message.
+			updateStatus(TestStatus::Aborted);
+			// Ensure that the test result was set. A generic exception indicates test failure.
+			updateResultFromSubtest(TestResult::Failed);
+			recordLog(LogLevel::Error, LOG_TYPE_EXCEPTION, message);
+		}
+
 		void recordLog(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message)
 		{
 			m_logs.push_back(LogEntry(level, type, message));
@@ -173,20 +193,13 @@ namespace partest
 			state = TestState::defaultState();
 		}
 
-		void processAssertion(const AssertionResult &result)
-		{
-			updateResult(result.passed() ? TestResult::Passed : TestResult::Failed);
-			m_assertions.push_back(result);
-			m_eventEmitter->emitAssertion(m_testFrameView, m_assertions.back());
-		}
-
-		PARTEST_CONSTEXPR_14 void updateStatus(TestStatus status) noexcept { state.updateStatus(status); }
-		PARTEST_CONSTEXPR_14 void updateResult(TestResult result) noexcept { state.updateResult(result); }
 		PARTEST_CONSTEXPR_14 TestStatus getStatus() const noexcept { return state.getStatus(); }
 		PARTEST_CONSTEXPR_14 TestResult getResult() const noexcept { return state.getResult(); }
 
 		PARTEST_CONSTEXPR_14 bool hasFinishedRunning() const noexcept { return state.hasFinishedRunning(); }
 		PARTEST_CONSTEXPR_14 bool hasFailures() const noexcept { return state.hasFailures(); }
+		PARTEST_CONSTEXPR_14 bool wasSkipped() const noexcept { return state.getStatus() == TestStatus::Skipped; }
+		PARTEST_CONSTEXPR_14 bool setToFail() const noexcept { return state.getExpectFailure(); }
 
 		/**
 		* Check whether this test frame descends from `other`
@@ -322,15 +335,18 @@ namespace partest
 				if(getResult() == TestResult::NoResult)
 				{
 					recordLog(LogLevel::Warning, LOG_TYPE_TEST, "Warning: '" + metadata.name + "' completed without any assertions. Defaulting to PASSED.");
-					updateResult(TestResult::Passed);
+					// Shunt a passing value to the state
+					state.updateResultFromAssertion(state.getExpectFailure());
 				}
 
 				if(getStatus() != TestStatus::Aborted)
+				{
 					updateStatus(TestStatus::Completed);
+				}
 
 				if(m_parent != nullptr)
 				{
-					m_parent->updateResult(getResult());
+					m_parent->updateResultFromSubtest(getResult());
 				}
 
 				if(m_testTeardown != nullptr)
@@ -353,7 +369,7 @@ namespace partest
 		{
 			// Only evaluate this frame's result if we're at evaluation depth, or if no subtests exist.
 			if(depth == 0 || m_subtests.empty())
-				return hasFailures() ? 1 : 0;
+				return (hasFailures() && !setToFail()) ? 1 : 0;
 			
 			size_t failureCount = 0;
 
@@ -443,6 +459,7 @@ namespace partest
 
 	inline TestStatus TestFrameView::status() const noexcept { return m_testFrame->state.getStatus(); }
 	inline TestResult TestFrameView::result() const noexcept { return m_testFrame->state.getResult(); }
+	inline bool TestFrameView::setToFail() const noexcept { return m_testFrame->setToFail(); }
 
 	inline std::chrono::steady_clock::time_point TestFrameView::startTime() const noexcept { return m_testFrame->startTime(); }
 	inline std::chrono::steady_clock::time_point TestFrameView::endTime() const noexcept { return m_testFrame->startTime(); }

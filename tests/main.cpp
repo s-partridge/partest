@@ -24,7 +24,7 @@ int main(int argc, const char **argv)
 #endif
 
 	partest::initializeSuite(argc, argv);
-	//partest::addTestClass(partest::make_unique<TestBaseTests>());
+	partest::addTestClass(partest::make_unique<TestBaseTests>());
 	partest::addTestClass(partest::make_unique<AssertionTests>());
 	partest::addTestClass(partest::make_unique<SemaphoreTests>());
 	partest::addTestClass(partest::make_unique<DispatcherTests>());

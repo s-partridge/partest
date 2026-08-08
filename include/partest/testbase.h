@@ -59,14 +59,8 @@ namespace partest
 				// Unexpected exceptions will generally indicate errors within the user's test code and must be reported
 				catch(...)
 				{
-					// Mark the test as aborted and log a generic message.
-					m_currentFrame->updateStatus(TestStatus::Aborted);
-					// Ensure that the test result was set. A generic exception indicates test failure.
-					m_currentFrame->updateResult(TestResult::Failed);
-
-					std::string what = stringFromCurrentException();
-					resultStream << "Error: Unhandled exception in test '" << m_currentFrame->metadata.name << "': " << what << std::endl;
-					recordLog(LogLevel::Error, LOG_TYPE_EXCEPTION, resultStream.str());
+					std::string message = "Error: Unhandled exception in test '" + m_currentFrame->metadata.name + "': " + stringFromCurrentException();
+					m_currentFrame->abortTest(message);
 				}
 
 				m_currentFrame->finalizeTest();
@@ -102,9 +96,17 @@ namespace partest
 		* @param condition The condition being asserted, as a string. Typically provided by the condition expression itself.
 		* @throws AssertionFailure if the current test has failed and stopOnFail is enabled.
 		*/
-		void maybeRaiseOnAssertion(const char *file, int line, PARTEST_STRING_PARAM condition) const
+		void maybeRaiseOnAssertion(const char *file, int line, PARTEST_STRING_PARAM condition)
 		{
 			if(m_currentFrame->getEffectiveFlags().stopOnFail == FlagState::Enabled && (m_currentFrame->hasFailures()))
+			{
+				throw AssertionFailure(file, line, condition);
+			}
+		}
+
+		void maybeRaiseOnSubtestReturned(const char *file, int line, PARTEST_STRING_PARAM condition)
+		{
+			if(m_currentFrame->getEffectiveFlags().stopOnFail == FlagState::Enabled && m_currentFrame->getTestFailureCount(1))
 			{
 				throw AssertionFailure(file, line, condition);
 			}
@@ -116,7 +118,7 @@ namespace partest
 		* @param result Object containing the evaluated result of an assertion
 		* @throws AssertionFailure if the current test has failed and stopOnFail is enabled.
 		*/
-		inline void maybeRaiseOnAssertion(const AssertionResult &result) const { maybeRaiseOnAssertion(result.file.c_str(), result.line, result.getCondition()); }
+		void maybeRaiseOnAssertion(const AssertionResult &result) { maybeRaiseOnAssertion(result.file.c_str(), result.line, result.getCondition()); }
 
 	protected:
 		/** 
@@ -134,17 +136,17 @@ namespace partest
 		*/
 		void addTest(const TestInfo &metadata, const TestFlags &flags, const std::function<void()> &testFunc, const std::function<void()> &setupFunc = nullptr, const std::function<void()> &teardownFunc = nullptr)
 		{
-			m_testTree->addSubtest(partest::make_unique<TestFrame>(&m_eventEmitter, flags, metadata, TestState::defaultState(), testFunc, setupFunc, teardownFunc));
+			m_testTree->addSubtest(partest::make_unique<TestFrame>(&m_eventEmitter, flags, metadata, testFunc, setupFunc, teardownFunc));
 		}
 
 		void addTest(PARTEST_STRING_PARAM name, const TestFlags &flags, const std::function<void()> &testFunc, const std::function<void()> &setupFunc = nullptr, const std::function<void()> &teardownFunc = nullptr)
 		{
-			m_testTree->addSubtest(partest::make_unique<TestFrame>(&m_eventEmitter, flags, TestInfo(name), TestState::defaultState(), testFunc, setupFunc, teardownFunc));
+			m_testTree->addSubtest(partest::make_unique<TestFrame>(&m_eventEmitter, flags, TestInfo(name), testFunc, setupFunc, teardownFunc));
 		}
 
 		void addTest(PARTEST_STRING_PARAM name, PARTEST_STRING_PARAM description, const TestFlags &flags, const std::function<void()> &testFunc, const std::function<void()> &setupFunc = nullptr, const std::function<void()> &teardownFunc = nullptr)
 		{
-			m_testTree->addSubtest(partest::make_unique<TestFrame>(&m_eventEmitter, flags, TestInfo(name, description), TestState::defaultState(), testFunc, setupFunc, teardownFunc));
+			m_testTree->addSubtest(partest::make_unique<TestFrame>(&m_eventEmitter, flags, TestInfo(name, description), testFunc, setupFunc, teardownFunc));
 		}
 
 		/////////////////////
@@ -181,11 +183,11 @@ namespace partest
 		template<PARTEST_ENABLE_IF_INVOCABLE(Func)>
 		void subtest(const TestInfo &testInfo, const TestFlags& flags, Func &&testFunc)
 		{
-			TestFrame *subtest = m_currentFrame->addSubtest(partest::make_unique<TestFrame>(&m_eventEmitter, flags, testInfo, TestState::defaultState(), testFunc));
+			TestFrame *subtest = m_currentFrame->addSubtest(partest::make_unique<TestFrame>(&m_eventEmitter, flags, testInfo, testFunc));
 			runTest(subtest);
 			subtest->setTestFunction(nullptr); // Clear the function to avoid dangling references. This is only necessary for subtests because they are intended to be run immediately and then discarded.
 
-			maybeRaiseOnAssertion("", 0, "Stopped on failure in " + m_currentFrame->metadata.name);
+			maybeRaiseOnSubtestReturned("", 0, "Stopped on failure in " + m_currentFrame->metadata.name);
 		}
 
 		// Current test frame accessors
@@ -207,7 +209,7 @@ namespace partest
 		* @param result Output of an evaluated assertion. AssertionResults should be produced by assertion handlers.
 		* @throws AssertionFailure if the assertion result did not pass and stopOnFail is enabled.
 		*/
-		void commitAssertion(const AssertionResult &result) const
+		void commitAssertion(const AssertionResult &result)
 		{
 			// Pass the assertion result on to the test frame
 			m_currentFrame->processAssertion(result);
@@ -244,7 +246,7 @@ namespace partest
 		{
 			// Initialize the root test frame. This frame is not associated with any specific test but serves as the root of the test tree.
 			// Its primary purpose is to contain information such as the overall test suite name and description in the same collection as the individual tests.
-			m_testTree = partest::make_unique<TestFrame>(&m_eventEmitter, flags, TestInfo(name, description), TestState::defaultState());
+			m_testTree = partest::make_unique<TestFrame>(&m_eventEmitter, flags, TestInfo(name, description));
 			// Set the setup and teardown functions for the root test frame
 			m_testTree->setSetupFunction([this]() { this->setup(); });
 			m_testTree->setTestFunction([this]() { this->runBaseTests(); });
