@@ -62,13 +62,13 @@ public:
 	void parameterizedTest(int testValue)
 	{
 		recordLog(partest::LogLevel::Debug, partest::LOG_TYPE_TEST, "Running example test...");
-		subtest(partest::TestInfo("Subtest1", "A subtest that checks if testValue is 3."), [&]()
+		subtest(partest::TestInfo("Subtest 1", "A subtest that checks if testValue is 3."), [&]()
 		{
 			// Subtest logic here
 			ASSERT_TRUE(testValue == 3);
 		});
 
-		subtest(partest::TestInfo("Subtest2", "A subtest that checks if testValue is 6."), [&]()
+		subtest(partest::TestInfo("Subtest 2", "A subtest that checks if testValue is 6."), [&]()
 		{
 			// Subtest logic here
 			ASSERT_TRUE(testValue == 6);
@@ -78,7 +78,7 @@ public:
 	// This test should result in a Mixed status due to nested subtests
 	void nestedNestedTest()
 	{
-		subtest(partest::TestInfo("NestedSubtest1", "A nested subtest that always passes."), partest::TEST_FLAGS_INHERIT.withExpectFailure(), [this]()
+		subtest(partest::TestInfo("NestedSubtest 1", "A nested subtest that always passes."), partest::TEST_FLAGS_INHERIT.withExpectFailure(), [this]()
 		{
 			ASSERT_TRUE(true); // This assertion will pass
 			
@@ -87,18 +87,18 @@ public:
 				ASSERT_TRUE(false); // This assertion will fail
 			});
 
-			subtest(partest::TestInfo("NestedSubtest1.2", "A nested subtest that always fails."), partest::TEST_FLAGS_INHERIT, [this]()
+			subtest(partest::TestInfo("NestedSubtest 1.2", "A nested subtest that always fails."), partest::TEST_FLAGS_INHERIT, [this]()
 			{
 				ASSERT_TRUE(false); // This assertion will fail
 			});
 
-			subtest(partest::TestInfo("NestedSubtest1.3", "A nested subtest that always passes."), partest::TEST_FLAGS_INHERIT, [this]()
+			subtest(partest::TestInfo("NestedSubtest 1.3", "A nested subtest that always passes."), partest::TEST_FLAGS_INHERIT, [this]()
 			{
 				ASSERT_TRUE(true); // This assertion will pass
 			});
 		});
 
-		subtest(partest::TestInfo("NestedSubtest2", "A nested subtest that always passes."), partest::TEST_FLAGS_INHERIT, [this]()
+		subtest(partest::TestInfo("NestedSubtest 2", "A nested subtest that always passes."), partest::TEST_FLAGS_INHERIT, [this]()
 		{
 			ASSERT_TRUE(true); // This assertion will pass
 		});
@@ -109,15 +109,15 @@ public:
 		partest::TestFlags stopFlags = partest::TEST_FLAGS_INHERIT;
 		stopFlags.stopOnFail = partest::FlagState::Enabled;
 
-		subtest(partest::TestInfo("Subtest1", "A subtest that checks if 1 + 1 == 2."), stopFlags, [&]()
+		subtest(partest::TestInfo("Subtest 1", "A subtest that checks if 1 + 1 == 2."), stopFlags, [&]()
 		{
 			// This assertion will pass
 			ASSERT_TRUE(1 + 1 == 2);
 		});
 
-		subtest(partest::TestInfo("Subtest2", "A subtest that checks if 2 + 2 == 5."), stopFlags, [&]()
+		subtest(partest::TestInfo("Subtest 2", "A subtest that checks if 2 + 2 == 5."), stopFlags, [&]()
 		{
-			subtest(partest::TestInfo("NestedSubtest", "A nested subtest that checks if 2 + 2 == 4."), stopFlags, [&]()
+			subtest(partest::TestInfo("Nested Subtest", "A nested subtest that checks if 2 + 2 == 4."), stopFlags, [&]()
 			{
 				// This assertion will fail
 				ASSERT_TRUE(2 + 2 == 5);
@@ -128,7 +128,7 @@ public:
 			ASSERT_TRUE(2 + 2 == 4);
 		});
 
-		subtest(partest::TestInfo("Subtest3", "A subtest that checks if 3 + 3 == 6."), stopFlags, [&]()
+		subtest(partest::TestInfo("Subtest 3", "A subtest that checks if 3 + 3 == 6."), stopFlags, [&]()
 		{
 			// This assertion will pass, but should not be reached if stopOnFail is Enabled in Subtest2
 			recordLog(partest::LogLevel::Error, partest::LOG_TYPE_TEST, "Error: This subtest should not run if stopOnFail is ENABLED and a previous assertion failed.");
