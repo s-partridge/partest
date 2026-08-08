@@ -82,6 +82,7 @@ namespace partest
 				FlagState stopSubtestOnFail : 2; // Whether to stop subtest execution on failure
 				FlagState expectFailure : 2; // Whether to stop subtest execution on failure
 				FlagState verbose : 2; // Whether to run the test in verbose mode
+				uint8_t padding : 6; // Padding bits to fill out unused space
 			};
 		};
 #if defined(_MSC_VER)
@@ -93,14 +94,14 @@ namespace partest
 		PARTEST_CONSTEXPR_11 TestFlags() noexcept
 			: skip(FlagState::Inherit), stopOnFail(FlagState::Inherit),
 			  stopSubtestOnFail(FlagState::Inherit), expectFailure(FlagState::Disabled),
-			  verbose(FlagState::Inherit) {}
+			  verbose(FlagState::Inherit), padding(0) {}
 		PARTEST_CONSTEXPR_11 TestFlags(
 			FlagState skip, FlagState stopOnFail,
 			FlagState stopSubtestOnFail, FlagState expectFailure,
 			FlagState verbose) noexcept
 			: skip(skip), stopOnFail(stopOnFail),
 			  stopSubtestOnFail(stopSubtestOnFail), expectFailure(expectFailure),
-			  verbose(verbose) {}
+			  verbose(verbose), padding(0) {}
 
 		/**
 		* Get a TestFlags instance with all flags set to Disabled
