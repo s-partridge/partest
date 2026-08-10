@@ -11,6 +11,12 @@ public:
 		// Example of adding a test
 		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
 
+		addTest(partest::TestInfo("EmptyTests", "Tests for behavior with zero assertions."),
+			flags,
+			[this]() { return this->emptyTests(); });
+		addTest(partest::TestInfo("PassedTest", "A test that always passes."),
+			flags,
+			[this]() { return this->passedTest(); });
 		addTest(partest::TestInfo("FailingTest", "A test that always fails."),
 			flags.withExpectFailure(),
 			[this]() { return this->failingTest(); });
@@ -41,6 +47,25 @@ public:
 	{
 		recordLog(partest::LogLevel::Debug, partest::LOG_TYPE_TEST, "This is a sample log message.");
 		ASSERT_TRUE(true); // This assertion will pass
+	}
+
+	void emptyTests()
+	{
+		subtest("Passes on Empty", "This subtest should report passed with zero assertions", []()
+		{
+		});
+
+		subtest("Fails on Empty with expectFailure", "This subtest should report failure with zero assertions",
+			partest::TEST_FLAGS_INHERIT.withExpectFailure(), [&]()
+		{
+			// With expectFailure set, an empty test should unexpectedly pass.
+			subtest("Does return ", "This subtest should report failure with zero assertions",
+				partest::TEST_FLAGS_INHERIT.withExpectFailure(), [&]()
+			{
+			});
+			// Which counts as an actual failure in the parent test. Base subtest should pass with ExpectedFailure result
+			// because it recorded an actual failure at nested scope.
+		});
 	}
 
 	void failingTest()

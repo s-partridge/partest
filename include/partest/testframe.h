@@ -335,9 +335,9 @@ namespace partest
 			{
 				if(getResult() == TestResult::NoResult)
 				{
-					recordLog(LogLevel::Warning, LOG_TYPE_TEST, "Warning: '" + metadata.name + "' completed without any assertions. Defaulting to PASSED.");
+					recordLog(LogLevel::Warning, LOG_TYPE_TEST, "'" + metadata.name + "' completed without any assertions. Defaulting to PASSED.");
 					// Shunt a passing value to the state
-					state.updateResultFromAssertion(state.getExpectFailure());
+					state.updateResultFromAssertion(true);
 				}
 
 				if(getStatus() != TestStatus::Aborted)
