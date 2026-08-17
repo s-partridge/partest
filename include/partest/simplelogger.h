@@ -26,32 +26,46 @@ namespace partest
 
 		void onTestBegin(const Event &event, const BeginTestPayload &payload) override
 		{
-			m_out << "Began test \"" << payload.testFrame.name() << "\"" << std::endl;
+			if(m_verbosity >= LogLevel::Info)
+				m_out << "Began test \"" << payload.testFrame.fullTestName() << "\"" << std::endl;
 		}
 
 		// Called when a test ends
 		void onTestEnd(const Event &event, const EndTestPayload &payload) override
 		{
 			TestResult result = payload.testFrame.result();
-			payload.testFrame.setToFail();
-			std::string resultString;
+			
+			if(m_verbosity >= LogLevel::Info)
+			{
+				payload.testFrame.setToFail();
+				std::string resultString;
 
-			if(payload.testFrame.setToFail())
-				if(result == TestResult::Passed)
-					resultString = "EXPECTED FAIL";
+				if(payload.testFrame.setToFail())
+					if(result == TestResult::Passed)
+						resultString = "EXPECTED FAIL";
+					else
+						resultString = "UNEXPECTED PASS";
 				else
-					resultString = "UNEXPECTED PASS";
-			else
-				resultString = maybeStringify(result);
+					resultString = maybeStringify(result);
+			
+					m_out << "Ended test \"" << payload.testFrame.fullTestName() << "\" with " << resultString << std::endl;
+			}
+			else if(payload.testFrame.setToFail() && result == TestResult::Passed)
+			{
+					m_out << "Test \"" << payload.testFrame.fullTestName() << "\" was set to fail, but passed unexpectedly." << std::endl;
+			}
 
-			m_out << "Ended test \"" << payload.testFrame.name() << "\" with " << resultString << std::endl;
 		}
 
 		// Called when an assertion is made
 		void onAssertion(const Event &event, const AssertionPayload &payload) override
 		{
-			if(m_showPassedAssertions || !payload.assertionResult.passed())
+			if(m_showPassedAssertions || (!payload.assertionResult.passed() && !payload.testFrame.setToFail()))
 			{
+				if(m_verbosity < LogLevel::Info)
+				{
+					m_out << "Test \"" << payload.testFrame.fullTestName() <<  "\"" << std::endl;
+				}
 				m_out << m_assertionParser.parseAssertion(payload.assertionResult) << std::endl;
 			}
 

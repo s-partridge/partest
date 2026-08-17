@@ -53,6 +53,9 @@ namespace partest
 		const TestFlags &flags() const noexcept;
 		const TestState &state() const noexcept;
 		
+		std::string fullTestName() const;
+		std::string testNameToDepth(size_t depth) const;
+
 		TestStatus status() const noexcept;
 		TestResult result() const noexcept;
 		bool setToFail() const noexcept;
@@ -133,6 +136,20 @@ namespace partest
 
 		unsigned int id() const noexcept { return m_id; }
 		unsigned int parentId() const noexcept { return (m_parent != nullptr ? m_parent->m_id : NO_TEST_ID); }
+
+		std::string fullTestName() const
+		{
+			if(m_parent != nullptr)
+				return m_parent->fullTestName() + '.' + metadata.name;
+			return metadata.name;
+		}
+
+		std::string testNameToDepth(size_t depth) const
+		{
+			if(m_parent != nullptr && depth > 0)
+				return m_parent->testNameToDepth(depth - 1) + '.' + metadata.name;
+			return metadata.name;
+		}
 
 		std::chrono::steady_clock::time_point startTime() const noexcept { return m_startTime; }
 		std::chrono::steady_clock::time_point endTime() const noexcept { return m_endTime; }
@@ -290,6 +307,7 @@ namespace partest
 			if(getEffectiveFlags().skip == FlagState::Enabled)
 			{
 				updateStatus(TestStatus::Skipped);
+				m_eventEmitter->emitEndTest(TestFrameView(*this));
 				return false;
 			}
 			else
@@ -335,7 +353,7 @@ namespace partest
 			{
 				if(getResult() == TestResult::NoResult)
 				{
-					recordLog(LogLevel::Warning, LOG_TYPE_TEST, "'" + metadata.name + "' completed without any assertions. Defaulting to PASSED.");
+					recordLog(LogLevel::Warning, LOG_TYPE_TEST, "\"" + fullTestName() + "\" completed without any assertions. Defaulting to PASSED.");
 					// Shunt a passing value to the state
 					state.updateResultFromAssertion(true);
 				}
@@ -480,6 +498,9 @@ namespace partest
 	inline PARTEST_STRING_PARAM TestFrameView::description() const noexcept { return m_testFrame->metadata.description; }
 	inline const TestFlags &TestFrameView::flags() const noexcept { return m_testFrame->flags; }
 	inline const TestState &TestFrameView::state() const noexcept { return m_testFrame->state; }
+
+	inline std::string TestFrameView::fullTestName() const { return m_testFrame->fullTestName(); }
+	inline std::string TestFrameView::testNameToDepth(size_t depth) const { return m_testFrame->testNameToDepth(depth); }
 
 	inline TestStatus TestFrameView::status() const noexcept { return m_testFrame->state.getStatus(); }
 	inline TestResult TestFrameView::result() const noexcept { return m_testFrame->state.getResult(); }
