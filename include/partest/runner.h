@@ -171,6 +171,16 @@ namespace partest
 
 			return failureCount;
 		}
+
+		size_t getSkipCount() const
+		{
+			size_t skipCount = 0;
+			for(TestBase *test : m_tests)
+			{
+				skipCount += test->getTestSkippedCount();
+			}
+			return skipCount;
+		}
 	};
 };
 

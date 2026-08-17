@@ -66,6 +66,11 @@ namespace partest
 		return testRunner().getTopLevelFailures();
 	}
 
+	inline size_t getSkipCount()
+	{
+		return testRunner().getSkipCount();
+	}
+
 	inline size_t getAssertionFailureCount()
 	{
 		return testRunner().getAllAssertionFailures();

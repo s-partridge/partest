@@ -54,7 +54,6 @@ namespace partest
 			{
 					m_out << "Test \"" << payload.testFrame.fullTestName() << "\" was set to fail, but passed unexpectedly." << std::endl;
 			}
-
 		}
 
 		// Called when an assertion is made
