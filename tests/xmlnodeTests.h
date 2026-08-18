@@ -54,7 +54,7 @@ public:
 		const char *childName = "child";
 		const char *subchildName = "subchild";
 		const unsigned childCount = 3;
-		const char *expectedChain = "<node><child><subchild></subchild></child><child><subchild></subchild></child><child><subchild></subchild></child></node>";
+		const char *expectedChain = "<node>\n    <child>\n        <subchild>\n        </subchild>\n    </child>\n    <child>\n        <subchild>\n        </subchild>\n    </child>\n    <child>\n        <subchild>\n        </subchild>\n    </child>\n</node>\n";
 		partest::xml::JUnitXMLNode rootNode(rootName);
 
 		ASSERT_EQUAL(rootName, rootNode.nodeTag);

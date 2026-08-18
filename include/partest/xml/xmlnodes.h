@@ -28,6 +28,8 @@ namespace partest
 		// Any XML node requires a tag and the ability to nest further nodes
 		struct JUnitXMLNode
 		{
+			unsigned depth = 0;
+
 		protected:
 			std::vector<std::unique_ptr<JUnitXMLNode>> children;
 
@@ -42,9 +44,9 @@ namespace partest
 				}
 			}
 
-			virtual std::string openTag() const { return '<' + nodeTag + '>'; }
+			virtual std::string openTag() const { return makeIndent() + '<' + nodeTag + '>'; }
 			virtual void bodyText(std::ostream &out) const { walkChildren(out); }
-			virtual std::string closeTag() const { return "</" + nodeTag + '>'; }
+			virtual std::string closeTag() const { return makeIndent() + "</" + nodeTag + '>'; }
 
 			static std::string sanitizeText(PARTEST_STRING_PARAM text)
 			{
@@ -54,6 +56,20 @@ namespace partest
 			static std::string sanitizeAttrib(PARTEST_STRING_PARAM attrib)
 			{
 				return sanitizeForXML(attrib, XMLEscapeTable::Mode::DoubleQuoted);
+			}
+
+			void updateDepth(unsigned newDepth)
+			{
+				depth = newDepth;
+				for(auto &child : children)
+				{
+					child->updateDepth(newDepth + 1);
+				}
+			}
+
+			std::string makeIndent() const
+			{
+				return std::string(depth * 4, ' ');
 			}
 
 		public:
@@ -67,6 +83,7 @@ namespace partest
 			*/
 			JUnitXMLNode *addChild(std::unique_ptr<JUnitXMLNode> child)
 			{
+				child->updateDepth(depth + 1);
 				children.push_back(std::move(child));
 				return children.back().get();
 			}
@@ -76,9 +93,9 @@ namespace partest
 
 		inline std::ostream &operator<<(std::ostream &out, const JUnitXMLNode &rhs)
 		{
-			out << rhs.openTag();
+			out << rhs.openTag() << '\n';
 			rhs.bodyText(out);
-			out << rhs.closeTag();
+			out << rhs.closeTag() << '\n';
 			return out;
 		}
 
@@ -91,7 +108,7 @@ namespace partest
 				std::chrono::duration<double> seconds = time;
 
 				std::ostringstream out;
-				out << '<' << nodeTag
+				out << makeIndent() << '<' << nodeTag
 					<< " name=\"" << sanitizeAttrib(name) << "\""
 					<< " tests=\"" << tests << "\""
 					<< " failures=\"" << failures << "\""
@@ -129,7 +146,7 @@ namespace partest
 				std::chrono::duration<double> seconds = time;
 
 				std::ostringstream out;
-				out << '<' << nodeTag
+				out << makeIndent() << '<' << nodeTag
 					<< " name=\"" << sanitizeAttrib(name) << "\""
 					<< " tests=\"" << tests << "\""
 					<< " failures=\"" << failures << "\""
@@ -157,7 +174,7 @@ namespace partest
 				std::chrono::duration<double> seconds = time;
 
 				std::ostringstream out;
-				out << '<' << nodeTag
+				out << makeIndent() << '<' << nodeTag
 					<< " name=\"" << sanitizeAttrib(name) << "\""
 					<< " classname=\"" << sanitizeAttrib(classname) << "\""
 					<< " assertions=\"" << assertions << "\""
@@ -178,7 +195,7 @@ namespace partest
 			std::chrono::steady_clock::duration time = std::chrono::steady_clock::duration(0);
 
 			std::string file;		// Source code file of this test case
-			int line = 1;					// Source code line number of the start of this test case
+			int line = 1;			// Source code line number of the start of this test case
 
 			explicit TestCaseNode(PARTEST_STRING_PARAM nodeTag = JUNIT_TESTCASE) : JUnitXMLNode(nodeTag) {}
 		};
@@ -196,14 +213,14 @@ namespace partest
 			std::string openTag() const override
 			{
 				if(valueAsBody)
-					return '<' + nodeTag + '>';
-				return '<' + nodeTag + " value=\"" + sanitizeAttrib(value) + "\">";
+					return makeIndent() + '<' + nodeTag + '>';
+				return makeIndent() + '<' + nodeTag + " value=\"" + sanitizeAttrib(value) + "\">";
 			}
 
 			void bodyText(std::ostream &out) const override
 			{
 				if(valueAsBody)
-					out << sanitizeText(value);
+					out << makeIndent() << sanitizeText(value) << '\n';
 			}
 
 		public:
@@ -220,7 +237,7 @@ namespace partest
 		protected:
 			void bodyText(std::ostream &out) const override
 			{
-				out << sanitizeText(body);
+				out << makeIndent() << sanitizeText(body) << '\n';
 			}
 
 		public:
@@ -235,7 +252,7 @@ namespace partest
 		protected:
 			void bodyText(std::ostream &out) const override
 			{
-				out << sanitizeText(body);
+				out << makeIndent() << sanitizeText(body) << '\n';
 			}
 
 		public:
@@ -250,7 +267,7 @@ namespace partest
 		protected:
 			std::string openTag() const override
 			{
-				return '<' + nodeTag + " message=\"" + sanitizeAttrib(message) + "\" />";
+				return makeIndent() + '<' + nodeTag + " message=\"" + sanitizeAttrib(message) + "\" />";
 			}
 
 			std::string closeTag() const override
@@ -270,7 +287,7 @@ namespace partest
 		protected:
 			std::string openTag() const override
 			{
-				return '<' + nodeTag
+				return makeIndent() + '<' + nodeTag
 					+ " message=\"" + sanitizeAttrib(message)
 					+ "\" type=\"" + sanitizeAttrib(type)
 					+ "\">";
@@ -278,7 +295,7 @@ namespace partest
 
 			void bodyText(std::ostream &out) const override
 			{
-				out << sanitizeText(body);
+				out << makeIndent() << sanitizeText(body) << '\n';
 			}
 
 		public:
@@ -295,7 +312,7 @@ namespace partest
 		protected:
 			std::string openTag() const override
 			{
-				return '<' + nodeTag
+				return makeIndent() + '<' + nodeTag
 					+ " message=\"" + sanitizeAttrib(message)
 					+ "\" type=\"" + sanitizeAttrib(type)
 					+ "\">";
@@ -303,7 +320,7 @@ namespace partest
 
 			void bodyText(std::ostream &out) const override
 			{
-				out << sanitizeAttrib(body);
+				out << makeIndent() + sanitizeAttrib(body) << '\n';
 			}
 
 		public:

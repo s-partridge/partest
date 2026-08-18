@@ -27,8 +27,7 @@ namespace partest
 				m_root->failures += testFrame->subtestFailureCount();
 				//TODO: Expose error count as aggeregate of failed tests with abort status
 				//m_root->errors += testFrame->subtestErrorCount();
-				//TODO: Expose skipped count
-				//m_root->skipped += testFrame->skippedCount();
+				m_root->skipped += testFrame->testSkippedCount();
 				m_root->time += testFrame->duration();
 			}
 		}
@@ -78,10 +77,25 @@ namespace partest
 
 			while(subtest != test->subtestsEnd())
 			{
-				xml::TestCaseNode *testNode = static_cast<xml::TestCaseNode *>(node->addChild(partest::make_unique<xml::TestCaseNode>())); // NOLINT(*-pro-type-static-cast-downcast)
-				
-				buildTestCaseNode(*subtest, testNode, parentTestName);
-				//readSubtree(*subtest, testNode, testNode->name);
+				const TestFrame *frame = *subtest;
+				// Recurse and create nested TestSuite nodes if subtests exist.
+				if(frame->hasSubtests())
+				{
+					// Create a node for the test suite
+					xml::TestSuiteNode *suiteNode = static_cast<xml::TestSuiteNode *>(node->addChild(partest::make_unique<xml::TestSuiteNode>())); // NOLINT(*-pro-type-static-cast-downcast)
+					buildTestSuiteNode(frame, suiteNode);
+					// Populate it with a test case for its local results
+					xml::TestCaseNode *testNode = static_cast<xml::TestCaseNode *>(suiteNode->addChild(partest::make_unique<xml::TestCaseNode>())); // NOLINT(*-pro-type-static-cast-downcast)
+					buildTestCaseNode(frame, testNode, parentTestName);
+					// Add subtests as nested TestSuite nodes
+					readSubtree(frame, suiteNode, testNode->name);
+				}
+				// Otherwise create a TestCase
+				else
+				{
+					xml::TestCaseNode *testNode = static_cast<xml::TestCaseNode *>(node->addChild(partest::make_unique<xml::TestCaseNode>())); // NOLINT(*-pro-type-static-cast-downcast)
+					buildTestCaseNode(frame, testNode, parentTestName);
+				}
 				++subtest;
 			}
 		}
