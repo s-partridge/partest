@@ -119,9 +119,35 @@ Any test or subtest can be configured with a name, a description, and execution 
 TestFlags currently contains the following flags:
 - skip: When enabled, the test or subtest will not be run
 - stopOnFail: When enabled, the test or subtest will stop on first failure
+- expectFailure: When enabled, the test or subtest is considered to have passed if one or more of its assertions failed. A test with this flag set will report *unexpected success* if no assertions fail.
 
 The following flags also exist, but they are currently unused:
 - stopSubtestOnFail
 - verbose
 
-By default, all flags are disabled. Each flag can be set to `enabled`, `disabled`, or `inherit`. Inherited flags will resolve to their parents' values.
+Each flag can be set to `enabled`, `disabled`, or `inherit`. Inherited flags will resolve to their parents' values.
+If no flags are specified for a test, they are all set to `disabled`.
+
+### Flag Constants
+Several constants exist to initialize the flags for a test:
+TEST_FLAGS_DISABLED - Disables all flags. This is the default behavior if no preset is specified.
+TEST_FLAGS_INHERIT - Sets all flags to `inherit` EXCEPT for `expectFailure`. `expectFailure` is ALWAYS disabled unless explicitly enabled.
+TEST_FLAGS_SKIP - Disables all flags except `skip`. Use this to skip a test entirely.
+TEST_FLAGS_MASKED - Used internally for flag resolution.
+
+### Flag Chaining
+Some flags can be chained to modify functionality on one line:
+FlagState::withStopOnFail(FlagState enabled = FlagState::Enabled) - Returns a copy of the state with stopOnFail explicitly configured.
+FlagState::withExpectFaliure(FlagState enabled = FlagState::Enabled) - Returns a copy of the state with expectFailure explicitly configured.
+
+Expected usage:
+```cpp
+// A subtest that will stop on first failure
+subtest("testName", TEST_FLAGS_INHERIT.withStopOnFail() ...
+
+// A subtest configured to recognize failures as expected
+subtest("testName", TEST_FLAGS_INHERIT.withExpectFaliure() ...
+
+// A subtest configured to do both
+subtest("testName", TEST_FLAGS_INHERIT.withStopOnFail().withExpectFaliure() ...
+```
