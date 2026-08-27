@@ -99,9 +99,9 @@ namespace partest
 
 		TestFrame *m_parent = nullptr; // Pointer to the parent test frame
 		
-		std::function<void()> m_testSetup = nullptr; // Test function associated with this frame
-		std::function<void()> m_testFunction = nullptr; // Test function associated with this frame
-		std::function<void()> m_testTeardown = nullptr; // Test function associated with this frame
+		std::function<void(TestContext&)> m_testSetup = nullptr; // Test function associated with this frame
+		std::function<void(TestContext&)> m_testFunction = nullptr; // Test function associated with this frame
+		std::function<void(TestContext&)> m_testTeardown = nullptr; // Test function associated with this frame
 
 	public:
 		using TestFrameIter = std::vector<TestFrame *>::iterator;
@@ -111,9 +111,9 @@ namespace partest
 
 		TestFrame(EventEmitterInterface *eventEmitter) : m_eventEmitter(eventEmitter), flags(), metadata(), state(), m_id(nextId()), m_testFrameView(*this) { }
 		TestFrame(EventEmitterInterface *eventEmitter, const TestFlags &flags, const TestInfo &metadata,
-				const std::function<void()> &testFunction = nullptr,
-				const std::function<void()> &testSetup = nullptr,
-				const std::function<void()> &testTeardown = nullptr)
+				const std::function<void(TestContext&)> &testFunction = nullptr,
+				const std::function<void(TestContext&)> &testSetup = nullptr,
+				const std::function<void(TestContext&)> &testTeardown = nullptr)
 			: m_eventEmitter(eventEmitter), flags(flags), metadata(metadata), state(flags.expectFailure == FlagState::Enabled),
 				m_testFunction(testFunction), m_testSetup(testSetup), m_testTeardown(testTeardown),
 				m_id(nextId()), m_testFrameView(*this) { }
@@ -162,9 +162,9 @@ namespace partest
 		TestFlags flags; // Effective flags for this test frame
 		TestState state; // Result of the test
 
-		void setSetupFunction(const std::function<void()> &setupFunction) { m_testSetup = setupFunction; }
-		void setTestFunction(const std::function<void()> &testFunction) { m_testFunction = testFunction; }
-		void setTeardownFunction(const std::function<void()> &teardownFunction) { m_testTeardown = teardownFunction; }
+		void setSetupFunction(const std::function<void(TestContext&)> &setupFunction) { m_testSetup = setupFunction; }
+		void setTestFunction(const std::function<void(TestContext&)> &testFunction) { m_testFunction = testFunction; }
+		void setTeardownFunction(const std::function<void(TestContext&)> &teardownFunction) { m_testTeardown = teardownFunction; }
 		
 		bool hasSetupFunction() const noexcept { return m_testSetup != nullptr; }
 		bool hasTestFunction() const noexcept { return m_testFunction != nullptr; }
@@ -302,7 +302,7 @@ namespace partest
 		AssertionConstIter assertionsBegin() const noexcept { return m_assertions.cbegin(); }
 		AssertionConstIter assertionsEnd() const noexcept { return m_assertions.cend(); }
 
-		bool initializeTest()
+		bool initializeTest(TestContext& context)
 		{
 			m_eventEmitter->emitBeginTest(TestFrameView(*this));
 			// If effective flags indicate the test should be skipped, do nothing and return immediately
@@ -316,7 +316,7 @@ namespace partest
 			{
 				if(m_testSetup != nullptr)
 				{
-					m_testSetup();
+					m_testSetup(context);
 				}
 
 				return true;
@@ -328,7 +328,7 @@ namespace partest
 		*
 		* @throws std::runtime_error if no test function is set.
 		*/
-		void runTestFunction()
+		void runTestFunction(TestContext& context)
 		{
 			if(m_testFunction == nullptr)
 				throw std::runtime_error("Attempted to run a test function that is not set.");
@@ -344,11 +344,11 @@ namespace partest
 
 			updateStatus(TestStatus::Running);
 			m_startTime = std::chrono::steady_clock::now();
-			m_testFunction();
+			m_testFunction(context);
 			// ClockGuard sets endTime automatically on return
 		}
 
-		TestFrame *finalizeTest()
+		TestFrame *finalizeTest(TestContext& context)
 		{
 			// If effective flags indicate the test should be skipped, do nothing and return immediately
 			if(getEffectiveFlags().skip == FlagState::Disabled)
@@ -372,7 +372,7 @@ namespace partest
 
 				if(m_testTeardown != nullptr)
 				{
-					m_testTeardown();
+					m_testTeardown(context);
 				}
 			}
 			m_eventEmitter->emitEndTest(TestFrameView(*this));

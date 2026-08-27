@@ -23,6 +23,8 @@
 #include <partest/exceptions.h>
 #include <partest/eventemitter.h>
 
+#define PARTEST_CTX(...) [__VA_ARGS__](partest::TestContext &ctx)
+
 namespace partest
 {
 	class TestBase;
@@ -37,35 +39,35 @@ namespace partest
 			: m_testSuite(testSuite), m_currentFrame(currentFrame) {
 		}
 
-		template<PARTEST_INVOCABLE(Func)>
+		template<PARTEST_INVOCABLE_WITH(Func, TestContext&)>
 		void subtest(PARTEST_STRING_PARAM name, Func &&testFunc)
 		{ subtest(TestInfo(name), TestFlags::defaultInherit(), testFunc); }
 
-		template<PARTEST_INVOCABLE(Func)>
+		template<PARTEST_INVOCABLE_WITH(Func, TestContext&)>
 		void subtest(PARTEST_STRING_PARAM name, PARTEST_STRING_PARAM description, Func &&testFunc)
 		{ subtest(TestInfo(name, description), TestFlags::defaultInherit(), testFunc); }
 
-		template<PARTEST_INVOCABLE(Func)>
+		template<PARTEST_INVOCABLE_WITH(Func, TestContext&)>
 		void subtest(PARTEST_STRING_PARAM name, const TestFlags& flags, Func &&testFunc)
 		{ subtest(TestInfo(name), flags, testFunc); }
 
-		template<PARTEST_INVOCABLE(Func)>
+		template<PARTEST_INVOCABLE_WITH(Func, TestContext&)>
 		void subtest(PARTEST_STRING_PARAM name, PARTEST_STRING_PARAM description, const TestFlags& flags, Func &&testFunc)
 		{ subtest(TestInfo(name, description), flags, testFunc); }
 
-		template<PARTEST_INVOCABLE(Func)>
+		template<PARTEST_INVOCABLE_WITH(Func, TestContext&)>
 		void subtest(Func &&testFunc)
 		{ subtest(TestInfo::defaultInfo(), TestFlags::defaultInherit(), testFunc); }
 
-		template<PARTEST_INVOCABLE(Func)>
+		template<PARTEST_INVOCABLE_WITH(Func, TestContext&)>
 		void subtest(const TestFlags& flags, Func &&testFunc)
 		{ subtest(TestInfo::defaultInfo(), flags, testFunc); }
 
-		template<PARTEST_INVOCABLE(Func)>
+		template<PARTEST_INVOCABLE_WITH(Func, TestContext&)>
 		void subtest(const TestInfo &testInfo, Func &&testFunc)
 		{ subtest(testInfo, TestFlags::defaultInherit(), testFunc); }
 
-		template<PARTEST_INVOCABLE(Func)>
+		template<PARTEST_INVOCABLE_WITH(Func, TestContext&)>
 		void subtest(const TestInfo &testInfo, const TestFlags& flags, Func &&testFunc);
 
 		void commitAssertion(const AssertionResult &result);
@@ -79,9 +81,9 @@ namespace partest
 	{
 	private:
 		friend class TestContext;
+
 		std::unique_ptr<TestFrame> m_testTree; // Dynamically growing tree of test frames
 		EventEmitter m_eventEmitter; // Component that transmits events to a dispatcher
-		TestFrame *m_currentFrame; // Pointer to the current test frame
 
 		void runTest(TestFrame *test)
 		{
@@ -89,13 +91,14 @@ namespace partest
 			// If it is, it indicates a serious issue with the test framework itself.
 			assert(test != nullptr && "Test was run with a null TestFrame pointer.");
 
-			m_currentFrame = test;
-			if(m_currentFrame->initializeTest())
+			TestContext ctx(this, test);
+
+			if(test->initializeTest(ctx))
 			{
 				std::stringstream resultStream;
 				try
 				{
-					m_currentFrame->runTestFunction();
+					test->runTestFunction(ctx);
 				}
 				
 				// A test returned early due to an assertion failure with stopOnFail enabled
@@ -107,29 +110,27 @@ namespace partest
 				// Unexpected exceptions will generally indicate errors within the user's test code and must be reported
 				catch(...)
 				{
-					std::string message = "Error: Unhandled exception in test '" + m_currentFrame->metadata.name + "': " + stringFromCurrentException();
-					m_currentFrame->abortTest(message);
+					std::string message = "Error: Unhandled exception in test '" + test->metadata.name + "': " + stringFromCurrentException();
+					test->abortTest(message);
 				}
 
-				m_currentFrame->finalizeTest();
+				test->finalizeTest(ctx);
 			}
-			
-			m_currentFrame = m_currentFrame->getParent();
 		}
 
 		/**
-		* Public function to run all registered tests.
+		* Function to run all registered tests.
 		* Run all registered tests, calling setup and teardown functions before and after.
 		*/
-		void runBaseTests()
+		void runBaseTests(TestContext& ctx)
 		{
 			// Iterate through all registered tests
-			for(std::vector<TestFrame*>::iterator test = m_currentFrame->subtestsBegin(); test != m_currentFrame->subtestsEnd(); ++test)
+			for(std::vector<TestFrame*>::iterator test = m_testTree->subtestsBegin(); test != m_testTree->subtestsEnd(); ++test)
 			{
 				runTest(*test);
 
 				// If the test failed and stopOnFail is enabled, stop executing further tests
-				if(m_currentFrame->getEffectiveFlags().stopOnFail == FlagState::Enabled && m_currentFrame->hasFailures())
+				if(m_testTree->getEffectiveFlags().stopOnFail == FlagState::Enabled && m_testTree->hasFailures())
 				{
 					break;
 				}
@@ -144,17 +145,17 @@ namespace partest
 		* @param condition The condition being asserted, as a string. Typically provided by the condition expression itself.
 		* @throws AssertionFailure if the current test has failed and stopOnFail is enabled.
 		*/
-		void maybeRaiseOnAssertion(const char *file, int line, PARTEST_STRING_PARAM condition)
+		void maybeRaiseOnAssertion(const char *file, int line, PARTEST_STRING_PARAM condition, TestFrame *test)
 		{
-			if(m_currentFrame->getEffectiveFlags().stopOnFail == FlagState::Enabled && (m_currentFrame->hasFailures()))
+			if(test->getEffectiveFlags().stopOnFail == FlagState::Enabled && (test->hasFailures()))
 			{
 				throw AssertionFailure(file, line, condition);
 			}
 		}
 
-		void maybeRaiseOnSubtestReturned(const char *file, int line, PARTEST_STRING_PARAM condition)
+		void maybeRaiseOnSubtestReturned(const char *file, int line, PARTEST_STRING_PARAM condition, TestFrame *test)
 		{
-			if(m_currentFrame->getEffectiveFlags().stopOnFail == FlagState::Enabled && m_currentFrame->getTestFailureCount(1))
+			if(test->getEffectiveFlags().stopOnFail == FlagState::Enabled && test->getTestFailureCount(1))
 			{
 				throw AssertionFailure(file, line, condition);
 			}
@@ -166,7 +167,7 @@ namespace partest
 		* @param result Object containing the evaluated result of an assertion
 		* @throws AssertionFailure if the current test has failed and stopOnFail is enabled.
 		*/
-		void maybeRaiseOnAssertion(const AssertionResult &result) { maybeRaiseOnAssertion(result.file.c_str(), result.line, result.getCondition()); }
+		void maybeRaiseOnAssertion(const AssertionResult &result, TestFrame *test) { maybeRaiseOnAssertion(result.file.c_str(), result.line, result.getCondition(), test); }
 
 	protected:
 		/** 
@@ -183,9 +184,9 @@ namespace partest
 		* @param teardownFunc Optional teardown function to be called after the test function. Default is nullptr.
 		*/
 		template<
-			PARTEST_INVOCABLE(Func),
-			PARTEST_INVOCABLE_OPT(SetupFunc),
-			PARTEST_INVOCABLE_OPT(TeardownFunc)
+			PARTEST_INVOCABLE_WITH(Func, TestContext&),
+			PARTEST_INVOCABLE_WITH_OPT(SetupFunc, TestContext&),
+			PARTEST_INVOCABLE_WITH_OPT(TeardownFunc, TestContext&)
 		>
 		void addTest(const TestInfo &metadata, const TestFlags &flags, Func &&testFunc, SetupFunc &&setupFunc = nullptr, TeardownFunc &&teardownFunc = nullptr)
 		{
@@ -193,9 +194,9 @@ namespace partest
 		}
 
 		template<
-			PARTEST_INVOCABLE(Func),
-			PARTEST_INVOCABLE_OPT(SetupFunc),
-			PARTEST_INVOCABLE_OPT(TeardownFunc)
+			PARTEST_INVOCABLE_WITH(Func, TestContext&),
+			PARTEST_INVOCABLE_WITH_OPT(SetupFunc, TestContext&),
+			PARTEST_INVOCABLE_WITH_OPT(TeardownFunc, TestContext&)
 		>
 		void addTest(PARTEST_STRING_PARAM name, const TestFlags &flags, Func &&testFunc, SetupFunc &&setupFunc = nullptr, TeardownFunc &&teardownFunc = nullptr)
 		{
@@ -203,9 +204,9 @@ namespace partest
 		}
 
 		template<
-			PARTEST_INVOCABLE(Func),
-			PARTEST_INVOCABLE_OPT(SetupFunc),
-			PARTEST_INVOCABLE_OPT(TeardownFunc)
+			PARTEST_INVOCABLE_WITH(Func, TestContext&),
+			PARTEST_INVOCABLE_WITH_OPT(SetupFunc, TestContext&),
+			PARTEST_INVOCABLE_WITH_OPT(TeardownFunc, TestContext&)
 		>
 		void addTest(PARTEST_STRING_PARAM name, PARTEST_STRING_PARAM description, const TestFlags &flags, Func &&testFunc, SetupFunc &&setupFunc = nullptr, TeardownFunc &&teardownFunc = nullptr)
 		{
@@ -215,56 +216,15 @@ namespace partest
 		/////////////////////
 		//Subtest overloads//
 		/////////////////////
-		template<PARTEST_INVOCABLE(Func)>
-		void subtest(PARTEST_STRING_PARAM name, Func &&testFunc)
-		{ subtest(TestInfo(name), TestFlags::defaultInherit(), testFunc); }
-
-		template<PARTEST_INVOCABLE(Func)>
-		void subtest(PARTEST_STRING_PARAM name, PARTEST_STRING_PARAM description, Func &&testFunc)
-		{ subtest(TestInfo(name, description), TestFlags::defaultInherit(), testFunc); }
-
-		template<PARTEST_INVOCABLE(Func)>
-		void subtest(PARTEST_STRING_PARAM name, const TestFlags& flags, Func &&testFunc)
-		{ subtest(TestInfo(name), flags, testFunc); }
-
-		template<PARTEST_INVOCABLE(Func)>
-		void subtest(PARTEST_STRING_PARAM name, PARTEST_STRING_PARAM description, const TestFlags& flags, Func &&testFunc)
-		{ subtest(TestInfo(name, description), flags, testFunc); }
-
-		template<PARTEST_INVOCABLE(Func)>
-		void subtest(Func &&testFunc)
-		{ subtest(TestInfo::defaultInfo(), TestFlags::defaultInherit(), testFunc); }
-
-		template<PARTEST_INVOCABLE(Func)>
-		void subtest(const TestFlags& flags, Func &&testFunc)
-		{ subtest(TestInfo::defaultInfo(), flags, testFunc); }
-
-		template<PARTEST_INVOCABLE(Func)>
-		void subtest(const TestInfo &testInfo, Func &&testFunc)
-		{ subtest(testInfo, TestFlags::defaultInherit(), testFunc); }
-
-		template<PARTEST_INVOCABLE(Func)>
+		template<PARTEST_INVOCABLE_WITH(Func, TestContext&)>
 		void subtest(const TestInfo &testInfo, const TestFlags& flags, Func &&testFunc)
 		{
 			TestFrame *subtest = m_currentFrame->addSubtest(partest::make_unique<TestFrame>(&m_eventEmitter, flags, testInfo, testFunc));
 			runTest(subtest);
 			subtest->setTestFunction(nullptr); // Clear the function to avoid dangling references. This is only necessary for subtests because they are intended to be run immediately and then discarded.
 
-			maybeRaiseOnSubtestReturned("", 0, "Stopped on failure in " + m_currentFrame->metadata.name);
+			maybeRaiseOnSubtestReturned("", 0, "Stopped on failure in " + m_currentFrame->metadata.name, subtest);
 		}
-
-		// Current test frame accessors
-		/**
-		* Get the current test frame.
-		* @return A constant reference to the current TestFrame.
-		*/
-		const TestFrame &getCurrentFrame() const { return *m_currentFrame; }
-
-		/**
-		* Get the effective flags of the current test frame.
-		* @return The effective TestFlags of the current test frame.
-		*/
-		TestFlags getCurrentFlags() const noexcept { return m_currentFrame->getEffectiveFlags(); }
 
 		/**
 		* Process an evaluated assertion. Log it and raise an exception if necessary.
@@ -272,14 +232,14 @@ namespace partest
 		* @param result Output of an evaluated assertion. AssertionResults should be produced by assertion handlers.
 		* @throws AssertionFailure if the assertion result did not pass and stopOnFail is enabled.
 		*/
-		void commitAssertion(const AssertionResult &result)
+		void commitAssertion(const AssertionResult &result, TestFrame *test)
 		{
 			// Pass the assertion result on to the test frame
-			m_currentFrame->processAssertion(result);
+			test->processAssertion(result);
 
 			// On failure, allow an exception to be raised if the current test frame is configured to do so.
 			if(!result.passed())
-				maybeRaiseOnAssertion(result.file.c_str(), result.line, result.getCondition());
+				maybeRaiseOnAssertion(result.file.c_str(), result.line, result.getCondition(), test);
 		}
 
 		/**
@@ -288,20 +248,20 @@ namespace partest
 		* @param type The log type.
 		* @param message The log message.
 		*/
-		void recordLog(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message)
+		void recordLog(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message, TestFrame *test)
 		{
-			m_currentFrame->recordLog(level, type, message);
+			test->recordLog(level, type, message);
 		}
 
 		/**
 		* Setup function to be overridden by derived classes
 		*/
-		virtual void setup() {}
+		virtual void setup(TestContext& context) {}
 
 		/**
 		* Teardown function to be overridden by derived classes
 		*/
-		virtual void teardown() {}
+		virtual void teardown(TestContext& context) {}
 
 	public:
 		TestBase(PARTEST_STRING_PARAM name, PARTEST_STRING_PARAM description,
@@ -311,11 +271,9 @@ namespace partest
 			// Its primary purpose is to contain information such as the overall test suite name and description in the same collection as the individual tests.
 			m_testTree = partest::make_unique<TestFrame>(&m_eventEmitter, flags, TestInfo(name, description));
 			// Set the setup and teardown functions for the root test frame
-			m_testTree->setSetupFunction([this]() { this->setup(); });
-			m_testTree->setTestFunction([this]() { this->runBaseTests(); });
-			m_testTree->setTeardownFunction([this]() { this->teardown(); });
-
-			m_currentFrame = nullptr; // No current frame until tests are run
+			m_testTree->setSetupFunction([this](TestContext& context) { this->setup(context); });
+			m_testTree->setTestFunction([this](TestContext& context) { this->runBaseTests(context); });
+			m_testTree->setTeardownFunction([this](TestContext& context) { this->teardown(context); });
 		}
 		virtual ~TestBase() = default;
 
@@ -406,7 +364,7 @@ namespace partest
 		}
 	};
 
-	template<PARTEST_INVOCABLE_DEF(Func)>
+	template<PARTEST_INVOCABLE_WITH_DEF(Func, TestContext&)>
 	void TestContext::subtest(const TestInfo &testInfo, const TestFlags& flags, Func &&testFunc)
 	{ m_testSuite->subtest(testInfo, flags, testFunc); }
 
