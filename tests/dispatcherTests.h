@@ -149,33 +149,33 @@ public:
 
 		addTest(partest::TestInfo("Test Serial Dispatcher", "Validate that dispatcher passes all events intact to reporters, in sequential order."),
 			flags,
-			[this]() { return this->SerialDispatcherPassesAllEvents(); },
-			[this, serialReporters]() { return this->setUpSerial(serialReporters); },
-			[this]() { return this->tearDownSerial(); }
+			PARTEST_CTX(this) { return this->SerialDispatcherPassesAllEvents(ctx); },
+			PARTEST_CTX(this, serialReporters) { return this->setUpSerial(serialReporters); },
+			PARTEST_CTX(this) { return this->tearDownSerial(); }
 		);
 		addTest(partest::TestInfo("Test Concurrent Dispatcher", "Validate that dispatcher passes all events intact to reporters, and that order is identical between all reporters"),
 			flags,
-			[this, threadCount]() { return this->concurrentDispatcherPassesAllEvents(threadCount); },
-			[this, threadCount]() { return this->setUpConcurrent(threadCount); },
-			[this]() { return this->tearDownConcurrent(); }
+			PARTEST_CTX(this, threadCount) { return this->concurrentDispatcherPassesAllEvents(ctx, threadCount); },
+			PARTEST_CTX(this, threadCount) { return this->setUpConcurrent(threadCount); },
+			PARTEST_CTX(this) { return this->tearDownConcurrent(); }
 		);
 		addTest(partest::TestInfo("Test Serial Unpropagated Events", "Validate that the dispatcher consumes events regardles of reporter presence"),
 			flags,
-			[this]() { return this->eventsWithoutReportersSerial(); },
-			[this]() { return this->setUpSerial(1); },
-			[this]() { return this->tearDownSerial(); }
+			PARTEST_CTX(this) { return this->eventsWithoutReportersSerial(ctx); },
+			PARTEST_CTX(this) { return this->setUpSerial(1); },
+			PARTEST_CTX(this) { return this->tearDownSerial(); }
 		);
 		addTest(partest::TestInfo("Test Concurrent Unpropagated Events", "Validate that the concurrent dispatcher consumes events regardles of reporter presence"),
 			flags,
-			[this]() { return this->eventsWithoutReportersConcurrent(); },
-			[this]() { return this->setUpConcurrent(1); },
-			[this]() { return this->tearDownConcurrent(); }
+			PARTEST_CTX(this) { return this->eventsWithoutReportersConcurrent(ctx); },
+			PARTEST_CTX(this) { return this->setUpConcurrent(1); },
+			PARTEST_CTX(this) { return this->tearDownConcurrent(); }
 		);
 		addTest(partest::TestInfo("Test Early Concurrent Events", "Validate that dispatcher passes events pushed before dispatch begins"),
 			flags,
-			[this]() { return this->eventsPushedBeforeBeginDispatch(); },
-			[this]() { return this->setUpConcurrent(1); },
-			[this]() { return this->tearDownConcurrent(); }
+			PARTEST_CTX(this) { return this->eventsPushedBeforeBeginDispatch(ctx); },
+			PARTEST_CTX(this) { return this->setUpConcurrent(1); },
+			PARTEST_CTX(this) { return this->tearDownConcurrent(); }
 		);
 	}
 
@@ -183,7 +183,7 @@ public:
 	// Ensure all events are passed to the correct handlers, with original data intact.
 	// Ensure that EVENT_DIE is the last event passed, when killDispatcher is invoked.
 	// Ensure that all reporters record identical events to the reference logs, in identical order.
-	void SerialDispatcherPassesAllEvents()
+	void SerialDispatcherPassesAllEvents(partest::TestContext& ctx)
 	{
 		partest::EventDispatcherInterface *dispatcher = m_dispatcher.get();
 		// Initialize a series of events to pass to the logger.
@@ -228,7 +228,7 @@ public:
 		}
 	}
 
-	void concurrentDispatcherPassesAllEvents(unsigned threadCount)
+	void concurrentDispatcherPassesAllEvents(partest::TestContext& ctx, unsigned threadCount)
 	{
 		partest::EventDispatcherInterface *dispatcher = m_dispatcher.get();
 		// Initialize a series of events to pass to the logger.
@@ -321,7 +321,7 @@ public:
 		ASSERT_EQUAL(invalidEvents, 0);
 	}
 
-	void eventsWithoutReportersSerial()
+	void eventsWithoutReportersSerial(partest::TestContext& ctx)
 	{
 		partest::EventDispatcherInterface *dispatcher = m_dispatcher.get();
 		// Initialize a series of events to pass to the logger.
@@ -340,7 +340,7 @@ public:
 		ASSERT_EQUAL(reporter.logs().back()->getEventType(), partest::EventType::Die);
 	}
 
-	void eventsWithoutReportersConcurrent()
+	void eventsWithoutReportersConcurrent(partest::TestContext& ctx)
 	{
 		partest::EventDispatcherInterface *dispatcher = m_dispatcher.get();
 		// Initialize a series of events to pass to the logger.
@@ -350,7 +350,6 @@ public:
 		std::thread dispatcherThread = std::thread([dispatcher, &sem]() {
 			dispatcher->dispatchEvents();
 		});
-
 
 		unsigned success = dispatcher->pushEvent(partest::makeEventAssertion(nullTestFrame, m_genericAssertion));
 
@@ -373,7 +372,7 @@ public:
 		ASSERT_EQUAL(reporter.logs().back()->getEventType(), partest::EventType::Die);
 	}
 
-	void eventsPushedBeforeBeginDispatch()
+	void eventsPushedBeforeBeginDispatch(partest::TestContext& ctx)
 	{
 		partest::EventDispatcherInterface *dispatcher = m_dispatcher.get();
 		MockReporter &reporter = m_reporters.front();

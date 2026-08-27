@@ -19,26 +19,26 @@ public:
 
 		addTest(partest::TestInfo("AcquireSerial", "Validate semaphore in isolation on a single non-blocking thread."),
 			flags,
-			[this]() { return this->acquireSerial(); });
+			PARTEST_CTX(this) { return this->acquireSerial(ctx); });
 		addTest(partest::TestInfo("AcquireParallel", "Validate semaphore with single blocking thread."),
 			flags,
-			[this]() { return this->acquireParallel(); });
+			PARTEST_CTX(this) { return this->acquireParallel(ctx); });
 		addTest(partest::TestInfo("AcquireParallelAsQueue", "Simulate a producer/consumer queue to validate quick concurrency."),
 			flags,
-			[this]() { return this->acquireParallelAsQueue(10000); });
+			PARTEST_CTX(this) { return this->acquireParallelAsQueue(ctx, 10000); });
 		addTest(partest::TestInfo("acquireWithTryAcquire", "Validate non-blocking acquire with wait times."),
 			flags,
-			[this]() { return this->acquireWithTryAcquire(); });
+			PARTEST_CTX(this) { return this->acquireWithTryAcquire(ctx); });
 		addTest(partest::TestInfo("thunderingHerdQueue", "Validate large numbers of threads with many concurrent operations."),
 			flags,
-			[this]() { return this->thunderingHerdQueue(1000, 10); });
+			PARTEST_CTX(this) { return this->thunderingHerdQueue(ctx, 1000, 10); });
 	}
 
 	// Validate try_acquire and release functionality of the counting_semaphore class in a serial context.
-	void acquireSerial()
+	void acquireSerial(TestContext &ctx)
 	{
-		subtest(partest::TestInfo("AcquireDefault", "Validate semaphore with default initialization."), [&]()
-		{		
+		ctx.subtest(partest::TestInfo("AcquireDefault", "Validate semaphore with default initialization."), PARTEST_CTX()
+		{
 			partest::counting_semaphore<> sem(0);
 			ASSERT_EQUAL(sem.count_snapshot(), 0);
 			ASSERT_FALSE(sem.try_acquire()); // Should not be able to acquire since count is 0
@@ -48,7 +48,7 @@ public:
 			sem.release(10); // Release the semaphore ten times
 			ASSERT_EQUAL(sem.count_snapshot(), 10);
 		});
-		subtest(partest::TestInfo("AcquireMaxValue", "Validate semaphore with max set, and count set to max."), [&]()
+		ctx.subtest(partest::TestInfo("AcquireMaxValue", "Validate semaphore with max set, and count set to max."), PARTEST_CTX()
 		{
 			partest::counting_semaphore<> sem(partest::counting_semaphore<10>::max());
 			ASSERT_EQUAL(sem.count_snapshot(), 10);
@@ -60,7 +60,7 @@ public:
 	}
 
 	// Validate acquire and release functionality in a multithreaded context.
-	void acquireParallel()
+	void acquireParallel(TestContext &ctx)
 	{
 		std::thread semThread;
 		partest::counting_semaphore<> sem(0);
@@ -76,7 +76,7 @@ public:
 	}
 
 	// Mock a work queue to validate concurrent acquire/release over two threads
-	void acquireParallelAsQueue(unsigned iterations = 10000)
+	void acquireParallelAsQueue(TestContext &ctx, unsigned iterations = 10000)
 	{
 		std::thread producerThread, consumerThread;
 		partest::counting_semaphore<> sem(0);
@@ -91,7 +91,7 @@ public:
 		ASSERT_EQUAL(counter, iterations);
 	}
 
-	void acquireWithTryAcquire()
+	void acquireWithTryAcquire(TestContext &ctx)
 	{
 		// Test thread will pause for waitTime before releasing semaphores
 		std::chrono::milliseconds waitTime = std::chrono::milliseconds(1000);
@@ -103,7 +103,7 @@ public:
 		std::chrono::milliseconds durationZero = std::chrono::milliseconds(0);
 		std::chrono::milliseconds durationError = std::chrono::milliseconds(-500);
 
-		subtest(partest::TestInfo("TryAcquireSucess", "Validate that semaphore can be acquired after specified wait."), [&]()
+		ctx.subtest(partest::TestInfo("TryAcquireSucess", "Validate that semaphore can be acquired after specified wait."), PARTEST_CTX(&)
 		{
 			std::thread forThread, untilThread;
 			partest::counting_semaphore<> forSem(0);
@@ -133,7 +133,7 @@ public:
 			ASSERT_EQUAL(untilSem.count_snapshot(), 0);
 		});
 
-		subtest(partest::TestInfo("TryAcquireFailure", "Validate that semaphore won't be acquired if wait time expires."), [&]()
+		ctx.subtest(partest::TestInfo("TryAcquireFailure", "Validate that semaphore won't be acquired if wait time expires."), PARTEST_CTX(&)
 		{
 			std::thread forThread, untilThread;
 			partest::counting_semaphore<> forSem(0);
@@ -163,7 +163,7 @@ public:
 			ASSERT_EQUAL(untilSem.count_snapshot(), 1);
 		});
 
-		subtest(partest::TestInfo("TryAcquireError", "Validate that semaphore returns false if passed negative time."), [&]()
+		ctx.subtest(partest::TestInfo("TryAcquireError", "Validate that semaphore returns false if passed negative time."), PARTEST_CTX(&)
 		{
 			std::thread forThread, untilThread;
 			partest::counting_semaphore<> forSem(0);
@@ -193,7 +193,7 @@ public:
 			ASSERT_EQUAL(untilSem.count_snapshot(), 1);
 		});
 
-		subtest(partest::TestInfo("TryAcquireZeroPass", "Validate that semaphore returns true if unblocked with zero duration."), [&]()
+		ctx.subtest(partest::TestInfo("TryAcquireZeroPass", "Validate that semaphore returns true if unblocked with zero duration."), PARTEST_CTX(&)
 		{
 			std::thread forThread;
 			partest::counting_semaphore<> forSem(0);
@@ -212,7 +212,7 @@ public:
 			ASSERT_EQUAL(forSem.count_snapshot(), 0);
 		});
 
-		subtest(partest::TestInfo("TryAcquireZeroFail", "Validate that semaphore returns false if locked with zero duration."), [&]()
+		ctx.subtest(partest::TestInfo("TryAcquireZeroFail", "Validate that semaphore returns false if locked with zero duration."), PARTEST_CTX(&)
 		{
 			std::thread forThread;
 			partest::counting_semaphore<> forSem(0);
@@ -233,7 +233,7 @@ public:
 		});
 	}
 
-	void thunderingHerdQueue(unsigned iterationsPerThread, unsigned threadsPerChannel = 10)
+	void thunderingHerdQueue(TestContext &ctx, unsigned iterationsPerThread, unsigned threadsPerChannel = 10)
 	{
 		std::vector<std::thread> producers, consumers;
 		//std::vector<partest::counting_semaphore<1>> finishedFlags;
