@@ -79,6 +79,11 @@ namespace partest
 	*/
 	class TestBase
 	{
+	protected:
+		using TestContext = partest::TestContext;
+		using TestFrame = partest::TestFrame;
+		using TestInfo = partest::TestInfo;
+
 	private:
 		friend class TestContext;
 
