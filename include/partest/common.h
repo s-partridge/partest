@@ -58,18 +58,25 @@ PARTEST_INLINE_VAR_17 constexpr const char* PARTEST_VERSION_STRING =
 
 namespace partest
 {
-	/**
-	* UNIQUE POINTERS
-	* std::make_unique is not available in C++11. This is equivalent to the version provided in C++14 and later.
-	*/
+/**
+* SHIMS
+* C++11 is missing some simple utility functions that are available in later versions. These are provided here for compatibility.
+*/
 #if PARTEST_CPP_VERSION >= 14
 	using std::make_unique;
+	using std::decay_t;
+	using std::enable_if_t;
 #else
 	template<typename T, typename... Args>
 	std::unique_ptr<T> make_unique(Args&&... args)
 	{
 		return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
 	}
+	template<typename T>
+	using decay_t = typename std::decay<T>::type;
+
+	template<bool B, typename T = void>
+	using enable_if_t = typename std::enable_if<B, T>::type;
 #endif
 
 	namespace traits
@@ -91,17 +98,11 @@ namespace partest
 		template <typename T> struct is_cstring_type_impl<T*> : is_char_type<typename std::remove_cv<T>::type> {};
 
 		// Decay the type first to handle arrays, references, and top-level const (the const keyword in `const T *const`)
-		template <typename T> struct is_cstring_type : is_cstring_type_impl<typename std::decay<T>::type> {};
+		template <typename T> struct is_cstring_type : is_cstring_type_impl<typename partest::decay_t<T>> {};
 
 		// Import std::to_string into this namespace for ADL
 		using std::to_string;
 
-# if PARTEST_CPP_VERSION >= 20
-		template <typename T>
-		concept has_to_string = requires(T t) { to_string(t); };
-		template <typename T>
-		concept is_streamable = requires(T t, std::ostream & os) { os << t; };
-#else
 		// Trait to check if T has a to_string function defined
 		template<typename T, typename = void>
 		struct has_to_string : std::false_type {};
@@ -120,8 +121,17 @@ namespace partest
 		template<typename T>
 		struct is_streamable<T, decltype(void(std::declval<std::ostream&>() << std::declval<T>()))>
 			: std::true_type {};
-#endif
 	}
+
+#if PARTEST_CPP_VERSION >= 20
+	namespace concepts
+	{
+		template <typename T>
+		concept to_stringable = requires(T t) { to_string(t); };
+		template <typename T>
+		concept streamable = requires(T t, std::ostream & os) { os << t; };
+	}
+#endif
 
 	/**
 	* Convert a value to string if possible
@@ -168,13 +178,13 @@ namespace partest
 	template<typename T>
 	std::string maybeStringify(const T& value)
 	{
-		if constexpr(traits::is_streamable<T>)
+		if constexpr(concepts::streamable<T>)
 		{
 			std::ostringstream out;
 			out << value;
 			return out.str();
 		}
-		else if constexpr(traits::has_to_string<T>)
+		else if constexpr(concepts::to_stringable<T>)
 		{
 			// For correct ADL lookup
 			using std::to_string;
@@ -205,7 +215,7 @@ namespace partest
 			out << value;
 			return out.str();
 		}
-		else	if constexpr(traits::has_to_string<T>::value)
+		else if constexpr(traits::has_to_string<T>::value)
 		{
 			// For correct ADL lookup
 			using std::to_string;
