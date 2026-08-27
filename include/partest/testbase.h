@@ -174,6 +174,48 @@ namespace partest
 		*/
 		void maybeRaiseOnAssertion(const AssertionResult &result, TestFrame *test) { maybeRaiseOnAssertion(result.file.c_str(), result.line, result.getCondition(), test); }
 
+		/////////////////////
+		//Subtest overloads//
+		/////////////////////
+		template<PARTEST_INVOCABLE_WITH(Func, TestContext&)>
+		void subtest(const TestInfo &testInfo, const TestFlags& flags, Func &&testFunc, TestFrame *parent)
+		{
+			assert(parent != nullptr && "Parent test frame is null. Subtests must be added to a valid parent test frame.");
+
+			TestFrame *subtest = parent->addSubtest(partest::make_unique<TestFrame>(&m_eventEmitter, flags, testInfo, testFunc));
+			runTest(subtest);
+			subtest->setTestFunction(nullptr); // Clear the function to avoid dangling references. This is only necessary for subtests because they are intended to be run immediately and then discarded.
+
+			maybeRaiseOnSubtestReturned("", 0, "Stopped on failure in " + m_currentFrame->metadata.name, subtest);
+		}
+
+		/**
+		* Process an evaluated assertion. Log it and raise an exception if necessary.
+		* 
+		* @param result Output of an evaluated assertion. AssertionResults should be produced by assertion handlers.
+		* @throws AssertionFailure if the assertion result did not pass and stopOnFail is enabled.
+		*/
+		void commitAssertion(const AssertionResult &result, TestFrame *test)
+		{
+			// Pass the assertion result on to the test frame
+			test->processAssertion(result);
+
+			// On failure, allow an exception to be raised if the current test frame is configured to do so.
+			if(!result.passed())
+				maybeRaiseOnAssertion(result.file.c_str(), result.line, result.getCondition(), test);
+		}
+
+		/**
+		* Log a message.
+		* @param level The log level.
+		* @param type The log type.
+		* @param message The log message.
+		*/
+		void recordLog(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message, TestFrame *test)
+		{
+			test->recordLog(level, type, message);
+		}
+
 	protected:
 		/** 
 		* Adds a test function to the list of tests to be executed. Expected to be called in the constructor of derived classes.
@@ -218,55 +260,15 @@ namespace partest
 			m_testTree->addSubtest(partest::make_unique<TestFrame>(&m_eventEmitter, flags, TestInfo(name, description), testFunc, setupFunc, teardownFunc));
 		}
 
-		/////////////////////
-		//Subtest overloads//
-		/////////////////////
-		template<PARTEST_INVOCABLE_WITH(Func, TestContext&)>
-		void subtest(const TestInfo &testInfo, const TestFlags& flags, Func &&testFunc)
-		{
-			TestFrame *subtest = m_currentFrame->addSubtest(partest::make_unique<TestFrame>(&m_eventEmitter, flags, testInfo, testFunc));
-			runTest(subtest);
-			subtest->setTestFunction(nullptr); // Clear the function to avoid dangling references. This is only necessary for subtests because they are intended to be run immediately and then discarded.
-
-			maybeRaiseOnSubtestReturned("", 0, "Stopped on failure in " + m_currentFrame->metadata.name, subtest);
-		}
-
-		/**
-		* Process an evaluated assertion. Log it and raise an exception if necessary.
-		* 
-		* @param result Output of an evaluated assertion. AssertionResults should be produced by assertion handlers.
-		* @throws AssertionFailure if the assertion result did not pass and stopOnFail is enabled.
-		*/
-		void commitAssertion(const AssertionResult &result, TestFrame *test)
-		{
-			// Pass the assertion result on to the test frame
-			test->processAssertion(result);
-
-			// On failure, allow an exception to be raised if the current test frame is configured to do so.
-			if(!result.passed())
-				maybeRaiseOnAssertion(result.file.c_str(), result.line, result.getCondition(), test);
-		}
-
-		/**
-		* Log a message.
-		* @param level The log level.
-		* @param type The log type.
-		* @param message The log message.
-		*/
-		void recordLog(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message, TestFrame *test)
-		{
-			test->recordLog(level, type, message);
-		}
-
 		/**
 		* Setup function to be overridden by derived classes
 		*/
-		virtual void setup(TestContext& context) {}
+		virtual void setup(TestContext& ctx) {}
 
 		/**
 		* Teardown function to be overridden by derived classes
 		*/
-		virtual void teardown(TestContext& context) {}
+		virtual void teardown(TestContext& ctx) {}
 
 	public:
 		TestBase(PARTEST_STRING_PARAM name, PARTEST_STRING_PARAM description,
@@ -371,7 +373,7 @@ namespace partest
 
 	template<PARTEST_INVOCABLE_WITH_DEF(Func, TestContext&)>
 	void TestContext::subtest(const TestInfo &testInfo, const TestFlags& flags, Func &&testFunc)
-	{ m_testSuite->subtest(testInfo, flags, testFunc); }
+	{ m_testSuite->subtest(testInfo, flags,testFunc, m_currentFrame); }
 
 	inline void TestContext::commitAssertion(const AssertionResult &result)
 	{
