@@ -80,15 +80,15 @@ class DispatcherTests : public partest::TestBase
 		// Initialize a series of events to pass to the logger.
 		partest::TestFrameView nullTestFrame = partest::TestFrameView::getNullTestFrameView();
 		// Begin test
-		mirrorLog(partest::makeEventBeginTest(nullTestFrame));
+		mirrorLog(partest::makeEventBeginTest(nullTestFrame, std::chrono::system_clock::now()));
 		// Assert fail
-		mirrorLog(partest::makeEventAssertion(nullTestFrame, m_genericAssertion));
+		mirrorLog(partest::makeEventAssertion(nullTestFrame, m_genericAssertion, std::chrono::system_clock::now()));
 		// End test
-		mirrorLog(partest::makeEventEndTest(nullTestFrame));
+		mirrorLog(partest::makeEventEndTest(nullTestFrame, std::chrono::system_clock::now()));
 		// Passthrough log
-		mirrorLog(partest::makeEventPassthrough(nullTestFrame, std::this_thread::get_id(), "Log from user code"));
+		mirrorLog(partest::makeEventPassthrough(nullTestFrame, std::this_thread::get_id(), "Log from user code", std::chrono::system_clock::now()));
 		// Normal log
-		mirrorLog(partest::makeEventLog(nullTestFrame, partest::LogEntry(partest::LogLevel::Info, partest::LOG_TYPE_DEFAULT, "Framework log from test code")));
+		mirrorLog(partest::makeEventLog(nullTestFrame, partest::LogEntry(partest::LogLevel::Info, partest::LOG_TYPE_DEFAULT, "Framework log from test code"), std::chrono::system_clock::now()));
 	}
 
 	void tearDownSerial()
@@ -108,15 +108,15 @@ class DispatcherTests : public partest::TestBase
 		for(unsigned x = 0; x < threadCount; ++x)
 		{
 			// Begin test
-			mirrorLog(partest::makeEventBeginTest(nullTestFrame));
+			mirrorLog(partest::makeEventBeginTest(nullTestFrame, std::chrono::system_clock::now()));
 			// Assert fail
-			mirrorLog(partest::makeEventAssertion(nullTestFrame, m_genericAssertion));
+			mirrorLog(partest::makeEventAssertion(nullTestFrame, m_genericAssertion, std::chrono::system_clock::now()));
 			// End test
-			mirrorLog(partest::makeEventEndTest(nullTestFrame));
+			mirrorLog(partest::makeEventEndTest(nullTestFrame, std::chrono::system_clock::now()));
 			// Passthrough log
-			mirrorLog(partest::makeEventPassthrough(nullTestFrame, std::this_thread::get_id(), "Log from user code"));
+			mirrorLog(partest::makeEventPassthrough(nullTestFrame, std::this_thread::get_id(), "Log from user code", std::chrono::system_clock::now()));
 			// Normal log
-			mirrorLog(partest::makeEventLog(nullTestFrame, partest::LogEntry(partest::LogLevel::Info, partest::LOG_TYPE_DEFAULT, "Framework log from test code")));
+			mirrorLog(partest::makeEventLog(nullTestFrame, partest::LogEntry(partest::LogLevel::Info, partest::LOG_TYPE_DEFAULT, "Framework log from test code"), std::chrono::system_clock::now()));
 		}
 	}
 
@@ -200,7 +200,7 @@ public:
 
 		dispatcher->killDispatcher();
 
-		bool success = dispatcher->pushEvent(makeEventAssertion(nullTestFrame, m_genericAssertion));
+		bool success = dispatcher->pushEvent(makeEventAssertion(nullTestFrame, m_genericAssertion, std::chrono::system_clock::now()));
 		// A dead dispatcher should refuse any new events.
 		ASSERT_FALSE(success);
 
@@ -265,13 +265,13 @@ public:
 		}
 		dispatcher->killDispatcher();
 		// Ensure no events propagate after death
-		bool success = dispatcher->pushEvent(partest::makeEventAssertion(nullTestFrame, m_genericAssertion));
+		bool success = dispatcher->pushEvent(partest::makeEventAssertion(nullTestFrame, m_genericAssertion, std::chrono::system_clock::now()));
 
 		ASSERT_FALSE(success);
 
 		dispatcherThread.join();
 
-		success = dispatcher->pushEvent(partest::makeEventAssertion(nullTestFrame, m_genericAssertion));
+		success = dispatcher->pushEvent(partest::makeEventAssertion(nullTestFrame, m_genericAssertion, std::chrono::system_clock::now()));
 		// Ensure no events propagate after join.
 		// This should be impossible because no thread is running the dispatchEvents() call.
 		ASSERT_FALSE(success);
@@ -326,7 +326,7 @@ public:
 		partest::EventDispatcherInterface *dispatcher = m_dispatcher.get();
 		// Initialize a series of events to pass to the logger.
 		partest::TestFrameView nullTestFrame = partest::TestFrameView::getNullTestFrameView();
-		unsigned success = dispatcher->pushEvent(partest::makeEventAssertion(nullTestFrame, m_genericAssertion));
+		unsigned success = dispatcher->pushEvent(partest::makeEventAssertion(nullTestFrame, m_genericAssertion, std::chrono::system_clock::now()));
 
 		// Event without reporters registered, the event should be processed.
 		ASSERT_TRUE(success);
@@ -351,7 +351,7 @@ public:
 			dispatcher->dispatchEvents();
 		});
 
-		unsigned success = dispatcher->pushEvent(partest::makeEventAssertion(nullTestFrame, m_genericAssertion));
+		unsigned success = dispatcher->pushEvent(partest::makeEventAssertion(nullTestFrame, m_genericAssertion, std::chrono::system_clock::now()));
 
 		// Even without reporters registered, the event should be processed.
 		ASSERT_TRUE(success);
@@ -363,7 +363,7 @@ public:
 		dispatcher->registerReporter(&reporter);
 
 		// Add another event following registration.
-		dispatcher->pushEvent(partest::makeEventLog(nullTestFrame, partest::LogEntry(partest::LogLevel::Info, partest::LOG_TYPE_DEFAULT, "Framework log from test code")));
+		dispatcher->pushEvent(partest::makeEventLog(nullTestFrame, partest::LogEntry(partest::LogLevel::Info, partest::LOG_TYPE_DEFAULT, "Framework log from test code"), std::chrono::system_clock::now()));
 		dispatcher->killDispatcher();
 		dispatcherThread.join();
 

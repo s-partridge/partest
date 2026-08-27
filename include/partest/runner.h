@@ -130,7 +130,7 @@ namespace partest
 
 		bool recordLog(LogLevel level, PARTEST_STRING_PARAM logType, PARTEST_STRING_PARAM message)
 		{
-			return m_dispatcher->pushEvent(makeEventLog(TestFrameView::getNullTestFrameView(), LogEntry(level, logType, message)));
+			return m_dispatcher->pushEvent(makeEventLog(TestFrameView::getNullTestFrameView(), LogEntry(level, logType, message), std::chrono::system_clock::now()));
 		}
 
 		void readAllTests(TestFrameReaderInterface *reader)

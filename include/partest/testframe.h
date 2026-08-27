@@ -64,6 +64,8 @@ namespace partest
 
 		std::chrono::steady_clock::time_point startTime() const noexcept;
 		std::chrono::steady_clock::time_point endTime() const noexcept;
+
+		Timestamp timestamp() const noexcept;
 	};
 
 	class TestContext;
@@ -73,6 +75,7 @@ namespace partest
 		unsigned int m_id;
 		std::chrono::steady_clock::time_point m_startTime;
 		std::chrono::steady_clock::time_point m_endTime;
+		Timestamp m_timeFinished;
 		/**
 		* Get a globally incrementing counter. Used internally to assign IDs to newly created test frames.
 		* 
@@ -85,7 +88,11 @@ namespace partest
 
 		TestFrame()
 			: m_eventEmitter(nullptr), flags(), metadata(), state(), m_id(NO_TEST_ID), m_testFrameView(*this)
-		{ 
+		{
+			m_startTime = std::chrono::steady_clock::time_point();
+			m_endTime = std::chrono::steady_clock::time_point();
+			m_timeFinished = std::chrono::system_clock::time_point();
+
 			metadata.name = "Undefined Test Frame";
 			metadata.description = "Empty frame representing test suite root";
 		}
@@ -155,6 +162,7 @@ namespace partest
 
 		std::chrono::steady_clock::time_point startTime() const noexcept { return m_startTime; }
 		std::chrono::steady_clock::time_point endTime() const noexcept { return m_endTime; }
+		Timestamp timestamp() const noexcept { return m_timeFinished; }
 
 		const TestFrameView &testFrameView() const noexcept { return m_testFrameView; }
 
@@ -177,7 +185,7 @@ namespace partest
 		{
 			state.updateResultFromAssertion(result.passed());
 			m_assertions.push_back(result);
-			m_eventEmitter->emitAssertion(m_testFrameView, m_assertions.back());
+			m_eventEmitter->emitAssertion(m_testFrameView, m_assertions.back(), std::chrono::system_clock::now());
 		}
 
 		void abortTest(PARTEST_STRING_PARAM message)
@@ -192,7 +200,7 @@ namespace partest
 		void recordLog(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message)
 		{
 			m_logs.push_back(LogEntry(level, type, message));
-			m_eventEmitter->emitLog(m_testFrameView, m_logs.back());
+			m_eventEmitter->emitLog(m_testFrameView, m_logs.back(), std::chrono::system_clock::now());
 		}
 
 		const std::deque<LogEntry> &getLogs() const noexcept { return m_logs; }
@@ -304,12 +312,12 @@ namespace partest
 
 		bool initializeTest(TestContext& context)
 		{
-			m_eventEmitter->emitBeginTest(TestFrameView(*this));
+			m_eventEmitter->emitBeginTest(TestFrameView(*this), std::chrono::system_clock::now());
 			// If effective flags indicate the test should be skipped, do nothing and return immediately
 			if(getEffectiveFlags().skip == FlagState::Enabled)
 			{
 				updateStatus(TestStatus::Skipped);
-				m_eventEmitter->emitEndTest(TestFrameView(*this));
+				m_eventEmitter->emitEndTest(TestFrameView(*this), std::chrono::system_clock::now());
 				return false;
 			}
 			else
@@ -375,7 +383,8 @@ namespace partest
 					m_testTeardown(context);
 				}
 			}
-			m_eventEmitter->emitEndTest(TestFrameView(*this));
+			m_timeFinished = std::chrono::system_clock::now();
+			m_eventEmitter->emitEndTest(TestFrameView(*this), m_timeFinished);
 
 			return m_parent;
 		}
@@ -509,7 +518,9 @@ namespace partest
 	inline bool TestFrameView::setToFail() const noexcept { return m_testFrame->setToFail(); }
 
 	inline std::chrono::steady_clock::time_point TestFrameView::startTime() const noexcept { return m_testFrame->startTime(); }
-	inline std::chrono::steady_clock::time_point TestFrameView::endTime() const noexcept { return m_testFrame->startTime(); }
+	inline std::chrono::steady_clock::time_point TestFrameView::endTime() const noexcept { return m_testFrame->endTime(); }
+
+	inline Timestamp TestFrameView::timestamp() const noexcept { return m_testFrame->timestamp(); }
 }
 
 #endif // PARTESTTESTFRAME_H

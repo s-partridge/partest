@@ -14,6 +14,8 @@ namespace partest
 	struct LogEntry;
 	class Event;
 
+	using Timestamp = std::chrono::system_clock::time_point;
+
 	struct EmitterConfig
 	{
 		EventDispatcherInterface *dispatcher;
@@ -37,11 +39,11 @@ namespace partest
 			m_dispatcher = emitterConfig.dispatcher;
 		}
 		
-		virtual bool emitBeginTest(TestFrameView testFrame) = 0;
-		virtual bool emitEndTest(TestFrameView testFrame) = 0;
-		virtual bool emitAssertion(TestFrameView testFrame, const AssertionResult &assertionResult) = 0;
-		virtual bool emitLog(TestFrameView testFrame, const LogEntry &logEntry) = 0;
-		virtual bool emitPassthrough(TestFrameView testFrame, std::thread::id threadId, PARTEST_STRING_PARAM message) = 0;
+		virtual bool emitBeginTest(TestFrameView testFrame, Timestamp timestamp) = 0;
+		virtual bool emitEndTest(TestFrameView testFrame, Timestamp timestamp) = 0;
+		virtual bool emitAssertion(TestFrameView testFrame, const AssertionResult &assertionResult, Timestamp timestamp) = 0;
+		virtual bool emitLog(TestFrameView testFrame, const LogEntry &logEntry, Timestamp timestamp) = 0;
+		virtual bool emitPassthrough(TestFrameView testFrame, std::thread::id threadId, PARTEST_STRING_PARAM message, Timestamp timestamp) = 0;
 	};
 }
 

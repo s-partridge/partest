@@ -320,7 +320,7 @@ namespace partest
 
 			void bodyText(std::ostream &out) const override
 			{
-				out << makeIndent() + sanitizeAttrib(body) << '\n';
+				out << makeIndent() + sanitizeText(body) << '\n';
 			}
 
 		public:

@@ -10,6 +10,8 @@
 
 namespace partest
 {
+	using Timestamp = std::chrono::system_clock::time_point;
+
 	enum class EventType : uint8_t
 	{
 		BeginTest = 0,
@@ -94,7 +96,7 @@ namespace partest
 	class Event
 	{
 		unsigned m_eventId;
-		std::chrono::system_clock::time_point m_timestamp;
+		Timestamp m_timestamp;
 		EventType m_eventType;
 		
 		EventPayload *m_payload;
@@ -106,8 +108,8 @@ namespace partest
 		}
 
 	public:
-		Event(EventType eventType, std::unique_ptr<EventPayload> payload)
-			: m_eventId(nextId()), m_timestamp(std::chrono::system_clock::now()), m_eventType(eventType), m_payload(payload.release()) { }
+		Event(EventType eventType, std::unique_ptr<EventPayload> payload, const Timestamp &timestamp)
+			: m_eventId(nextId()), m_timestamp(timestamp), m_eventType(eventType), m_payload(payload.release()) { }
 
 		// Copy ctors
 		Event(const Event &other)
@@ -179,40 +181,40 @@ namespace partest
 		bool operator!=(const Event &rhs) const noexcept { return !(*this == rhs); }
 	};
 
-	inline std::unique_ptr<Event> makeEventBeginTest(TestFrameView testFrame)
+	inline std::unique_ptr<Event> makeEventBeginTest(TestFrameView testFrame, Timestamp timestamp)
 	{
 		std::unique_ptr<BeginTestPayload> payload = partest::make_unique<BeginTestPayload>(testFrame);
-		return partest::make_unique<Event>(EventType::BeginTest, std::move(payload));
+		return partest::make_unique<Event>(EventType::BeginTest, std::move(payload), timestamp);
 	}
 
-	inline std::unique_ptr<Event> makeEventEndTest(TestFrameView testFrame)
+	inline std::unique_ptr<Event> makeEventEndTest(TestFrameView testFrame, Timestamp timestamp)
 	{
 		std::unique_ptr<EndTestPayload> payload = partest::make_unique<EndTestPayload>(testFrame);
-		return partest::make_unique<Event>(EventType::EndTest, std::move(payload));
+		return partest::make_unique<Event>(EventType::EndTest, std::move(payload), timestamp);
 	}
 
-	inline std::unique_ptr<Event> makeEventAssertion(TestFrameView testFrame, AssertionResult assertionResult)
+	inline std::unique_ptr<Event> makeEventAssertion(TestFrameView testFrame, AssertionResult assertionResult, Timestamp timestamp)
 	{
 		std::unique_ptr<AssertionPayload> payload = partest::make_unique<AssertionPayload>(testFrame, assertionResult);
-		return partest::make_unique<Event>(EventType::Assertion, std::move(payload));
+		return partest::make_unique<Event>(EventType::Assertion, std::move(payload), timestamp);
 	}
 
-	inline std::unique_ptr<Event> makeEventLog(TestFrameView testFrame, const LogEntry &logEntry)
+	inline std::unique_ptr<Event> makeEventLog(TestFrameView testFrame, const LogEntry &logEntry, Timestamp timestamp)
 	{
 		std::unique_ptr<LogPayload> payload = partest::make_unique<LogPayload>(testFrame, logEntry);
-		return partest::make_unique<Event>(EventType::Log, std::move(payload));
+		return partest::make_unique<Event>(EventType::Log, std::move(payload), timestamp);
 	}
 
-	inline std::unique_ptr<Event> makeEventPassthrough(TestFrameView testFrame, std::thread::id threadId, PARTEST_STRING_PARAM message)
+	inline std::unique_ptr<Event> makeEventPassthrough(TestFrameView testFrame, std::thread::id threadId, PARTEST_STRING_PARAM message, Timestamp timestamp)
 	{
 		std::unique_ptr<PassthroughPayload> payload = partest::make_unique<PassthroughPayload>(testFrame, threadId, message);
-		return partest::make_unique<Event>(EventType::Passthrough, std::move(payload));
+		return partest::make_unique<Event>(EventType::Passthrough, std::move(payload), timestamp);
 	}
 
-	inline std::unique_ptr<Event> makeEventDie()
+	inline std::unique_ptr<Event> makeEventDie(Timestamp timestamp)
 	{
 		std::unique_ptr<DiePayload> payload = partest::make_unique<DiePayload>(TestFrameView::getNullTestFrameView());
-		return partest::make_unique<Event>(EventType::Die, std::move(payload));
+		return partest::make_unique<Event>(EventType::Die, std::move(payload), timestamp);
 	}
 }
 #endif

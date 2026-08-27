@@ -33,19 +33,18 @@ public:
 
 	void testTimeConversion(TestContext &ctx)
 	{
-		// July 4, 2026, 12:01 AM EST
 		std::chrono::system_clock::time_point date = std::chrono::system_clock::from_time_t(0);
 
 		std::string timestamp = partest::toIso8601(date);
 
-		ASSERT_EQUAL(timestamp, "1970-01-01T00:00:00");
+		ASSERT_EQUAL(timestamp, "1970-01-01T00:00:00Z");
 
-		// July 4, 2026, 12:01 AM EST
+		// July 4, 2026, 12:01 AM EST (in UTC)
 		date = std::chrono::system_clock::from_time_t(1783141260);
 
 		timestamp = partest::toIso8601(date);
 
-		ASSERT_EQUAL(timestamp, "2026-07-04T05:01:00");
+		ASSERT_EQUAL(timestamp, "2026-07-04T05:01:00Z");
 	}
 
 	void tesXMLNode(TestContext &ctx)

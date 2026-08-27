@@ -141,7 +141,7 @@ namespace partest
 		// TODO: replace gmtime call with centralized alternative that uses gmtime_s/_r as available.
 		std::tm calendarTime = *std::gmtime(&time);
 		std::ostringstream out;
-		out << std::put_time(&calendarTime, "%Y-%m-%dT%H:%M:%S");
+		out << std::put_time(&calendarTime, "%Y-%m-%dT%H:%M:%SZ");
 		return out.str();
 	}
 }

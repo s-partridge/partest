@@ -39,6 +39,7 @@ namespace partest
 			node->assertions = testFrame->assertionCount();
 			node->failures = testFrame->getTestFailureCount();
 			node->time = testFrame->endTime() - testFrame->startTime();
+			node->timestamp = testFrame->timestamp();
  		}
 
 		// ReSharper disable once CppMemberFunctionMayBeStatic
