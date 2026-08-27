@@ -25,12 +25,60 @@
 
 namespace partest
 {
+	class TestBase;
+
+	class TestContext
+	{
+		TestFrame *m_currentFrame;
+		TestBase *m_testSuite;
+
+	public:
+		TestContext(TestBase *testSuite, TestFrame *currentFrame)
+			: m_testSuite(testSuite), m_currentFrame(currentFrame) {
+		}
+
+		template<PARTEST_INVOCABLE(Func)>
+		void subtest(PARTEST_STRING_PARAM name, Func &&testFunc)
+		{ subtest(TestInfo(name), TestFlags::defaultInherit(), testFunc); }
+
+		template<PARTEST_INVOCABLE(Func)>
+		void subtest(PARTEST_STRING_PARAM name, PARTEST_STRING_PARAM description, Func &&testFunc)
+		{ subtest(TestInfo(name, description), TestFlags::defaultInherit(), testFunc); }
+
+		template<PARTEST_INVOCABLE(Func)>
+		void subtest(PARTEST_STRING_PARAM name, const TestFlags& flags, Func &&testFunc)
+		{ subtest(TestInfo(name), flags, testFunc); }
+
+		template<PARTEST_INVOCABLE(Func)>
+		void subtest(PARTEST_STRING_PARAM name, PARTEST_STRING_PARAM description, const TestFlags& flags, Func &&testFunc)
+		{ subtest(TestInfo(name, description), flags, testFunc); }
+
+		template<PARTEST_INVOCABLE(Func)>
+		void subtest(Func &&testFunc)
+		{ subtest(TestInfo::defaultInfo(), TestFlags::defaultInherit(), testFunc); }
+
+		template<PARTEST_INVOCABLE(Func)>
+		void subtest(const TestFlags& flags, Func &&testFunc)
+		{ subtest(TestInfo::defaultInfo(), flags, testFunc); }
+
+		template<PARTEST_INVOCABLE(Func)>
+		void subtest(const TestInfo &testInfo, Func &&testFunc)
+		{ subtest(testInfo, TestFlags::defaultInherit(), testFunc); }
+
+		template<PARTEST_INVOCABLE(Func)>
+		void subtest(const TestInfo &testInfo, const TestFlags& flags, Func &&testFunc);
+
+		void commitAssertion(const AssertionResult &result);
+
+		void recordLog(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message);
+	};
 	/**
 	* Base class for all partest tests.
 	*/
 	class TestBase
 	{
 	private:
+		friend class TestContext;
 		std::unique_ptr<TestFrame> m_testTree; // Dynamically growing tree of test frames
 		EventEmitter m_eventEmitter; // Component that transmits events to a dispatcher
 		TestFrame *m_currentFrame; // Pointer to the current test frame
@@ -357,6 +405,20 @@ namespace partest
 			reader->readTree(*m_testTree);
 		}
 	};
+
+	template<PARTEST_INVOCABLE_DEF(Func)>
+	void TestContext::subtest(const TestInfo &testInfo, const TestFlags& flags, Func &&testFunc)
+	{ m_testSuite->subtest(testInfo, flags, testFunc); }
+
+	inline void TestContext::commitAssertion(const AssertionResult &result)
+	{
+		m_testSuite->commitAssertion(result, m_currentFrame);
+	}
+
+	inline void TestContext::recordLog(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message)
+	{
+		m_testSuite->recordLog(level, type, message, m_currentFrame);
+	}
 } // namespace partest
 
 #endif // PARTEST_H

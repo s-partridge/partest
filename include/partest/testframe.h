@@ -66,6 +66,8 @@ namespace partest
 		std::chrono::steady_clock::time_point endTime() const noexcept;
 	};
 
+	class TestContext;
+
 	class TestFrame
 	{
 		unsigned int m_id;
