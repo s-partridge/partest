@@ -76,6 +76,23 @@ namespace partest
 		std::chrono::steady_clock::time_point m_startTime;
 		std::chrono::steady_clock::time_point m_endTime;
 		Timestamp m_timeFinished;
+
+		std::string m_testFile;
+		unsigned m_testLine = 0;
+
+		EventEmitterInterface *m_eventEmitter;
+		TestFrameView m_testFrameView;
+
+		std::vector<TestFrame *> m_subtests; // Vector of sub-tests
+		std::deque<LogEntry> m_logs; // Logs associated with this test frame
+		std::deque<AssertionResult> m_assertions; // Results of assertions triggered by this test frame
+
+		TestFrame *m_parent = nullptr; // Pointer to the parent test frame
+		
+		std::function<void(TestContext&)> m_testSetup = nullptr; // Test function associated with this frame
+		std::function<void(TestContext&)> m_testFunction = nullptr; // Test function associated with this frame
+		std::function<void(TestContext&)> m_testTeardown = nullptr; // Test function associated with this frame
+
 		/**
 		* Get a globally incrementing counter. Used internally to assign IDs to newly created test frames.
 		* 
@@ -96,19 +113,6 @@ namespace partest
 			metadata.name = "Undefined Test Frame";
 			metadata.description = "Empty frame representing test suite root";
 		}
-
-		EventEmitterInterface *m_eventEmitter;
-		TestFrameView m_testFrameView;
-
-		std::vector<TestFrame *> m_subtests; // Vector of sub-tests
-		std::deque<LogEntry> m_logs; // Logs associated with this test frame
-		std::deque<AssertionResult> m_assertions; // Results of assertions triggered by this test frame
-
-		TestFrame *m_parent = nullptr; // Pointer to the parent test frame
-		
-		std::function<void(TestContext&)> m_testSetup = nullptr; // Test function associated with this frame
-		std::function<void(TestContext&)> m_testFunction = nullptr; // Test function associated with this frame
-		std::function<void(TestContext&)> m_testTeardown = nullptr; // Test function associated with this frame
 
 	public:
 		using TestFrameIter = std::vector<TestFrame *>::iterator;
@@ -163,6 +167,12 @@ namespace partest
 		std::chrono::steady_clock::time_point startTime() const noexcept { return m_startTime; }
 		std::chrono::steady_clock::time_point endTime() const noexcept { return m_endTime; }
 		Timestamp timestamp() const noexcept { return m_timeFinished; }
+
+		PARTEST_STRING_PARAM testFile() const noexcept { return m_testFile; }
+		void setTestFile(PARTEST_STRING_PARAM fileName) { m_testFile = fileName; }
+
+		unsigned testLine() const noexcept { return m_testLine; }
+		void setTestLine(unsigned line) { m_testLine = line; }
 
 		const TestFrameView &testFrameView() const noexcept { return m_testFrameView; }
 

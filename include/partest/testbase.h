@@ -25,8 +25,28 @@
 
 #define PARTEST_CTX(...) [__VA_ARGS__](partest::TestContext &ctx)
 
+// Add optional source logging for C++20 and later, using std::source_location to capture file and line information automatically.
+#if PARTEST_CPP_VERSION >= 20
+#include <source_location>
+#define PARTEST_SOURCE_LOCATION_OPT , const std::source_location &location = std::source_location::current()
+#else
+#define PARTEST_SOURCE_LOCATION_OPT
+#endif
+
+// For test suite classes, automatically set the file name and line number where the test suite is defined.
+// This is useful for reporting and debugging.
+#define PARTEST_SET_SUITE_FILE this->setFileName(__FILE__);
+#define PARTEST_SET_SUITE_LINE this->setConstructorLine(__LINE__);
+#define PARTEST_SET_SUITE_INFO PARTEST_SET_SUITE_FILE PARTEST_SET_SUITE_LINE
+
+// For test functions, automatically set the file name and line number where the test function is defined.
+#define PARTEST_SET_TEST_FILE ctx.setTestFile(__FILE__);
+#define PARTEST_SET_TEST_LINE ctx.setTestLine(__LINE__);
+#define PARTEST_SET_TEST_INFO PARTEST_SET_TEST_FILE PARTEST_SET_TEST_LINE
+
 namespace partest
 {
+
 	class TestBase;
 
 	class TestContext
@@ -71,17 +91,17 @@ namespace partest
 		void subtest(const TestInfo &testInfo, const TestFlags& flags, Func &&testFunc);
 
 		void commitAssertion(const AssertionResult &result);
-
 		void recordLog(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message);
+		void setTestFile(PARTEST_STRING_PARAM fileName);
+		void setTestLine(unsigned line);
 	};
 	/**
 	* Base class for all partest tests.
 	*/
 	class TestBase
 	{
-	private:
 		friend class TestContext;
-	
+
 	protected:
 		using TestContext = partest::TestContext;
 		using TestFrame = partest::TestFrame;
@@ -90,6 +110,9 @@ namespace partest
 	private:
 		std::unique_ptr<TestFrame> m_testTree; // Dynamically growing tree of test frames
 		EventEmitter m_eventEmitter; // Component that transmits events to a dispatcher
+
+		std::string m_fileName; // Name of the file containing the test suite
+		unsigned m_constructorLine = 0; // Line number where the test suite was constructed
 
 		void runTest(TestFrame *test)
 		{
@@ -261,6 +284,8 @@ namespace partest
 			m_testTree->addSubtest(partest::make_unique<TestFrame>(&m_eventEmitter, flags, TestInfo(name, description), testFunc, setupFunc, teardownFunc));
 		}
 
+		void setFileName(PARTEST_STRING_PARAM fileName) { m_fileName = fileName; }
+		void setConstructorLine(unsigned line) { m_constructorLine = line; }
 		/**
 		* Setup function to be overridden by derived classes
 		*/
@@ -273,8 +298,12 @@ namespace partest
 
 	public:
 		TestBase(PARTEST_STRING_PARAM name, PARTEST_STRING_PARAM description,
-			const TestFlags &flags = TEST_FLAGS_DISABLED)
+			const TestFlags &flags = TEST_FLAGS_DISABLED PARTEST_SOURCE_LOCATION_OPT)
 		{
+		#if PARTEST_CPP_VERSION >= 20
+			m_fileName = getFilename(location.file_name());
+			m_constructorLine = location.line();
+		#endif
 			// Initialize the root test frame. This frame is not associated with any specific test but serves as the root of the test tree.
 			// Its primary purpose is to contain information such as the overall test suite name and description in the same collection as the individual tests.
 			m_testTree = partest::make_unique<TestFrame>(&m_eventEmitter, flags, TestInfo(name, description));
@@ -385,6 +414,9 @@ namespace partest
 	{
 		m_testSuite->recordLog(level, type, message, m_currentFrame);
 	}
+
+	inline void TestContext::setTestFile(PARTEST_STRING_PARAM fileName) { m_currentFrame->setTestFile(fileName); }
+	inline void TestContext::setTestLine(unsigned line) { m_currentFrame->setTestLine(line); }
 } // namespace partest
 
 #endif // PARTEST_H
