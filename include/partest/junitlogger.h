@@ -49,16 +49,78 @@ namespace partest
 			node->classname = parentTestName;
 			node->assertions = testFrame->assertionCount();
 			node->time = testFrame->endTime() - testFrame->startTime();
-			if(testFrame->getResult() == TestResult::Failed)
+			if(testFrame->getStatus() == TestStatus::Skipped)
+			{
+				xml::SkippedNode *skippedNode = static_cast<xml::SkippedNode *>(node->addChild(partest::make_unique<xml::SkippedNode>())); // NOLINT(*-pro-type-static-cast-downcast)
+				buildSkippedNode(testFrame, skippedNode);
+			}
+			else if(testFrame->getStatus() == TestStatus::Aborted)
+			{
+				xml::ErrorNode *errorNode = static_cast<xml::ErrorNode *>(node->addChild(partest::make_unique<xml::ErrorNode>())); // NOLINT(*-pro-type-static-cast-downcast)
+				buildAbortedNode(testFrame, errorNode);
+			}
+			else if(testFrame->getResult() == TestResult::Failed || testFrame->getResult() == TestResult::Mixed)
 			{
 				xml::FailureNode *failureNode = static_cast<xml::FailureNode *>(node->addChild(partest::make_unique<xml::FailureNode>())); // NOLINT(*-pro-type-static-cast-downcast)
 				buildFailureNode(testFrame, failureNode);
 			}
+			else if(testFrame->getResult() == TestResult::Passed && testFrame->setToFail())
+			{
+				// This isn't exactly a failure. Add a log node to indicate that the test failed by design
+				// So no failure node. Log node instead.
+				xml::SystemOutNode *logNode = static_cast<xml::SystemOutNode *>(node->addChild(partest::make_unique<xml::SystemOutNode>())); // NOLINT(*-pro-type-static-cast-downcast)
+				buildExpectedFailureNode(testFrame, logNode);
+			}
+		}
+
+		void buildSkippedNode(const TestFrame *testFrame, xml::SkippedNode *node)
+		{
+			node->message = "Test skipped";
+		}
+
+		void buildAbortedNode(const TestFrame *testFrame, xml::ErrorNode *node)
+		{
+			node->body = "Test was aborted due to an unexpected error or failure.";
+			node->message = "Test aborted";
+			node->type = "Aborted";
+
+			const std::deque<LogEntry> &logs = testFrame->getLogs();
+			// Find any logs with level Error or type EXCEPTION and add them to the error node body.
+			for(auto log : logs)
+			{
+				if(log.level == LogLevel::Error || log.type == LOG_TYPE_EXCEPTION)
+				{
+					node->body += '\n' + log.message;
+				}
+			}
+		}
+
+		void buildExpectedFailureNode(const TestFrame *testFrame, xml::SystemOutNode *node)
+		{
+			std::string nodeBody;
+
+			// Get the first assertion that failed and add it to the node body.
+			for(TestFrame::AssertionConstIter assertion = testFrame->assertionsBegin(); assertion != testFrame->assertionsEnd(); ++assertion)
+			{
+				if(!assertion->passed())
+				{
+					//node->message = "Assertion Failed: (" + assertion->getCondition() + ')';
+					//node->type = assertion->assertType();
+					nodeBody = m_assertionParser.parseAssertion(*assertion);
+					break;
+				}
+			}
+
+			if(nodeBody.empty() && testFrame->assertionCount() == 0)
+			{
+				nodeBody = "Failure observed in subtest";
+			}
+
+			node->body = "ExpectedFailure: " + nodeBody;
 		}
 
 		void buildFailureNode(const TestFrame *testFrame, xml::FailureNode *node)
 		{
-			std::string nodeBody;
 			// Record the first failed assertion.
 			for(TestFrame::AssertionConstIter assertion = testFrame->assertionsBegin(); assertion != testFrame->assertionsEnd(); ++assertion)
 			{
@@ -69,6 +131,28 @@ namespace partest
 					node->body = m_assertionParser.parseAssertion(*assertion);
 					break;
 				}
+			}
+
+			// Determine failure mode. Did the test pass unexpectedly?
+			if(node->body.empty() && testFrame->setToFail())
+			{
+				node->message = "Test passed unexpectedly";
+				node->type = "UnexpectedPass";
+				node->body = "This test was expected to fail, but it passed. Check the test conditions and update the test flags if necessary.";
+			}
+			// Empty body and no subtests or assertions at this point means this test is an empty stub.
+			else if(testFrame->assertionCount() == 0 && testFrame->subtestCount() == 0)
+			{
+				node->message = "Test has no assertions";
+				node->type = "NoAssertions";
+				node->body = "This test has no assertions and did not fail. Check the test implementation and add assertions as necessary.";
+			}
+			// Must have been a subtest failure
+			else if(node->body.empty())
+			{
+				node->message = "Subtest failed";
+				node->type = "SubtestFailure";
+				node->body = "One or more subtests failed.";
 			}
 		}
 

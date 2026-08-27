@@ -51,16 +51,16 @@ public:
 
 	void emptyTests(TestContext &ctx)
 	{
-		ctx.subtest("Passes on Empty", "This subtest should report passed with zero assertions", 
+		ctx.subtest("PassesOnEmpty", "This subtest should report passed with zero assertions", 
 		PARTEST_CTX()
 		{
 		});
 
-		ctx.subtest("Fails on Empty with expectFailure", "This subtest should report failure with zero assertions", partest::TEST_FLAGS_INHERIT.withExpectFailure(),
+		ctx.subtest("FailsOnEmptyWithExpectFailure", "This subtest should report failure with zero assertions", partest::TEST_FLAGS_INHERIT.withExpectFailure(),
 		PARTEST_CTX()
 		{
 			// With expectFailure set, an empty test should unexpectedly pass.
-			ctx.subtest("Does return ", "This subtest should report failure with zero assertions",
+			ctx.subtest("PassUnexpectedly", "This subtest should report failure with zero assertions",
 				partest::TEST_FLAGS_INHERIT.withExpectFailure(),
 			PARTEST_CTX()
 			{
