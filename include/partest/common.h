@@ -8,8 +8,8 @@
 #define PARTEST_STRINGIFY_MACRO(x) PARTEST_STRINGIFY_HELPER(x)
 
 #define _PARTEST_VERSION_MAJOR 0
-#define _PARTEST_VERSION_MINOR 3
-#define _PARTEST_VERSION_PATCH 1
+#define _PARTEST_VERSION_MINOR 4
+#define _PARTEST_VERSION_PATCH 0
 
 // Expand the version numbers into a string literal
 // This requires first converting the numbers to string literals, then concatenating them

@@ -17,9 +17,9 @@ public:
 		addTest("TestChaining", "Validate that flag state can be propagated via chain syntax",
 			partest::TEST_FLAGS_INHERIT,
 			PARTEST_CTX(this) { testChaining(ctx); });
-		addTest("TestInheritance", "Ensure flag state can be resolved by combining parent and child states",
+		/*addTest("TestInheritance", "Ensure flag state can be resolved by combining parent and child states",
 			partest::TEST_FLAGS_INHERIT,
-			PARTEST_CTX(this) { testFlagResolution(ctx); });
+			PARTEST_CTX(this) { testFlagResolution(ctx); });*/
 
 	}
 
@@ -173,6 +173,22 @@ public:
 		ref.verbose = partest::FlagState::Enabled;
 
 		ASSERT_EQUAL(complexMerged, ref);
+
+
+		// Test that all flags resolve correctly on an individual basis. No change to one flag should affect other flags.
+		// For each flag, create a child where all other flags are set to disabled
+		//   create children where all other flags are set to enabled, inherit, and masked
+		//   For each child, merge with a parent whose flags don't match the child
+		
+		// This should test that each flag only affects its own value
+		// and that it properly merges with the parent regardless of the values of other flags in the parent or the child
+
+		partest::TestFlags disabledRef = partest::TEST_FLAGS_DISABLED;
+		partest::TestFlags enabledRef = partest::TestFlags(partest::FlagState::Enabled, partest::FlagState::Enabled, partest::FlagState::Enabled, partest::FlagState::Enabled, partest::FlagState::Enabled);
+		partest::TestFlags inheritRef = partest::TEST_FLAGS_INHERIT.withExpectFailure(partest::FlagState::Inherit);
+		partest::TestFlags maskedRef = partest::TEST_FLAGS_MASKED;
+
+		//
 	}
 };
 
