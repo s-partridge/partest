@@ -13,54 +13,56 @@ public:
 
 		addTest(partest::TestInfo("EmptyTests", "Tests for behavior with zero assertions."),
 			flags,
-			[this]() { return this->emptyTests(); });
+			PARTEST_CTX(this){ return this->emptyTests(ctx); });
 		addTest(partest::TestInfo("PassedTest", "A test that always passes."),
 			flags,
-			[this]() { return this->passedTest(); });
+			PARTEST_CTX(this){ return this->passedTest(ctx); });
 		addTest(partest::TestInfo("FailingTest", "A test that always fails."),
 			flags.withExpectFailure(),
-			[this]() { return this->failingTest(); });
+			PARTEST_CTX(this){ return this->failingTest(ctx); });
 		addTest(partest::TestInfo("MixedTest", "A test that has mixed results."),
 			flags.withExpectFailure(),
-			[this]() { return this->mixedTest(); });
+			PARTEST_CTX(this){ return this->mixedTest(ctx); });
 		addTest(partest::TestInfo("PassedTest", "A test that always passes."),
 			flags,
-			[this]() { return this->passedTest(); });
+			PARTEST_CTX(this){ return this->passedTest(ctx); });
 		addTest(partest::TestInfo("NestedNestedTest", "A test with nested subtests."),
 			partest::TEST_FLAGS_INHERIT,
-			[this]() { return this->nestedNestedTest(); });
+			PARTEST_CTX(this){ return this->nestedNestedTest(ctx); });
 
 		partest::TestInfo metadata("ParameterizedTest", "Validate that parameters are passed correctly.");
 		flags = partest::TEST_FLAGS_SKIP;
-		addTest(metadata, flags, [this]() { return this->parameterizedTest(3); });
-		addTest(metadata, flags, [this]() { return this->parameterizedTest(6); });
+		addTest(metadata, flags, PARTEST_CTX(this){ return this->parameterizedTest(ctx, 3); });
+		addTest(metadata, flags, PARTEST_CTX(this){ return this->parameterizedTest(ctx, 6); });
 
 		flags.skip = partest::FlagState::Disabled;
 		flags.stopOnFail = partest::FlagState::Enabled;
 
 		addTest(partest::TestInfo("TestWithStopOnFail", "A test with stopOnFail enabled."),
 			flags.withExpectFailure(),
-			[this]() { return this->testWithStopOnFail(); });
+			PARTEST_CTX(this){ return this->testWithStopOnFail(ctx); });
 	}
 
-	void sampleTest()
+	void sampleTest(TestContext &ctx)
 	{
-		recordLog(partest::LogLevel::Debug, partest::LOG_TYPE_TEST, "This is a sample log message.");
+		ctx.recordLog(partest::LogLevel::Debug, partest::LOG_TYPE_TEST, "This is a sample log message.");
 		ASSERT_TRUE(true); // This assertion will pass
 	}
 
-	void emptyTests()
+	void emptyTests(TestContext &ctx)
 	{
-		subtest("Passes on Empty", "This subtest should report passed with zero assertions", []()
+		ctx.subtest("Passes on Empty", "This subtest should report passed with zero assertions", 
+		PARTEST_CTX()
 		{
 		});
 
-		subtest("Fails on Empty with expectFailure", "This subtest should report failure with zero assertions",
-			partest::TEST_FLAGS_INHERIT.withExpectFailure(), [&]()
+		ctx.subtest("Fails on Empty with expectFailure", "This subtest should report failure with zero assertions", partest::TEST_FLAGS_INHERIT.withExpectFailure(),
+		PARTEST_CTX()
 		{
 			// With expectFailure set, an empty test should unexpectedly pass.
-			subtest("Does return ", "This subtest should report failure with zero assertions",
-				partest::TEST_FLAGS_INHERIT.withExpectFailure(), [&]()
+			ctx.subtest("Does return ", "This subtest should report failure with zero assertions",
+				partest::TEST_FLAGS_INHERIT.withExpectFailure(),
+			PARTEST_CTX()
 			{
 			});
 			// Which counts as an actual failure in the parent test. Base subtest should pass with ExpectedFailure result
@@ -68,32 +70,33 @@ public:
 		});
 	}
 
-	void failingTest()
+	void failingTest(TestContext &ctx)
 	{
 		ASSERT_TRUE(false); // This assertion will fail
 	}
 
-	void mixedTest()
+	void mixedTest(TestContext &ctx)
 	{
 		ASSERT_TRUE(true);  // This assertion will pass
 		ASSERT_TRUE(false); // This assertion will fail
 	}
 
-	void passedTest()
+	void passedTest(TestContext &ctx)
 	{
 		ASSERT_TRUE(true); // This assertion will pass
 	}
 
-	void parameterizedTest(int testValue)
+	void parameterizedTest(TestContext &ctx, int testValue)
 	{
-		recordLog(partest::LogLevel::Debug, partest::LOG_TYPE_TEST, "Running example test...");
-		subtest(partest::TestInfo("Subtest 1", "A subtest that checks if testValue is 3."), [&]()
+		ctx.recordLog(partest::LogLevel::Debug, partest::LOG_TYPE_TEST, "Running example test...");
+		ctx.subtest(partest::TestInfo("Subtest 1", "A subtest that checks if testValue is 3."), PARTEST_CTX(&)
 		{
 			// Subtest logic here
 			ASSERT_TRUE(testValue == 3);
 		});
 
-		subtest(partest::TestInfo("Subtest 2", "A subtest that checks if testValue is 6."), [&]()
+		ctx.subtest(partest::TestInfo("Subtest 2", "A subtest that checks if testValue is 6."),
+			PARTEST_CTX(&)
 		{
 			// Subtest logic here
 			ASSERT_TRUE(testValue == 6);
@@ -101,74 +104,74 @@ public:
 	}
 
 	// This test should result in a Mixed status due to nested subtests
-	void nestedNestedTest()
+	void nestedNestedTest(TestContext &ctx)
 	{
-		subtest(partest::TestInfo("NestedSubtest 1", "A nested subtest that always passes."), partest::TEST_FLAGS_INHERIT.withExpectFailure(), [this]()
+		ctx.subtest(partest::TestInfo("NestedSubtest 1", "A nested subtest that always passes."), partest::TEST_FLAGS_INHERIT.withExpectFailure(), PARTEST_CTX()
 		{
 			ASSERT_TRUE(true); // This assertion will pass
 			
-			subtest(partest::TestInfo("NestedSubtest 1.1"), [this]()
+			ctx.subtest(partest::TestInfo("NestedSubtest 1.1"), PARTEST_CTX()
 			{
 				ASSERT_TRUE(false); // This assertion will fail
 			});
 
-			subtest(partest::TestInfo("NestedSubtest 1.2", "A nested subtest that always fails."), partest::TEST_FLAGS_INHERIT, [this]()
+			ctx.subtest(partest::TestInfo("NestedSubtest 1.2", "A nested subtest that always fails."), partest::TEST_FLAGS_INHERIT, PARTEST_CTX()
 			{
 				ASSERT_TRUE(false); // This assertion will fail
 			});
 
-			subtest(partest::TestInfo("NestedSubtest 1.3", "A nested subtest that always passes."), partest::TEST_FLAGS_INHERIT, [this]()
+			ctx.subtest(partest::TestInfo("NestedSubtest 1.3", "A nested subtest that always passes."), partest::TEST_FLAGS_INHERIT, PARTEST_CTX()
 			{
 				ASSERT_TRUE(true); // This assertion will pass
 			});
 		});
 
-		subtest(partest::TestInfo("NestedSubtest 2", "A nested subtest that always passes."), partest::TEST_FLAGS_INHERIT, [this]()
+		ctx.subtest(partest::TestInfo("NestedSubtest 2", "A nested subtest that always passes."), partest::TEST_FLAGS_INHERIT, PARTEST_CTX()
 		{
 			ASSERT_TRUE(true); // This assertion will pass
 		});
 	}
 
-	void testWithStopOnFail()
+	void testWithStopOnFail(TestContext &ctx)
 	{
 		partest::TestFlags stopFlags = partest::TEST_FLAGS_INHERIT;
 		stopFlags.stopOnFail = partest::FlagState::Enabled;
 
-		subtest(partest::TestInfo("Subtest 1", "A subtest that checks if 1 + 1 == 2."), stopFlags, [&]()
+		ctx.subtest(partest::TestInfo("Subtest 1", "A subtest that checks if 1 + 1 == 2."), stopFlags, PARTEST_CTX()
 		{
 			// This assertion will pass
 			ASSERT_TRUE(1 + 1 == 2);
 		});
 
-		subtest(partest::TestInfo("Subtest 2", "A subtest that checks if 2 + 2 == 5."), stopFlags, [&]()
+		ctx.subtest(partest::TestInfo("Subtest 2", "A subtest that checks if 2 + 2 == 5."), stopFlags, PARTEST_CTX(&)
 		{
-			subtest(partest::TestInfo("Nested Subtest", "A nested subtest that checks if 2 + 2 == 4."), stopFlags, [&]()
+			ctx.subtest(partest::TestInfo("Nested Subtest", "A nested subtest that checks if 2 + 2 == 4."), stopFlags, PARTEST_CTX()
 			{
 				// This assertion will fail
 				ASSERT_TRUE(2 + 2 == 5);
 			});
 
 			// This assertion will pass, if it is hit, which it shouldn't be if stopOnFail is Enabled
-			recordLog(partest::LogLevel::Error, partest::LOG_TYPE_TEST, "Error: This assertion should not run if stopOnFail is ENABLED and a previous assertion failed.");
+			ctx.recordLog(partest::LogLevel::Error, partest::LOG_TYPE_TEST, "Error: This assertion should not run if stopOnFail is ENABLED and a previous assertion failed.");
 			ASSERT_TRUE(2 + 2 == 4);
 		});
 
-		subtest(partest::TestInfo("Subtest 3", "A subtest that checks if 3 + 3 == 6."), stopFlags, [&]()
+		ctx.subtest(partest::TestInfo("Subtest 3", "A subtest that checks if 3 + 3 == 6."), stopFlags, PARTEST_CTX()
 		{
 			// This assertion will pass, but should not be reached if stopOnFail is Enabled in Subtest2
-			recordLog(partest::LogLevel::Error, partest::LOG_TYPE_TEST, "Error: This subtest should not run if stopOnFail is ENABLED and a previous assertion failed.");
+			ctx.recordLog(partest::LogLevel::Error, partest::LOG_TYPE_TEST, "Error: This subtest should not run if stopOnFail is ENABLED and a previous assertion failed.");
 			ASSERT_TRUE(3 + 3 == 6);
 		});
 	}
 
-	void setup() override
+	void setup(TestContext &ctx) override
 	{
-		recordLog(partest::LogLevel::Debug, partest::LOG_TYPE_TEST, "Setting up PartestBaseTest...");
+		ctx.recordLog(partest::LogLevel::Debug, partest::LOG_TYPE_TEST, "Setting up PartestBaseTest...");
 	}
 
-	void teardown() override
+	void teardown(TestContext &ctx) override
 	{
-		recordLog(partest::LogLevel::Debug, partest::LOG_TYPE_TEST, "Tearing down PartestBaseTest...");
+		ctx.recordLog(partest::LogLevel::Debug, partest::LOG_TYPE_TEST, "Tearing down PartestBaseTest...");
 	}
 };
 

@@ -19,18 +19,18 @@ class AssertionTests : public partest::TestBase
 
 			addTest(PASSING_TEST, "Validate that all basic assert macros pass when handling true conditions.",
 			noStopOnFail,
-			[this]() { return this->testAssertionsPass(); });
+			PARTEST_CTX(this) { return this->testAssertionsPass(ctx); });
 			addTest(PASSING_STRING_TEST, "Validate that all string-specialized macros pass when handling true conditions.",
 			noStopOnFail,
-			[this]() { return this->testStringAssertionsPass(); });
+			PARTEST_CTX(this) { return this->testStringAssertionsPass(ctx); });
 			addTest(FAILING_TEST, "Validate that all assert macros fail when handling false conditions.",
 			noStopOnFail,
-			[this]() { return this->testAssertionsFail(); });
+			PARTEST_CTX(this) { return this->testAssertionsFail(ctx); });
 		}
 
-		void testCharArraysPass()
+		void testCharArraysPass(TestContext &ctx)
 		{
-			subtest("Test Char Arrays", [&]() {
+			ctx.subtest("Test Char Arrays", PARTEST_CTX() {
 				std::string equalString = "stringA";
 				std::string unequalString = "stringB";
 				constexpr char firstConstArray[] = "stringA";
@@ -53,7 +53,7 @@ class AssertionTests : public partest::TestBase
 				ASSERT_EQUAL(equalArray, firstConstArray);
 			});
 
-//			subtest("Test WChar Arrays", [&]() {
+//			ctx.subtest("Test WChar Arrays", PARTEST_CTX() {
 //				std::wstring equalString = L"stringA";
 //				std::wstring unequalString = L"stringB";
 //				const wchar_t firstConstArray[] = L"stringA";
@@ -76,7 +76,7 @@ class AssertionTests : public partest::TestBase
 //				ASSERT_EQUAL(equalArray, firstConstArray);
 //			});
 //
-//			subtest("Test Char16 Arrays", [&]() {
+//			ctx.subtest("Test Char16 Arrays", PARTEST_CTX() {
 //				std::u16string equalString = u"stringA";
 //				std::u16string unequalString = u"stringB";
 //				const char16_t firstConstArray[] = u"stringA";
@@ -99,7 +99,7 @@ class AssertionTests : public partest::TestBase
 //				ASSERT_EQUAL(equalArray, firstConstArray);
 //			});
 //
-//			subtest("Test Char32 Arrays", [&]() {
+//			ctx.subtest("Test Char32 Arrays", PARTEST_CTX() {
 //				std::u32string equalString = U"stringA";
 //				std::u32string unequalString = U"stringB";
 //				const char32_t firstConstArray[] = U"stringA";
@@ -123,7 +123,7 @@ class AssertionTests : public partest::TestBase
 //			});
 //
 //#if PARTEST_CPP_20
-//			subtest("Test Char8 Arrays", [&]() {
+//			ctx.subtest("Test Char8 Arrays", PARTEST_CTX() {
 //				std::u8string equalString = u8"stringA";
 //				std::u8string unequalString = u8"stringB";
 //				const char8_t firstConstArray[] = u8"stringA";
@@ -149,7 +149,7 @@ class AssertionTests : public partest::TestBase
 		}
 
 		template <typename chartype, size_t LenA, size_t LenB>
-		void testCharStringsPass(const chartype (&stringA)[LenA], const chartype (&stringB)[LenB])
+		void testCharStringsPass(TestContext &ctx, const chartype (&stringA)[LenA], const chartype (&stringB)[LenB])
 		{
 			// Tests with matching strings
 			const chartype *firstConstPointer = stringA;
@@ -448,32 +448,32 @@ class AssertionTests : public partest::TestBase
 #endif
 		}
 
-		void testStringAssertionsPass()
+		void testStringAssertionsPass(TestContext &ctx)
 		{
-			subtest("Char String Assertions", [this]() {
-				this->testCharStringsPass<char>("stringA", "stringB");
+			ctx.subtest("Char String Assertions", PARTEST_CTX(this) {
+				this->testCharStringsPass<char>(ctx, "stringA", "stringB");
 			});
 //
-//			subtest("Wide Char String Assertions", [this]() {
-//				this->testCharStringsPass<wchar_t>(L"stringA", L"stringB");
+//			ctx.subtest("Wide Char String Assertions", PARTEST_CTX(this) {
+//				this->testCharStringsPass<wchar_t>(ctx, L"stringA", L"stringB");
 //			});
 //
-//			subtest("Char16 String Assertions", [this]() {
-//				this->testCharStringsPass<char16_t>(u"stringA", u"stringB");
+//			ctx.subtest("Char16 String Assertions", PARTEST_CTX(this) {
+//				this->testCharStringsPass<char16_t>(ctx, u"stringA", u"stringB");
 //			});
 //
-//			subtest("Char32 String Assertions", [this]() {
-//				this->testCharStringsPass<char32_t>(U"stringA", U"stringB");
+//			ctx.subtest("Char32 String Assertions", PARTEST_CTX(this) {
+//				this->testCharStringsPass<char32_t>(ctx, U"stringA", U"stringB");
 //			});
 //
 //#if PARTEST_CPP_VERSION >= 20
-//			subtest("Char8 String Assertions", [this]() {
-//				this->testCharStringsPass<char8_t>(u8"stringA", u8"stringB");
+//			ctx.subtest("Char8 String Assertions", PARTEST_CTX(this) {
+//				this->testCharStringsPass<char8_t>(ctx, u8"stringA", u8"stringB");
 //			});
 //#endif
 		}
 
-		void testStringAssertionsFail()
+		void testStringAssertionsFail(TestContext &ctx)
 		{
 			std::string testStr = "bonus";
 			const char *testPtr = "pointer";
@@ -493,7 +493,7 @@ class AssertionTests : public partest::TestBase
 			ASSERT_EQUAL("bonuz", testStr);
 		}
 
-		void testAssertionsPass()
+		void testAssertionsPass(TestContext &ctx)
 		{
 			// Boolean
 			ASSERT_TRUE(true);
@@ -532,7 +532,7 @@ class AssertionTests : public partest::TestBase
 			ASSERT_NOTHROW(while(x < 10) ++x);
 		}
 		
-		void testAssertionsFail()
+		void testAssertionsFail(TestContext &ctx)
 		{
 			// Boolean
 			ASSERT_TRUE(false);
@@ -581,10 +581,10 @@ public:
 
 		addTest("Test Assertions", "Validate that all assert macros correctly pass or fail validation.",
 			partest::TEST_FLAGS_INHERIT,
-			[this]() { return this->testAssertions(); });
+			PARTEST_CTX(this) { return this->testAssertions(ctx); });
 	}
 
-	void testAssertions()
+	void testAssertions(TestContext &ctx)
 	{
 		m_innerTests.run();
 
