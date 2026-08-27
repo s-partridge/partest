@@ -79,14 +79,15 @@ namespace partest
 	*/
 	class TestBase
 	{
+	private:
+		friend class TestContext;
+	
 	protected:
 		using TestContext = partest::TestContext;
 		using TestFrame = partest::TestFrame;
 		using TestInfo = partest::TestInfo;
 
 	private:
-		friend class TestContext;
-
 		std::unique_ptr<TestFrame> m_testTree; // Dynamically growing tree of test frames
 		EventEmitter m_eventEmitter; // Component that transmits events to a dispatcher
 
