@@ -10,31 +10,31 @@
 /**
 * Basic assertion macro for use within tests. Must be called within a TestFrame context.
 */
-#define ASSERT_TRUE(actual) commitAssertion(partest::handleAssertBoolean((actual), true, ASSERT_TRUE_STR, #actual, __FILE__, __func__, __LINE__))
-#define ASSERT_FALSE(actual) commitAssertion(partest::handleAssertBoolean((actual), false, ASSERT_FALSE_STR, #actual, __FILE__, __func__, __LINE__))
+#define ASSERT_TRUE(actual) ctx.commitAssertion(partest::handleAssertBoolean((actual), true, ASSERT_TRUE_STR, #actual, __FILE__, __func__, __LINE__))
+#define ASSERT_FALSE(actual) ctx.commitAssertion(partest::handleAssertBoolean((actual), false, ASSERT_FALSE_STR, #actual, __FILE__, __func__, __LINE__))
 
 /**
 * Basic assertion macros for equality checks. Must be called within a TestFrame context.
 */
-#define ASSERT_EQUAL(actual, expected) commitAssertion(partest::handleAssertEqual((actual), (expected), ASSERT_EQUAL_STR, #actual " == " #expected, #actual , #expected, __FILE__, __func__, __LINE__))
-#define ASSERT_NOT_EQUAL(actual, expected) commitAssertion(partest::handleAssertNotEqual((actual), (expected), ASSERT_NOT_EQUAL_STR, #actual " != " #expected, #actual , #expected, __FILE__, __func__, __LINE__))
+#define ASSERT_EQUAL(actual, expected) ctx.commitAssertion(partest::handleAssertEqual((actual), (expected), ASSERT_EQUAL_STR, #actual " == " #expected, #actual , #expected, __FILE__, __func__, __LINE__))
+#define ASSERT_NOT_EQUAL(actual, expected) ctx.commitAssertion(partest::handleAssertNotEqual((actual), (expected), ASSERT_NOT_EQUAL_STR, #actual " != " #expected, #actual , #expected, __FILE__, __func__, __LINE__))
 
 /**
 * Assertion macros for approximate equality checks. Must be called within a TestFrame context.
 */
-#define ASSERT_APPROX_EQUAL(actual, expected, epsilon) commitAssertion(partest::handleAssertApproxEqual((actual), (expected), (epsilon), ASSERT_APPROX_EQUAL_STR, #actual " == " #expected ", +/- " #epsilon, #actual, #expected, #epsilon, __FILE__, __func__, __LINE__))
-#define ASSERT_APPROX_NOT_EQUAL(actual, expected, epsilon) commitAssertion(partest::handleAssertApproxNotEqual((actual), (expected), (epsilon), ASSERT_APPROX_NOT_EQUAL_STR, #actual " == " #expected ", +/- " #epsilon, #actual, #expected, #epsilon, __FILE__, __func__, __LINE__))
+#define ASSERT_APPROX_EQUAL(actual, expected, epsilon) ctx.commitAssertion(partest::handleAssertApproxEqual((actual), (expected), (epsilon), ASSERT_APPROX_EQUAL_STR, #actual " == " #expected ", +/- " #epsilon, #actual, #expected, #epsilon, __FILE__, __func__, __LINE__))
+#define ASSERT_APPROX_NOT_EQUAL(actual, expected, epsilon) ctx.commitAssertion(partest::handleAssertApproxNotEqual((actual), (expected), (epsilon), ASSERT_APPROX_NOT_EQUAL_STR, #actual " == " #expected ", +/- " #epsilon, #actual, #expected, #epsilon, __FILE__, __func__, __LINE__))
 
 /**
 * Assertion macros for relational checks. Must be called within a TestFrame context.
 */
-#define ASSERT_GREATER(lhs, rhs) commitAssertion(partest::handleAssertBoolean((lhs) > (rhs), true, ASSERT_GREATER_STR, #lhs " > " #rhs, __FILE__, __func__, __LINE__))
-#define ASSERT_LESS(lhs, rhs) commitAssertion(partest::handleAssertBoolean((lhs) < (rhs), true, ASSERT_LESS_STR, #lhs " < " #rhs, __FILE__, __func__, __LINE__))
-#define ASSERT_GREATER_EQUAL(lhs, rhs) commitAssertion(partest::handleAssertBoolean((lhs) >= (rhs), true, ASSERT_GREATER_EQUAL_STR, #lhs " >= " #rhs, __FILE__, __func__, __LINE__))
-#define ASSERT_LESS_EQUAL(lhs, rhs) commitAssertion(partest::handleAssertBoolean((lhs) <= (rhs), true, ASSERT_LESS_EQUAL_STR, #lhs " <= " #rhs, __FILE__, __func__, __LINE__))
+#define ASSERT_GREATER(lhs, rhs) ctx.commitAssertion(partest::handleAssertBoolean((lhs) > (rhs), true, ASSERT_GREATER_STR, #lhs " > " #rhs, __FILE__, __func__, __LINE__))
+#define ASSERT_LESS(lhs, rhs) ctx.commitAssertion(partest::handleAssertBoolean((lhs) < (rhs), true, ASSERT_LESS_STR, #lhs " < " #rhs, __FILE__, __func__, __LINE__))
+#define ASSERT_GREATER_EQUAL(lhs, rhs) ctx.commitAssertion(partest::handleAssertBoolean((lhs) >= (rhs), true, ASSERT_GREATER_EQUAL_STR, #lhs " >= " #rhs, __FILE__, __func__, __LINE__))
+#define ASSERT_LESS_EQUAL(lhs, rhs) ctx.commitAssertion(partest::handleAssertBoolean((lhs) <= (rhs), true, ASSERT_LESS_EQUAL_STR, #lhs " <= " #rhs, __FILE__, __func__, __LINE__))
 
-#define ASSERT_THROWS(exceptionType, ...) commitAssertion(partest::handleAssertThrows<exceptionType>([&]() { __VA_ARGS__; },   ASSERT_THROWS_STR, "{ " #__VA_ARGS__ " } throws " #exceptionType, #__VA_ARGS__, #exceptionType, __FILE__, __func__, __LINE__))
-#define ASSERT_NOTHROW(...) commitAssertion(partest::handleAssertNothrow([&]() { __VA_ARGS__; }, ASSERT_NOTHROW_STR, "{ " #__VA_ARGS__ " } doesn't throw", #__VA_ARGS__, __FILE__, __func__, __LINE__))
+#define ASSERT_THROWS(exceptionType, ...) ctx.commitAssertion(partest::handleAssertThrows<exceptionType>([&]() { __VA_ARGS__; },   ASSERT_THROWS_STR, "{ " #__VA_ARGS__ " } throws " #exceptionType, #__VA_ARGS__, #exceptionType, __FILE__, __func__, __LINE__))
+#define ASSERT_NOTHROW(...) ctx.commitAssertion(partest::handleAssertNothrow([&]() { __VA_ARGS__; }, ASSERT_NOTHROW_STR, "{ " #__VA_ARGS__ " } doesn't throw", #__VA_ARGS__, __FILE__, __func__, __LINE__))
 /**
 * Stringified names for each assert type, used for filtering test results
 */
