@@ -186,7 +186,7 @@ namespace partest
 			runTest(subtest);
 			subtest->setTestFunction(nullptr); // Clear the function to avoid dangling references. This is only necessary for subtests because they are intended to be run immediately and then discarded.
 
-			maybeRaiseOnSubtestReturned("", 0, "Stopped on failure in " + m_currentFrame->metadata.name, subtest);
+			maybeRaiseOnSubtestReturned("", 0, "Stopped on failure in " + parent->metadata.name, subtest);
 		}
 
 		/**
