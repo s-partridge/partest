@@ -13,17 +13,17 @@ public:
 	{
 		addTest("TestFlagConstruction", "Validate construction of TestFlags instances",
 			partest::TEST_FLAGS_INHERIT,
-			[this]() { this->testFlagConstruction(); });
+			PARTEST_CTX(this) { testFlagConstruction(ctx); });
 		addTest("TestChaining", "Validate that flag state can be propagated via chain syntax",
 			partest::TEST_FLAGS_INHERIT,
-			[this]() { this->testChaining(); });
+			PARTEST_CTX(this) { testChaining(ctx); });
 		addTest("TestInheritance", "Ensure flag state can be resolved by combining parent and child states",
 			partest::TEST_FLAGS_INHERIT,
-			[this]() { this->testChaining(); });
+			PARTEST_CTX(this) { testFlagResolution(ctx); });
 
 	}
 
-	void testFlagConstruction()
+	void testFlagConstruction(TestContext &ctx)
 	{
 		partest::FlagState flags[5];
 
@@ -36,9 +36,8 @@ public:
 
 		partest::TestFlags defaultFlags;
 		ASSERT_EQUAL(defaultFlags, ref);
-
 		// Validate disabled
-		subtest("TestDefaultDisabled", [&](){
+		ctx.subtest("TestDefaultDisabled", PARTEST_CTX(&) {
 			ref.skip = partest::FlagState::Disabled;
 			ref.stopOnFail = partest::FlagState::Disabled;
 			ref.stopSubtestOnFail = partest::FlagState::Disabled;
@@ -55,7 +54,7 @@ public:
 		});
 
 		// Enabled
-		subtest("TestSetEnabled", [&](){
+		ctx.subtest("TestSetEnabled", PARTEST_CTX(&) {
 			ref.skip = partest::FlagState::Enabled;
 			ref.stopOnFail = partest::FlagState::Enabled;
 			ref.stopSubtestOnFail = partest::FlagState::Enabled;
@@ -73,7 +72,7 @@ public:
 		});
 
 		// Inherit
-		subtest("TestSetInherit", [&](){
+		ctx.subtest("TestSetInherit", PARTEST_CTX(&) {
 			ref.skip = partest::FlagState::Inherit;
 			ref.stopOnFail = partest::FlagState::Inherit;
 			ref.stopSubtestOnFail = partest::FlagState::Inherit;
@@ -89,7 +88,7 @@ public:
 			ASSERT_EQUAL(partest::TEST_FLAGS_INHERIT, ref);
 		});
 		// Masked
-		subtest("TestSetMasked", [&](){
+		ctx.subtest("TestSetMasked", PARTEST_CTX(&) {
 			ref.skip = partest::FlagState::Masked;
 			ref.stopOnFail = partest::FlagState::Masked;
 			ref.stopSubtestOnFail = partest::FlagState::Masked;
@@ -105,14 +104,14 @@ public:
 			ASSERT_EQUAL(partest::TEST_FLAGS_MASKED, ref);
 		});
 
-		subtest("TestCopyAssignment", [&](){
+		ctx.subtest("TestCopyAssignment", PARTEST_CTX(&) {
 			partest::TestFlags masked;
 
 			masked = partest::TEST_FLAGS_MASKED;
 			ASSERT_EQUAL(masked, partest::TEST_FLAGS_MASKED);
 		});
 
-		subtest("TestSkipped", [&]() {
+		ctx.subtest("TestSkipped", PARTEST_CTX(&) {
 			partest::TestFlags base = partest::TEST_FLAGS_DISABLED;
 			base.skip = partest::FlagState::Enabled;
 
@@ -120,9 +119,9 @@ public:
 		});
 	}
 
-	void testChaining()
+	void testChaining(TestContext &ctx)
 	{
-		subtest("TestStopOnFail", [&](){
+		ctx.subtest("TestStopOnFail", PARTEST_CTX(&) {
 			partest::TestFlags ref = partest::TEST_FLAGS_INHERIT;
 			ref.stopOnFail = partest::FlagState::Enabled;
 
@@ -131,7 +130,7 @@ public:
 			ASSERT_EQUAL(withStopOnFail, ref);
 		});
 
-		subtest("TestExpectFailure", [&](){
+		ctx.subtest("TestExpectFailure", PARTEST_CTX(&) {
 			partest::TestFlags ref = partest::TEST_FLAGS_INHERIT;
 			ref.expectFailure = partest::FlagState::Enabled;
 
@@ -141,7 +140,7 @@ public:
 		});
 
 		
-		subtest("TestMixing", [&](){
+		ctx.subtest("TestMixing", PARTEST_CTX(&) {
 			partest::TestFlags ref = partest::TEST_FLAGS_INHERIT;
 			ref.stopOnFail = partest::FlagState::Enabled;
 			ref.expectFailure = partest::FlagState::Enabled;
@@ -153,7 +152,7 @@ public:
 		});
 	}
 
-	void testFlagResolution()
+	void testFlagResolution(TestContext &ctx)
 	{
 		partest::TestFlags child = partest::TEST_FLAGS_INHERIT;
 		partest::TestFlags parent = partest::TEST_FLAGS_DISABLED.withExpectFailure(partest::FlagState::Enabled);

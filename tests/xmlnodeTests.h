@@ -13,11 +13,11 @@ public:
 	{
 		addTest("Test Time Conversion", "Ensure that clock to string conversion is correct",
 			partest::TEST_FLAGS_INHERIT,
-			[this]() { testTimeConversion(); });
+			PARTEST_CTX(this) { testTimeConversion(ctx); });
 
 		addTest("Test Basic XMLNode", "Ensure base node functionality is correct",
 			partest::TEST_FLAGS_INHERIT,
-			[this]() { tesXMLNode(); });
+			PARTEST_CTX(this) { tesXMLNode(ctx); });
 	}
 
 		//constexpr const char *JUNIT_TESTSUITES = "testsuites";
@@ -31,7 +31,7 @@ public:
 		//constexpr const char *JUNIT_FAILURE = "failure";
 		//constexpr const char *JUNIT_ERROR = "error";
 
-	void testTimeConversion()
+	void testTimeConversion(TestContext &ctx)
 	{
 		// July 4, 2026, 12:01 AM EST
 		std::chrono::system_clock::time_point date = std::chrono::system_clock::from_time_t(0);
@@ -48,7 +48,7 @@ public:
 		ASSERT_EQUAL(timestamp, "2026-07-04T05:01:00");
 	}
 
-	void tesXMLNode()
+	void tesXMLNode(TestContext &ctx)
 	{
 		const char *rootName = "node";
 		const char *childName = "child";
@@ -73,31 +73,31 @@ public:
 
 		ASSERT_EQUAL(oss.str(), expectedChain);
 	}
-	void testTestSuitesNode() {}
-	void testTestSuiteNode() {}
-	void testTestCaseNode() {}
-	void testPropertiesNode() {}
-	void testPropertyNode() {}
-	void testSystemOutNode() {}
-	void testSystemErrNode() {}
+	void testTestSuitesNode(TestContext &ctx) {}
+	void testTestSuiteNode(TestContext &ctx) {}
+	void testTestCaseNode(TestContext &ctx) {}
+	void testPropertiesNode(TestContext &ctx) {}
+	void testPropertyNode(TestContext &ctx) {}
+	void testSystemOutNode(TestContext &ctx) {}
+	void testSystemErrNode(TestContext &ctx) {}
 
 	// This covers skipped, failure, and error nodes
-	void testResultNodes()
+	void testResultNodes(TestContext &ctx)
 	{
 		// TestSkipped
-		subtest("SkippedNodeTest",[&]()
+		ctx.subtest("SkippedNodeTest", PARTEST_CTX()
 		{
 
 		});
 
 		// TestFailure
-		subtest("FailureNodeTest",[&]()
+		ctx.subtest("FailureNodeTest", PARTEST_CTX()
 		{
 
 		});
 
 		// TestError
-		subtest("ErrorNodeTest",[&]()
+		ctx.subtest("ErrorNodeTest", PARTEST_CTX()
 		{
 
 		});
