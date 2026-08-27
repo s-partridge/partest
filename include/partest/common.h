@@ -289,25 +289,75 @@ namespace partest
 	}
 #endif
 
-
 #if PARTEST_CPP_VERSION >= 20
-// For C++20, use concepts
-	#define PARTEST_ENABLE_IF_INVOCABLE(MaybeInvocable) std::invocable MaybeInvocable
+	namespace concepts
+	{
+		// Concept to check if a function is invocable with the given arguments
+		// This is a C++20 feature that allows for more expressive template constraints
+		// It checks whether Func can be called with Args... and returns a valid result
+		template<typename Func, typename ... Args>
+		concept invocable_with = std::invocable<Func, Args...>;
+		
+		template<typename Func, typename ... Args>
+		concept invocable_with_opt = std::invocable<Func, Args...>
+			|| std::is_same_v<partest::decay_t<Func>, std::nullptr_t>;
+		
+		template<typename Func>
+		concept invocable = std::invocable<Func>;
+			
+		template<typename Func>
+		concept invocable_opt = std::invocable<Func> 
+			|| std::is_same_v<partest::decay_t<Func>, std::nullptr_t>;
+	}
+#endif
+	namespace traits
+	{
+	#if PARTEST_CPP_VERSION >= 17
+		template<typename Func, typename ... Args>
+		struct is_invocable_with : std::is_invocable<Func, Args...> {};
 
-#elif PARTEST_CPP_VERSION >= 17
-// For C++17, use the standard library trait
-	#define PARTEST_ENABLE_IF_INVOCABLE(MaybeInvocable) typename MaybeInvocable, typename = std::enable_if_t<std::is_invocable_v<MaybeInvocable>>
+		template<typename Func, typename ... Args>
+		struct is_invocable_with_opt : std::disjunction<std::is_invocable<Func, Args...>, std::is_same<partest::decay_t<Func>, std::nullptr_t>> {};
+	#else
+		template <typename Func, typename... Args>
+		struct is_invocable_with
+		{
+		private:
+			template <typename F, typename... A>
+			static std::true_type check(decltype(std::declval<F>()(std::declval<A>()...), 0));
 
-// For C++11, C++14, define our own trait and use it
-#else
+			template<typename...>
+			static std::false_type check(...);
+		public:
+
+			static constexpr bool value = decltype(check<Func, Args...>(0))::value;
+		};
+
+		template <typename Func, typename... Args>
+		struct is_invocable_with_opt
+		{
+		public:
+			static constexpr bool value = is_invocable_with<Func, Args...>::value || std::is_same<partest::decay_t<Func>, std::nullptr_t>::value;
+		};
+	#endif
+	}
+
 	// Trait to check if a type is callable (i.e., can be invoked like a function)
 	// Used to constrain the addTest and subtest functions to only accept callable types
 	namespace traits
 	{
+	// For C++11, C++14, define our own trait and use it
+	#if PARTEST_CPP_VERSION >= 17
+		template<typename MaybeInvocable>
+		struct is_invocable : std::is_invocable<MaybeInvocable> {};
+		
+		template<typename MaybeInvocable>
+		struct is_invocable_opt : std::disjunction<std::is_invocable<MaybeInvocable>, std::is_same<partest::decay_t<MaybeInvocable>, std::nullptr_t>> {};
+	#else
 		// Primary template handles all types
 		template<typename MaybeInvocable>
 		// Specialization that does the checking
-		struct is_callable
+		struct is_invocable
 		{
 		private:
 			// SFINAE test for callable types
@@ -327,12 +377,54 @@ namespace partest
 			static constexpr bool value = decltype(check<MaybeInvocable>(0))::value;
 		};
 
-		// NOLINTNEXTLINE(bugprone-macro-parentheses)
-		// Helper macro to enable functions only if the provided type is callable
-		// If is_callable evaluates to true, the function is enabled and can be instantiated
-		// If is_callable evaluates to false, type does not exist, causing a substitution failure
-		#define PARTEST_ENABLE_IF_INVOCABLE(MaybeInvocable) typename MaybeInvocable, typename = typename std::enable_if<partest::traits::is_callable<MaybeInvocable>::value>::type
+		template<typename MaybeInvocable>
+		struct is_invocable_opt
+		{
+		public:
+			static constexpr bool value = is_invocable<MaybeInvocable>::value || std::is_same<partest::decay_t<MaybeInvocable>, std::nullptr_t>::value;
+		};
+	#endif // PARTEST_CPP_VERSION
 	}
+// Helper macros to enable functions only if the provided type is callable
+// These are used rather than traits so that concepts can be used seamlessly in C++20 and later, while still providing a fallback for earlier versions of C++
+// If is_callable evaluates to true, the function is enabled and can be instantiated
+// If is_callable evaluates to false, type does not exist, causing a substitution failure
+#if PARTEST_CPP_VERSION >= 20
+	// Concept to check whether a type is invocable
+	#define PARTEST_INVOCABLE(MaybeInvocable) partest::concepts::invocable MaybeInvocable
+	// Concept to check whether a type is invocable with the given arguments
+	#define PARTEST_INVOCABLE_WITH(MaybeInvocable, ...) partest::concepts::invocable_with<__VA_ARGS__> MaybeInvocable
+
+	// Concept to check whether a type is invocable optionally (i.e., can be called like a function or is nullptr)
+#define PARTEST_INVOCABLE_OPT(MaybeInvocable) partest::concepts::invocable_opt MaybeInvocable = std::nullptr_t
+	// Concept to check whether a type is invocable with the given arguments optionally (i.e., can be called like a function or is nullptr)
+#define PARTEST_INVOCABLE_WITH_OPT(MaybeInvocable, ...) partest::concepts::invocable_with_opt<__VA_ARGS__> MaybeInvocable = std::nullptr_t
+
+	// The following are used in places where default template arguments are not allowed (e.g., in a class template). They allow for out-of-line template definitions that match the concepts above.
+
+	// Used for out-of-line template definitions matching PARTEST_INVOCABLE
+	#define PARTEST_INVOCABLE_DEF(MaybeInvocable) partest::concepts::invocable MaybeInvocable
+	// Used for out-of-line template definitions matching PARTEST_INVOCABLE_OPT
+	#define PARTEST_INVOCABLE_OPT_DEF(MaybeInvocable) partest::concepts::invocable_opt MaybeInvocable
+	// Used for out-of-line template definitions matching PARTEST_INVOCABLE_WITH
+	#define PARTEST_INVOCABLE_WITH_DEF(MaybeInvocable, ...) partest::concepts::invocable_with<__VA_ARGS__> MaybeInvocable
+	// Used for out-of-line template definitions matching PARTEST_INVOCABLE_WITH_OPT
+	#define PARTEST_INVOCABLE_WITH_OPT_DEF(MaybeInvocable, ...) partest::concepts::invocable_with_opt<__VA_ARGS__> MaybeInvocable
+#else
+	#define PARTEST_INVOCABLE(MaybeInvocable) typename MaybeInvocable, partest::enable_if_t<partest::traits::is_invocable<MaybeInvocable>::value, int> = 0
+	#define PARTEST_INVOCABLE_OPT(MaybeInvocable) typename MaybeInvocable = std::nullptr_t, partest::enable_if_t<partest::traits::is_invocable_opt<MaybeInvocable>::value, int> = 0
+	#define PARTEST_INVOCABLE_WITH(MaybeInvocable, ...) typename MaybeInvocable, partest::enable_if_t<partest::traits::is_invocable_with<MaybeInvocable, ##__VA_ARGS__>::value, int> = 0
+	#define PARTEST_INVOCABLE_WITH_OPT(MaybeInvocable, ...) typename MaybeInvocable = std::nullptr_t, partest::enable_if_t<partest::traits::is_invocable_with_opt<MaybeInvocable, ##__VA_ARGS__>::value, int> = 0
+
+	// The following are used in places where default template arguments are not allowed (e.g., in a class template). They allow for out-of-line template definitions that match the traits above.
+	// Used for out-of-line template definitions matching PARTEST_INVOCABLE
+	#define PARTEST_INVOCABLE_DEF(MaybeInvocable) typename MaybeInvocable, partest::enable_if_t<partest::traits::is_invocable<MaybeInvocable>::value, int>
+	// Used for out-of-line template definitions matching PARTEST_INVOCABLE_OPT
+	#define PARTEST_INVOCABLE_OPT_DEF(MaybeInvocable) typename MaybeInvocable, 	partest::enable_if_t<partest::traits::is_invocable_opt<MaybeInvocable>::value, int>
+	// Used for out-of-line template definitions matching PARTEST_INVOCABLE_WITH
+	#define PARTEST_INVOCABLE_WITH_DEF(MaybeInvocable, ...) typename MaybeInvocable, partest::enable_if_t<partest::traits::is_invocable_with<MaybeInvocable, ##__VA_ARGS__>::value, int>
+	// Used for out-of-line template definitions matching PARTEST_INVOCABLE_WITH_OPT
+	#define PARTEST_INVOCABLE_WITH_OPT_DEF(MaybeInvocable, ...) typename MaybeInvocable, partest::enable_if_t<partest::traits::is_invocable_with_opt<MaybeInvocable, ##__VA_ARGS__>::value, int>
 #endif // PARTEST_CPP_VERSION
 }
 
