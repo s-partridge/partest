@@ -1,5 +1,5 @@
-#ifndef PARTEST_FILEIO_H
-#define PARTEST_FILEIO_H
+#ifndef PARTEST_FILEOPS_H
+#define PARTEST_FILEOPS_H
 
 #include <system_error>
 #include <stdexcept>
@@ -15,12 +15,23 @@ namespace partest
 {
 	inline constexpr bool canGetWorkingDirectory() noexcept { return true; }
 
+	/**
+	* Get the current working directory of the process.
+	* 
+	* @returns The current working directory as a string
+	*/
 	inline std::string getWorkingDirectory()
 	{
 		std::filesystem::path cwd = std::filesystem::current_path();
 		return cwd.string();
 	}
 
+	/**
+	* Find the absolute path of a file given a relative path.
+	* 
+	* @param relativePath The relative path to the file
+	* @returns The absolute path to the file
+	*/
 	inline std::string makeAbsolutePath(PARTEST_STRING_PARAM relativePath)
 	{
 		if(relativePath.empty())
@@ -29,6 +40,12 @@ namespace partest
 		return std::filesystem::absolute(fullPath).string();
 	}
 
+	/**
+	* Strip the directory path from a file path and return only the filename.
+	* 
+	* @param filePath The full path to the file
+	* @returns The filename extracted from the path
+	*/
 	inline std::string getFilename(PARTEST_STRING_PARAM filePath)
 	{
 		std::filesystem::path fullPath = filePath;
@@ -68,7 +85,12 @@ namespace partest
 #else
 	static constexpr char separator = '/';
 #endif
-
+	
+	/**
+	* Check if the current platform supports getting the current working directory.
+	* 
+	* @returns true if the platform supports getting the current working directory, false otherwise
+	*/
 	inline constexpr bool canGetWorkingDirectory() noexcept
 	{
 	#if defined(PARTEST_GETCWD_WINDOWS) || defined(PARTEST_GETCWD_POSIX)
@@ -77,6 +99,12 @@ namespace partest
 		return false;
 	#endif
 	}
+
+	/**
+	* Get the current working directory of the process.
+	* 
+	* @returns The current working directory as a string
+	*/
 	inline std::string getWorkingDirectory()
 	{
 		char buffer[PARTEST_PATH_MAX];
@@ -94,6 +122,12 @@ namespace partest
 		return std::string(buffer);
 	}
 
+	/**
+	* Find the absolute path of a file given a relative path.
+	* 
+	* @param relativePath The relative path to the file
+	* @returns The absolute path to the file
+	*/
 	inline std::string makeAbsolutePath(PARTEST_STRING_PARAM relativePath)
 	{
 		// Check for empty path
@@ -124,9 +158,16 @@ namespace partest
 		return cwd + relativePath;
 	}
 
+	/**
+	* Strip the directory path from a file path and return only the filename.
+	* 
+	* @param filePath The full path to the file
+	* @returns The filename extracted from the path
+	*/
 	inline std::string getFilename(const std::string &filePath)
 	{
-		if(filePath.empty())
+		// If no string or the string ends with a separator (directory with no filename), return empty string
+		if(filePath.empty() || filePath.back() == separator)
 			return "";
 
 		size_t found = filePath.length();
@@ -144,11 +185,8 @@ namespace partest
 			}
 		}
 		
-		// If found is the same as length, then there is no filename
-		if(found == filePath.length())
-			return "";
-		// If idx is 0, no separator was found
-		else if(idx == 0)
+		// If idx is 0, no separator was found, so the entire string is the filename.
+		if(idx == 0)
 			return filePath;
 		else
 			return filePath.substr(found);
@@ -179,4 +217,4 @@ namespace partest
 	}
 }
 
-#endif // PARTEST_FILEIO_H
+#endif // PARTEST_FILEOPS_H
