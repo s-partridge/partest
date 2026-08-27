@@ -120,6 +120,12 @@ namespace partest
 		*/
 		static PARTEST_CONSTEXPR_11 TestFlags defaultSkip() noexcept { return TestFlags(FlagState::Enabled, FlagState::Disabled, FlagState::Disabled, FlagState::Disabled, FlagState::Disabled); }
 
+		/**
+		* Get a copy of the flag set with stopOnFail set
+		* 
+		* @pararm enabled The new value for stopOnFail. Defaults to `Enabled`
+		* @returns a copy of the current set of flags, with stopOnFail explicitly set
+		*/
 		PARTEST_CONSTEXPR_14 TestFlags withStopOnFail(FlagState enabled = FlagState::Enabled) const noexcept
 		{
 			TestFlags newFlags = *this;
@@ -127,6 +133,12 @@ namespace partest
 			return newFlags;
 		}
 
+		/**
+		* Get a copy of the flag set with expectFailure set
+		* 
+		* @pararm enabled The new value for stopOnFail. Defaults to `Enabled`
+		* @returns a copy of the current set of flags, with expectFailure explicitly set
+		*/
 		PARTEST_CONSTEXPR_14 TestFlags withExpectFailure(FlagState enabled = FlagState::Enabled) const noexcept
 		{
 			TestFlags newFlags = *this;
@@ -175,7 +187,7 @@ namespace partest
 				effectiveFlags.stopOnFail = parentFlags.stopOnFail;
 			if(effectiveFlags.stopSubtestOnFail == FlagState::Inherit)
 				effectiveFlags.stopSubtestOnFail = parentFlags.stopSubtestOnFail;
-			if(effectiveFlags.stopSubtestOnFail == FlagState::Inherit)
+			if(effectiveFlags.expectFailure == FlagState::Inherit)
 				effectiveFlags.expectFailure = parentFlags.expectFailure;
 			if(effectiveFlags.verbose == FlagState::Inherit)
 				effectiveFlags.verbose = parentFlags.verbose;
