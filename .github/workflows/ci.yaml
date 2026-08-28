@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [master, switch-to-action-junit-report]
+    branches: [master, ci/switch-to-action-junit-report]
   pull_request:
-    branches: [master, switch-to-action-junit-report]
+    branches: [master, ci/switch-to-action-junit-report]
 
 jobs:
   build-gcc:
@@ -65,10 +65,9 @@ jobs:
         uses: mikepenz/action-junit-report@v5
         if: always() # && hashFiles('testResults.xml') != '' # Uncomment to only run if the JUnit file is present
         with:
-          name: Partest Results
-          path: testResults.xml
-          reporter: java-junit
-          # fail-on-empty: false      # ← don’t fail if the file doesn’t exist
+          report_paths: testResults.xml
+          check_name: Partest Results
+          require_tests: false
             
   build-clang:
     runs-on: ${{ matrix.os }}
@@ -127,10 +126,9 @@ jobs:
         uses: mikepenz/action-junit-report@v5
         if: always() # && hashFiles('testResults.xml') != '' # Uncomment to only run if the JUnit file is present
         with:
-          name: Partest Results
-          path: testResults.xml
-          reporter: java-junit
-          # fail-on-empty: false      # ← don’t fail if the file doesn’t exist
+          report_paths: testResults.xml
+          check_name: Partest Results
+          require_tests: false
 
   build-windows:
     runs-on: windows-latest
@@ -171,7 +169,6 @@ jobs:
         uses: mikepenz/action-junit-report@v5
         if: always() # && hashFiles('testResults.xml') != '' # Uncomment to only run if the JUnit file is present
         with:
-          name: Partest Results
-          path: testResults.xml
-          reporter: java-junit
-          # fail-on-empty: false      # ← don’t fail if the file doesn’t exist
+          report_paths: testResults.xml
+          check_name: Partest Results
+          require_tests: false
