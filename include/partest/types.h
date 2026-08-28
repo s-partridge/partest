@@ -276,7 +276,7 @@ namespace partest
 		* 
 		* @return The effective TestResult
 		*/
-		PARTEST_CONSTEXPR_11 TestResult getEffectiveResult() const noexcept
+		PARTEST_CONSTEXPR_14 TestResult getEffectiveResult() const noexcept
 		{
 			// While expectFailure is set, a "passed" test means the test failed as expected,
 			//  and a "failed" test means the test passed unexpectedly.
@@ -325,7 +325,7 @@ namespace partest
 		* 
 		* @returns true if the test passed unexpectedly, false otherwise
 		*/
-		PARTEST_CONSTEXPR_11 bool didPassUnexpectedly() const noexcept { return getEffectiveResult() == TestResult::UnexpectedPass; }
+		PARTEST_CONSTEXPR_14 bool didPassUnexpectedly() const noexcept { return getEffectiveResult() == TestResult::UnexpectedPass; }
 
 
 		/**
