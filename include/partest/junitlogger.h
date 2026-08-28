@@ -14,6 +14,36 @@ namespace partest
 {
 	class JUnitLogger : public EventReporterInterface, public TestFrameReaderInterface
 	{
+		static bool shouldCreateLocalTestCaseNode(const TestFrame *test)
+		{
+			return (test->assertionCount() > 0 || test->subtestCount() == 0 || test->getStatus() == TestStatus::Aborted);
+		}
+
+		static bool shouldCreateExpectedFailureNode(const TestFrame *test)
+		{
+			return test->getEffectiveResult() == TestResult::ExpectedFailure;
+		}
+
+		static bool shouldCreateAbortNode(const TestFrame *testFrame)
+		{
+			return testFrame->getStatus() == TestStatus::Aborted;
+		}
+
+		static bool shouldCreateFailureNode(const TestFrame *testFrame)
+		{
+			return testFrame->hasFailures();
+		}
+
+		static bool isTestAStub(const TestFrame *testFrame)
+		{
+			return testFrame->assertionCount() == 0 && testFrame->subtestCount() == 0;
+		}
+
+		static bool didPassUnexpectedly(const TestFrame *testFrame)
+		{
+			return testFrame->getEffectiveResult() == TestResult::UnexpectedPass;
+		}
+
 		std::unique_ptr<xml::TestSuitesNode> m_root;
 		std::string m_reportPath;
 		AssertionParser m_assertionParser;
@@ -43,7 +73,6 @@ namespace partest
 			node->timestamp = testFrame->timestamp();
  		}
 
-		// ReSharper disable once CppMemberFunctionMayBeStatic
 		void buildTestCaseNode(const TestFrame *testFrame, xml::TestCaseNode *node, PARTEST_STRING_PARAM parentTestName)
 		{
 			node->name = testFrame->metadata.name;
@@ -57,17 +86,17 @@ namespace partest
 				xml::SkippedNode *skippedNode = static_cast<xml::SkippedNode *>(node->addChild(partest::make_unique<xml::SkippedNode>())); // NOLINT(*-pro-type-static-cast-downcast)
 				buildSkippedNode(testFrame, skippedNode);
 			}
-			else if(testFrame->getStatus() == TestStatus::Aborted)
+			else if(shouldCreateAbortNode(testFrame))
 			{
 				xml::ErrorNode *errorNode = static_cast<xml::ErrorNode *>(node->addChild(partest::make_unique<xml::ErrorNode>())); // NOLINT(*-pro-type-static-cast-downcast)
 				buildAbortedNode(testFrame, errorNode);
 			}
-			else if(testFrame->getResult() == TestResult::Failed || testFrame->getResult() == TestResult::Mixed)
+			else if(shouldCreateFailureNode(testFrame))
 			{
 				xml::FailureNode *failureNode = static_cast<xml::FailureNode *>(node->addChild(partest::make_unique<xml::FailureNode>())); // NOLINT(*-pro-type-static-cast-downcast)
 				buildFailureNode(testFrame, failureNode);
 			}
-			else if(testFrame->getResult() == TestResult::Passed && testFrame->setToFail())
+			else if(shouldCreateExpectedFailureNode(testFrame))
 			{
 				// This isn't exactly a failure. Add a log node to indicate that the test failed by design
 				// So no failure node. Log node instead.
@@ -107,19 +136,19 @@ namespace partest
 			{
 				if(!assertion->passed())
 				{
-					//node->message = "Assertion Failed: (" + assertion->getCondition() + ')';
-					//node->type = assertion->assertType();
 					nodeBody = m_assertionParser.parseAssertion(*assertion);
 					break;
 				}
 			}
 
-			if(nodeBody.empty() && testFrame->assertionCount() == 0)
+			if(nodeBody.empty())
 			{
-				nodeBody = "Failure observed in subtest";
+				node->body = "Test ran with ExpectFailure: Condition satisfied by failure in subtest";
 			}
-
-			node->body = "ExpectedFailure: " + nodeBody;
+			else
+			{
+				node->body = "Test ran with ExpectFailure: Satisfied by assertion failure\n" + nodeBody;
+			}
 		}
 
 		void buildFailureNode(const TestFrame *testFrame, xml::FailureNode *node)
@@ -137,18 +166,14 @@ namespace partest
 			}
 
 			// Determine failure mode. Did the test pass unexpectedly?
-			if(node->body.empty() && testFrame->setToFail())
+			if(testFrame->getEffectiveResult() == TestResult::UnexpectedPass)
 			{
 				node->message = "Test passed unexpectedly";
 				node->type = "UnexpectedPass";
-				node->body = "This test was expected to fail, but it passed. Check the test conditions and update the test flags if necessary.";
-			}
-			// Empty body and no subtests or assertions at this point means this test is an empty stub.
-			else if(testFrame->assertionCount() == 0 && testFrame->subtestCount() == 0)
-			{
-				node->message = "Test has no assertions";
-				node->type = "NoAssertions";
-				node->body = "This test has no assertions and did not fail. Check the test implementation and add assertions as necessary.";
+				if(!isTestAStub(testFrame))
+					node->body = "Test ran with ExpectFailure: This test was expected to fail, but it passed. Check the test conditions and update the test flags if necessary.";
+				else
+					node->body = "Test ran with ExpectFailure: This test was expected to fail, but it passed. Check the test conditions and update the test flags if necessary. Also check that this test is not an empty stub.";
 			}
 			// Must have been a subtest failure
 			else if(node->body.empty())
@@ -159,30 +184,41 @@ namespace partest
 			}
 		}
 
-		void readSubtree(const TestFrame *test, xml::JUnitXMLNode *node, PARTEST_STRING_PARAM parentTestName)
+		void readSubtree(const TestFrame *testFrame, xml::JUnitXMLNode *node, PARTEST_STRING_PARAM parentTestName)
 		{
-			TestFrame::TestFrameConstIter subtest = test->subtestsBegin();
+			TestFrame::TestFrameConstIter subtest = testFrame->subtestsBegin();
 
-			while(subtest != test->subtestsEnd())
+			while(subtest != testFrame->subtestsEnd())
 			{
-				const TestFrame *frame = *subtest;
+				const TestFrame *subtestFrame = *subtest;
 				// Recurse and create nested TestSuite nodes if subtests exist.
-				if(frame->hasSubtests())
+				if(subtestFrame->hasSubtests())
 				{
 					// Create a node for the test suite
 					xml::TestSuiteNode *suiteNode = static_cast<xml::TestSuiteNode *>(node->addChild(partest::make_unique<xml::TestSuiteNode>())); // NOLINT(*-pro-type-static-cast-downcast)
-					buildTestSuiteNode(frame, suiteNode);
+					buildTestSuiteNode(subtestFrame, suiteNode);
+
 					// Populate it with a test case for its local results
-					xml::TestCaseNode *testNode = static_cast<xml::TestCaseNode *>(suiteNode->addChild(partest::make_unique<xml::TestCaseNode>())); // NOLINT(*-pro-type-static-cast-downcast)
-					buildTestCaseNode(frame, testNode, parentTestName);
+					if(shouldCreateLocalTestCaseNode(subtestFrame))
+					{
+						xml::TestCaseNode *testNode = static_cast<xml::TestCaseNode *>(suiteNode->addChild(partest::make_unique<xml::TestCaseNode>())); // NOLINT(*-pro-type-static-cast-downcast)
+						buildTestCaseNode(subtestFrame, testNode, parentTestName);
+					}
+					else if(shouldCreateExpectedFailureNode(subtestFrame))
+					{
+						// This isn't exactly a failure. Add a log node to indicate that the test failed by design
+						// So no failure node. Log node instead.
+						xml::SystemOutNode *logNode = static_cast<xml::SystemOutNode *>(suiteNode->addChild(partest::make_unique<xml::SystemOutNode>())); // NOLINT(*-pro-type-static-cast-downcast)
+						buildExpectedFailureNode(subtestFrame, logNode);
+					}
 					// Add subtests as nested TestSuite nodes
-					readSubtree(frame, suiteNode, testNode->name);
+					readSubtree(subtestFrame, suiteNode, suiteNode->name);
 				}
 				// Otherwise create a TestCase
 				else
 				{
 					xml::TestCaseNode *testNode = static_cast<xml::TestCaseNode *>(node->addChild(partest::make_unique<xml::TestCaseNode>())); // NOLINT(*-pro-type-static-cast-downcast)
-					buildTestCaseNode(frame, testNode, parentTestName);
+					buildTestCaseNode(subtestFrame, testNode, parentTestName);
 				}
 				++subtest;
 			}

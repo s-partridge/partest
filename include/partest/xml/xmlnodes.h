@@ -223,7 +223,7 @@ namespace partest
 			void bodyText(std::ostream &out) const override
 			{
 				if(valueAsBody)
-					out << makeIndent() << sanitizeText(value) << '\n';
+					out << sanitizeText(value) << '\n';
 			}
 
 		public:
@@ -240,7 +240,7 @@ namespace partest
 		protected:
 			void bodyText(std::ostream &out) const override
 			{
-				out << makeIndent() << sanitizeText(body) << '\n';
+				out << sanitizeText(body) << '\n';
 			}
 
 		public:
@@ -255,7 +255,7 @@ namespace partest
 		protected:
 			void bodyText(std::ostream &out) const override
 			{
-				out << makeIndent() << sanitizeText(body) << '\n';
+				out << sanitizeText(body) << '\n';
 			}
 
 		public:
@@ -298,7 +298,7 @@ namespace partest
 
 			void bodyText(std::ostream &out) const override
 			{
-				out << makeIndent() << sanitizeText(body) << '\n';
+				out << sanitizeText(body) << '\n';
 			}
 
 		public:
@@ -323,7 +323,7 @@ namespace partest
 
 			void bodyText(std::ostream &out) const override
 			{
-				out << makeIndent() << sanitizeText(body) << '\n';
+				out << sanitizeText(body) << '\n';
 			}
 
 		public:

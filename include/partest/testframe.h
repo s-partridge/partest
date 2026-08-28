@@ -56,9 +56,9 @@ namespace partest
 		std::string fullTestName() const;
 		std::string testNameToDepth(size_t depth) const;
 
-		TestStatus status() const noexcept;
-		TestResult result() const noexcept;
-		bool setToFail() const noexcept;
+		TestStatus getStatus() const noexcept;
+		TestResult getEffectiveResult() const noexcept;
+		bool getExpectFailure() const noexcept;
 
 		std::chrono::steady_clock::duration duration() const noexcept { return endTime() - startTime(); }
 
@@ -184,7 +184,8 @@ namespace partest
 		bool hasTestFunction() const noexcept { return m_testFunction != nullptr; }
 		bool hasTeardownFunction() const noexcept { return m_testTeardown != nullptr; }
 
-		PARTEST_CONSTEXPR_14 void updateResultFromSubtest(const TestResult &result) noexcept { state.updateResultFromSubtest(result); }
+		PARTEST_CONSTEXPR_14 void updateResult(const TestResult &result) noexcept { state.updateResult(result); }
+		PARTEST_CONSTEXPR_14 void updateResultFromSubtest(const TestState &subtestState) noexcept { state.updateResultFromSubtest(subtestState); }
 		PARTEST_CONSTEXPR_14 void updateStatus(TestStatus status) noexcept { state.updateStatus(status); }
 
 		void processAssertion(const AssertionResult &result)
@@ -199,7 +200,7 @@ namespace partest
 			// Mark the test as aborted and log a generic message.
 			updateStatus(TestStatus::Aborted);
 			// Ensure that the test result was set. A generic exception indicates test failure.
-			updateResultFromSubtest(TestResult::Failed);
+			updateResult(TestResult::Failed);
 			recordLog(LogLevel::Error, LOG_TYPE_EXCEPTION, message);
 		}
 
@@ -228,12 +229,13 @@ namespace partest
 		}
 
 		PARTEST_CONSTEXPR_14 TestStatus getStatus() const noexcept { return state.getStatus(); }
-		PARTEST_CONSTEXPR_14 TestResult getResult() const noexcept { return state.getResult(); }
+
+		PARTEST_CONSTEXPR_14 TestResult getEffectiveResult() const noexcept { return state.getEffectiveResult(); }
 
 		PARTEST_CONSTEXPR_14 bool hasFinishedRunning() const noexcept { return state.hasFinishedRunning(); }
 		PARTEST_CONSTEXPR_14 bool hasFailures() const noexcept { return state.hasFailures(); }
 		PARTEST_CONSTEXPR_14 bool wasSkipped() const noexcept { return state.getStatus() == TestStatus::Skipped; }
-		PARTEST_CONSTEXPR_14 bool setToFail() const noexcept { return state.getExpectFailure(); }
+		PARTEST_CONSTEXPR_14 bool getExpectFailure() const noexcept { return state.getExpectFailure(); }
 
 		/**
 		* Check whether this test frame descends from `other`
@@ -368,7 +370,7 @@ namespace partest
 			// If effective flags indicate the test should be skipped, do nothing and return immediately
 			if(getEffectiveFlags().skip == FlagState::Disabled)
 			{
-				if(getResult() == TestResult::NoResult)
+				if(getEffectiveResult() == TestResult::NoResult)
 				{
 					recordLog(LogLevel::Warning, LOG_TYPE_TEST, "\"" + fullTestName() + "\" completed without any assertions. Defaulting to PASSED.");
 					// Shunt a passing value to the state
@@ -380,9 +382,12 @@ namespace partest
 					updateStatus(TestStatus::Completed);
 				}
 
+				// TODO: Refactor this to iterate over subtests instead of the child calling on the parent.
+				// This moves the call to the logical end of the test tree, where the parent can evaluate all subtests and update its own state accordingly.
+				// It also provides a place to potentially ensure that concurrent subtests have completed. At this point, if they have not, something is wrong.
 				if(m_parent != nullptr)
 				{
-					m_parent->updateResultFromSubtest(getResult());
+					m_parent->updateResultFromSubtest(state);
 				}
 
 				if(m_testTeardown != nullptr)
@@ -519,9 +524,9 @@ namespace partest
 	inline std::string TestFrameView::fullTestName() const { return m_testFrame->fullTestName(); }
 	inline std::string TestFrameView::testNameToDepth(size_t depth) const { return m_testFrame->testNameToDepth(depth); }
 
-	inline TestStatus TestFrameView::status() const noexcept { return m_testFrame->state.getStatus(); }
-	inline TestResult TestFrameView::result() const noexcept { return m_testFrame->state.getResult(); }
-	inline bool TestFrameView::setToFail() const noexcept { return m_testFrame->setToFail(); }
+	inline TestStatus TestFrameView::getStatus() const noexcept { return m_testFrame->state.getStatus(); }
+	inline TestResult TestFrameView::getEffectiveResult() const noexcept { return m_testFrame->getEffectiveResult(); }
+	inline bool TestFrameView::getExpectFailure() const noexcept { return m_testFrame->getExpectFailure(); }
 
 	inline std::chrono::steady_clock::time_point TestFrameView::startTime() const noexcept { return m_testFrame->startTime(); }
 	inline std::chrono::steady_clock::time_point TestFrameView::endTime() const noexcept { return m_testFrame->endTime(); }
