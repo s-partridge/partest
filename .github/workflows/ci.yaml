@@ -8,6 +8,9 @@ on:
 
 jobs:
   build-gcc:
+    permissions:
+      checks: write
+      contents: read
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -70,6 +73,9 @@ jobs:
           require_tests: false
             
   build-clang:
+    permissions:
+      checks: write
+      contents: read
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -131,6 +137,9 @@ jobs:
           require_tests: false
 
   build-windows:
+    permissions:
+      checks: write
+      contents: read
     runs-on: windows-latest
 
     steps:
