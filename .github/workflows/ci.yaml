@@ -71,6 +71,9 @@ jobs:
           report_paths: testResults.xml
           check_name: Partest Results
           require_tests: false
+          detailed_summary: true
+          include_passed: true
+          annotate_only: false
             
   build-clang:
     permissions:
@@ -135,6 +138,9 @@ jobs:
           report_paths: testResults.xml
           check_name: Partest Results
           require_tests: false
+          detailed_summary: true
+          include_passed: true
+          annotate_only: false
 
   build-windows:
     permissions:
@@ -181,3 +187,6 @@ jobs:
           report_paths: testResults.xml
           check_name: Partest Results
           require_tests: false
+          detailed_summary: true
+          include_passed: true
+          annotate_only: false
