@@ -4,6 +4,8 @@
 #include <sstream>
 #include <string>
 #include <chrono>
+#include <mutex>
+#include <ctime>
 
 #include <partest/common.h>
 
@@ -133,13 +135,39 @@ namespace partest
 		return out;
 	}
 
+
+	inline bool gmtime_pt(const std::time_t &time, std::tm &calendarTime)
+	{
+#if defined(_MSC_VER)
+		errno_t err = gmtime_s(&calendarTime, &time);
+		return err == 0;
+#elif defined(__linux__)   || defined(__APPLE__)  || defined(__FreeBSD__) || \
+		  defined(__NetBSD__)  || defined(__OpenBSD__) || defined(__ANDROID__)
+		return gmtime_r(&time, &calendarTime) != nullptr;
+#else
+		// Create a mutex to protect gmtime, which is not thread-safe
+		static std::mutex mut;
+
+		std::lock_guard<std::mutex> lock(mut);
+		// Fallback to gmtime, which is not thread-safe
+		std::tm *result = std::gmtime(&time);
+
+		if(!result)
+			return false;
+		calendarTime = *result;
+		return true;
+#endif
+	}
+
 	// Standard datetime expected by JUnit
-	// TODO: Move this to a common location
 	inline std::string toIso8601(std::chrono::system_clock::time_point timePoint)
 	{
 		time_t time = std::chrono::system_clock::to_time_t(timePoint);
-		// TODO: replace gmtime call with centralized alternative that uses gmtime_s/_r as available.
-		std::tm calendarTime = *std::gmtime(&time);
+
+		std::tm calendarTime;
+		if(!gmtime_pt(time, calendarTime))
+			return "";
+
 		std::ostringstream out;
 		out << std::put_time(&calendarTime, "%Y-%m-%dT%H:%M:%SZ");
 		return out.str();

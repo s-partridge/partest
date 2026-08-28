@@ -76,6 +76,8 @@ namespace partest
 
 	#else
 		#define PARTEST_GETCWD_NONE
+		// Fallback value for platforms that do not define PATH_MAX
+		constexpr unsigned PARTEST_PATH_MAX = 1024;
 	#endif
 
 namespace partest
