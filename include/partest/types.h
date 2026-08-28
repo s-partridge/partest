@@ -232,8 +232,10 @@ namespace partest
 	{
 		std::string name; // Name of the test
 		std::string description; // Description of the test
-		PARTEST_CONSTEXPR_20 TestInfo() : name(), description() {}
-		PARTEST_CONSTEXPR_20 TestInfo(PARTEST_STRING_PARAM name, PARTEST_STRING_PARAM description = "") : name(name), description(description) {}
+		std::string file; // File where the test is defined
+		unsigned int line; // Line number where the test is defined
+		PARTEST_CONSTEXPR_20 TestInfo() : name(), description(), file(), line(0) {}
+		PARTEST_CONSTEXPR_20 TestInfo(PARTEST_STRING_PARAM name, PARTEST_STRING_PARAM description = "", PARTEST_STRING_PARAM file = "", unsigned int line = 0) : name(name), description(description), file(file), line(line) {}
 
 		/**
 		* Get a TestInfo instance with default (empty) values

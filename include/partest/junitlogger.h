@@ -35,6 +35,7 @@ namespace partest
 		void buildTestSuiteNode(const TestFrame *testFrame, xml::TestSuiteNode *node)
 		{
 			node->name = testFrame->metadata.name;
+			node->file = testFrame->metadata.file;
 			node->tests = testFrame->subtestCount();
 			node->assertions = testFrame->assertionCount();
 			node->failures = testFrame->getTestFailureCount();
@@ -46,6 +47,8 @@ namespace partest
 		void buildTestCaseNode(const TestFrame *testFrame, xml::TestCaseNode *node, PARTEST_STRING_PARAM parentTestName)
 		{
 			node->name = testFrame->metadata.name;
+			node->file = testFrame->metadata.file;
+			node->line = testFrame->metadata.line;
 			node->classname = parentTestName;
 			node->assertions = testFrame->assertionCount();
 			node->time = testFrame->endTime() - testFrame->startTime();

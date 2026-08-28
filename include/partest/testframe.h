@@ -165,12 +165,11 @@ namespace partest
 		std::chrono::steady_clock::time_point endTime() const noexcept { return m_endTime; }
 		Timestamp timestamp() const noexcept { return m_timeStarted; }
 
-		PARTEST_STRING_PARAM testFile() const noexcept { return m_testFile; }
-		void setTestFile(PARTEST_STRING_PARAM fileName) { m_testFile = fileName; }
+		PARTEST_STRING_PARAM testFile() const noexcept { return metadata.file; }
+		void setTestFile(PARTEST_STRING_PARAM fileName) { metadata.file = fileName; }
 
-		unsigned testLine() const noexcept { return m_testLine; }
-		void setTestLine(unsigned line) { m_testLine = line; }
-
+		unsigned testLine() const noexcept { return metadata.line; }
+		void setTestLine(unsigned line) { metadata.line = line; }
 		const TestFrameView &testFrameView() const noexcept { return m_testFrameView; }
 
 		TestInfo metadata; // Test metadata, including name and description
