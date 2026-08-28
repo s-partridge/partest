@@ -190,7 +190,9 @@ namespace partest
 			: EventReporterInterface(), TestFrameReaderInterface(),
 			  m_root(make_unique<xml::TestSuitesNode>()),
 			  m_reportPath(reportPath), m_assertionParser(simple::makeAssertionParser())
-		{ }
+		{
+			m_root->timestamp = std::chrono::system_clock::now();
+		}
 
 		// EventReporter functions
 		void onTestBegin(const Event &event, const BeginTestPayload &payload) override {}
@@ -209,7 +211,6 @@ namespace partest
 		void onDie(const Event &event, const DiePayload &payload) override
 		{
 			TestRunner::getInstance().readAllTests(this);
-			m_root->timestamp = event.getTimestamp();
 			writeToFile();
 		}
 

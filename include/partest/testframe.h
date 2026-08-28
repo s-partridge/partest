@@ -75,10 +75,7 @@ namespace partest
 		unsigned int m_id;
 		std::chrono::steady_clock::time_point m_startTime;
 		std::chrono::steady_clock::time_point m_endTime;
-		Timestamp m_timeFinished;
-
-		std::string m_testFile;
-		unsigned m_testLine = 0;
+		Timestamp m_timeStarted;
 
 		EventEmitterInterface *m_eventEmitter;
 		TestFrameView m_testFrameView;
@@ -108,7 +105,7 @@ namespace partest
 		{
 			m_startTime = std::chrono::steady_clock::time_point();
 			m_endTime = std::chrono::steady_clock::time_point();
-			m_timeFinished = std::chrono::system_clock::time_point();
+			m_timeStarted = std::chrono::system_clock::time_point();
 
 			metadata.name = "Undefined Test Frame";
 			metadata.description = "Empty frame representing test suite root";
@@ -166,7 +163,7 @@ namespace partest
 
 		std::chrono::steady_clock::time_point startTime() const noexcept { return m_startTime; }
 		std::chrono::steady_clock::time_point endTime() const noexcept { return m_endTime; }
-		Timestamp timestamp() const noexcept { return m_timeFinished; }
+		Timestamp timestamp() const noexcept { return m_timeStarted; }
 
 		PARTEST_STRING_PARAM testFile() const noexcept { return m_testFile; }
 		void setTestFile(PARTEST_STRING_PARAM fileName) { m_testFile = fileName; }
@@ -322,7 +319,8 @@ namespace partest
 
 		bool initializeTest(TestContext& context)
 		{
-			m_eventEmitter->emitBeginTest(TestFrameView(*this), std::chrono::system_clock::now());
+			m_timeStarted = std::chrono::system_clock::now();
+			m_eventEmitter->emitBeginTest(TestFrameView(*this), m_timeStarted);
 			// If effective flags indicate the test should be skipped, do nothing and return immediately
 			if(getEffectiveFlags().skip == FlagState::Enabled)
 			{
@@ -393,8 +391,7 @@ namespace partest
 					m_testTeardown(context);
 				}
 			}
-			m_timeFinished = std::chrono::system_clock::now();
-			m_eventEmitter->emitEndTest(TestFrameView(*this), m_timeFinished);
+			m_eventEmitter->emitEndTest(TestFrameView(*this), std::chrono::system_clock::now());
 
 			return m_parent;
 		}
