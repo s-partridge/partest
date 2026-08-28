@@ -180,7 +180,7 @@ jobs:
           bin\x86\dbg-c20\partest.exe
           bin\x64\dbg-c20\partest.exe
 
-      - name: Test Report
+      - name: Test Report A (action-junit-report)
         uses: mikepenz/action-junit-report@v5
         if: always() # && hashFiles('testResults.xml') != '' # Uncomment to only run if the JUnit file is present
         with:
@@ -190,3 +190,12 @@ jobs:
           detailed_summary: true
           include_passed: true
           annotate_only: false
+
+      - name: Test Report B (publish-unit-test-result)
+        uses: EnricoMi/publish-unit-test-result-action/windows@v2
+        if: always()
+        with:
+          files: testResults.xml
+          check_name: "Partest Results (publish-unit-test-result, Windows)"
+          comment_mode: off
+          action_fail: false
