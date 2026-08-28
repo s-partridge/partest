@@ -184,7 +184,7 @@ namespace partest
 			}
 		}
 
-		void readSubtree(const TestFrame *testFrame, xml::JUnitXMLNode *node, PARTEST_STRING_PARAM parentTestName)
+		void readSubtree(const TestFrame *testFrame, xml::XMLContainerNode *node, PARTEST_STRING_PARAM parentTestName)
 		{
 			TestFrame::TestFrameConstIter subtest = testFrame->subtestsBegin();
 

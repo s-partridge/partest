@@ -54,16 +54,18 @@ public:
 		const char *subchildName = "subchild";
 		const unsigned childCount = 3;
 		const char *expectedChain = "<node>\n    <child>\n        <subchild>\n        </subchild>\n    </child>\n    <child>\n        <subchild>\n        </subchild>\n    </child>\n    <child>\n        <subchild>\n        </subchild>\n    </child>\n</node>\n";
-		partest::xml::JUnitXMLNode rootNode(rootName);
+		partest::xml::XMLContainerNode rootNode(rootName);
 
 		ASSERT_EQUAL(rootName, rootNode.nodeTag);
 
 		for(unsigned x = 0; x < childCount; ++x)
 		{
-			auto child = rootNode.addChild(partest::make_unique<partest::xml::JUnitXMLNode>(childName));
+			//static cast to correct type, since addChild returns a non - owning pointer to the base class
+			partest::xml::XMLContainerNode *child = static_cast<partest::xml::XMLContainerNode *>(rootNode.addChild(partest::make_unique<partest::xml::XMLContainerNode>(childName)));
 			ASSERT_EQUAL(child->nodeTag, childName);
 
-			auto subchild = child->addChild(partest::make_unique<partest::xml::JUnitXMLNode>(subchildName));
+			//static cast to correct type, since addChild returns a non - owning pointer to the base class
+			partest::xml::XMLContainerNode *subchild = static_cast<partest::xml::XMLContainerNode *>(child->addChild(partest::make_unique<partest::xml::XMLContainerNode>(subchildName)));
 			ASSERT_EQUAL(subchild->nodeTag, subchildName);
 		}
 

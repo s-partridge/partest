@@ -24,47 +24,38 @@ namespace partest
 		constexpr const char *JUNIT_FAILURE = "failure";
 		constexpr const char *JUNIT_ERROR = "error";
 
-		// Root type for any XML node tree.
-		// Any XML node requires a tag and the ability to nest further nodes
-		struct JUnitXMLNode
+		static std::string sanitizeText(PARTEST_STRING_PARAM text)
 		{
+			return sanitizeForXML(text, XMLEscapeTable::Mode::Plaintext);
+		}
+			
+		static std::string sanitizeAttrib(PARTEST_STRING_PARAM attrib)
+		{
+			return sanitizeForXML(attrib, XMLEscapeTable::Mode::DoubleQuoted);
+		}
+
+		// Root type for any XML node tree.
+		// Any XML node requires a tag
+		struct XMLNode
+		{
+		protected:
 			unsigned depth = 0;
 
-		protected:
-			std::vector<std::unique_ptr<JUnitXMLNode>> children;
-
-			void walkChildren(std::ostream &out) const
-			{
-				if(children.empty())
-					return;
-
-				for(size_t i = 0; i < children.size(); ++i)
-				{
-					out << *children[i];
-				}
-			}
-
 			virtual std::string openTag() const { return makeIndent() + '<' + nodeTag + '>'; }
-			virtual void bodyText(std::ostream &out) const { walkChildren(out); }
+			virtual std::string bodyText() const { return ""; }
 			virtual std::string closeTag() const { return makeIndent() + "</" + nodeTag + '>'; }
 
-			static std::string sanitizeText(PARTEST_STRING_PARAM text)
+			virtual std::string makeWholeTag() const
 			{
-				return sanitizeForXML(text, XMLEscapeTable::Mode::Plaintext);
-			}
-			
-			static std::string sanitizeAttrib(PARTEST_STRING_PARAM attrib)
-			{
-				return sanitizeForXML(attrib, XMLEscapeTable::Mode::DoubleQuoted);
+				std::string wholeTag = openTag() + "\n";
+				wholeTag += bodyText();
+				wholeTag += closeTag() + "\n";
+				return wholeTag;
 			}
 
-			void updateDepth(unsigned newDepth)
+			virtual void updateDepth(unsigned newDepth)
 			{
 				depth = newDepth;
-				for(auto &child : children)
-				{
-					child->updateDepth(newDepth + 1);
-				}
 			}
 
 			std::string makeIndent() const
@@ -75,32 +66,82 @@ namespace partest
 		public:
 			std::string nodeTag;
 
-			explicit JUnitXMLNode(PARTEST_STRING_PARAM nodeTag) : nodeTag(sanitizeText(nodeTag)) {}
-			virtual ~JUnitXMLNode() = default;
+			explicit XMLNode(PARTEST_STRING_PARAM nodeTag) : nodeTag(sanitizeText(nodeTag)) {}
+			virtual ~XMLNode() = default;
+		
+			friend struct XMLContainerNode;
+			friend std::ostream &operator<<(std::ostream &out, const XMLNode &rhs);
+		};
+
+		inline std::ostream &operator<<(std::ostream &out, const XMLNode &rhs)
+		{
+			out << rhs.makeWholeTag();
+			
+			return out;
+		}
+
+		struct XMLSelfClosingNode : public XMLNode
+		{
+		protected:
+			std::string openTag() const override { return makeIndent() + '<' + nodeTag + "/>"; }
+			std::string bodyText() const final { return ""; }
+			std::string closeTag() const final { return ""; }
+
+			std::string makeWholeTag() const final { return openTag() + '\n'; }
+
+		public:
+			explicit XMLSelfClosingNode(PARTEST_STRING_PARAM nodeTag) : XMLNode(nodeTag) {}
+			virtual ~XMLSelfClosingNode() = default;
+		};
+
+		struct XMLContainerNode : public XMLNode
+		{
+		protected:
+			std::vector<std::unique_ptr<XMLNode>> children;
+
+			std::string walkChildren() const
+			{
+				if(children.empty())
+					return "";
+
+				std::ostringstream out;
+
+				for(size_t i = 0; i < children.size(); ++i)
+				{
+					out << *children[i];
+				}
+				
+				return out.str();
+			}
+
+			virtual std::string bodyText(void) const { return walkChildren(); }
+
+			void updateDepth(unsigned newDepth) override
+			{
+				depth = newDepth;
+				for(auto &child : children)
+				{
+					child->updateDepth(newDepth + 1);
+				}
+			}
+
+		public:
+			explicit XMLContainerNode(PARTEST_STRING_PARAM nodeTag) : XMLNode(nodeTag) {}
+			virtual ~XMLContainerNode() = default;
 
 			/**
 			* Add a new child node to this node. Return non-owning pointer to the new child.
 			*/
-			JUnitXMLNode *addChild(std::unique_ptr<JUnitXMLNode> child)
+			XMLNode *addChild(std::unique_ptr<XMLNode> child)
 			{
 				child->updateDepth(depth + 1);
 				children.push_back(std::move(child));
 				return children.back().get();
 			}
-
-			friend std::ostream &operator<<(std::ostream &out, const JUnitXMLNode &rhs);
 		};
 
-		inline std::ostream &operator<<(std::ostream &out, const JUnitXMLNode &rhs)
-		{
-			out << rhs.openTag() << '\n';
-			rhs.bodyText(out);
-			out << rhs.closeTag() << '\n';
-			return out;
-		}
-
 		// Root node for a JUnit XML file, contains metrics for the entire test suite
-		struct TestSuitesNode : public JUnitXMLNode
+		struct TestSuitesNode : public XMLContainerNode
 		{
 		protected:
 			std::string openTag() const override
@@ -133,7 +174,7 @@ namespace partest
 			// Date and time of when the test suite was executed (in ISO 8601 format)
 			std::chrono::system_clock::time_point timestamp;
 
-			explicit TestSuitesNode(PARTEST_STRING_PARAM nodeTag = JUNIT_TESTSUITES) : JUnitXMLNode(nodeTag) {}
+			explicit TestSuitesNode(PARTEST_STRING_PARAM nodeTag = JUNIT_TESTSUITES) : XMLContainerNode(nodeTag) {}
 		};
 
 		// Root node for an individual suite within a JUnit XML file, representing (generally) one test file
@@ -167,7 +208,7 @@ namespace partest
 			explicit TestSuiteNode(PARTEST_STRING_PARAM nodeTag = JUNIT_TESTSUITE) : TestSuitesNode(nodeTag) {}
 		};
 
-		struct TestCaseNode : public JUnitXMLNode
+		struct TestCaseNode : public XMLContainerNode
 		{
 		protected:
 			std::string openTag() const override
@@ -200,17 +241,17 @@ namespace partest
 			std::string file;		// Source code file of this test case
 			int line = 0;			// Source code line number of the start of this test case
 
-			explicit TestCaseNode(PARTEST_STRING_PARAM nodeTag = JUNIT_TESTCASE) : JUnitXMLNode(nodeTag) {}
+			explicit TestCaseNode(PARTEST_STRING_PARAM nodeTag = JUNIT_TESTCASE) : XMLContainerNode(nodeTag) {}
 		};
 
 		// Properties node, optional, containing individual property nodes
-		struct PropertiesNode : public JUnitXMLNode
+		struct PropertiesNode : public XMLContainerNode
 		{
-			explicit PropertiesNode(PARTEST_STRING_PARAM nodeTag = JUNIT_PROPERTIES) : JUnitXMLNode(nodeTag) {}
+			explicit PropertiesNode(PARTEST_STRING_PARAM nodeTag = JUNIT_PROPERTIES) : XMLContainerNode(nodeTag) {}
 		};
 
 		// Property node, may contain either a value in the XML, or a text body
-		struct PropertyNode : public PropertiesNode
+		struct PropertyNode : public XMLNode
 		{
 		protected:
 			std::string openTag() const override
@@ -220,10 +261,11 @@ namespace partest
 				return makeIndent() + '<' + nodeTag + " value=\"" + sanitizeAttrib(value) + "\">";
 			}
 
-			void bodyText(std::ostream &out) const override
+			std::string bodyText() const override
 			{
 				if(valueAsBody)
-					out << sanitizeText(value) << '\n';
+					return sanitizeText(value) + '\n';
+				return "";
 			}
 
 		public:
@@ -231,41 +273,41 @@ namespace partest
 			std::string value;
 			bool valueAsBody = false;
 
-			explicit PropertyNode(PARTEST_STRING_PARAM nodeTag = JUNIT_PROPERTY) : PropertiesNode(nodeTag) {}
+			explicit PropertyNode(PARTEST_STRING_PARAM nodeTag = JUNIT_PROPERTY) : XMLNode(nodeTag) {}
 		};
 
 		// Suite or Test level log from stdout
-		struct SystemOutNode : public JUnitXMLNode
+		struct SystemOutNode : public XMLNode
 		{
 		protected:
-			void bodyText(std::ostream &out) const override
+			std::string bodyText() const override
 			{
-				out << sanitizeText(body) << '\n';
+				return sanitizeText(body) + '\n';
 			}
 
 		public:
 			std::string body;
 
-			explicit SystemOutNode(PARTEST_STRING_PARAM nodeTag = JUNIT_SYSTEM_OUT) : JUnitXMLNode(nodeTag) {}
+			explicit SystemOutNode(PARTEST_STRING_PARAM nodeTag = JUNIT_SYSTEM_OUT) : XMLNode(nodeTag) {}
 		};
 
 		// Suite or Test level log from stderr
-		struct SystemErrNode : public JUnitXMLNode
+		struct SystemErrNode : public XMLNode
 		{
 		protected:
-			void bodyText(std::ostream &out) const override
+			std::string bodyText() const override
 			{
-				out << sanitizeText(body) << '\n';
+				return sanitizeText(body) + '\n';
 			}
 
 		public:
 			std::string body;
 
-			explicit SystemErrNode(PARTEST_STRING_PARAM nodeTag = JUNIT_SYSTEM_ERR) : JUnitXMLNode(nodeTag) {}
+			explicit SystemErrNode(PARTEST_STRING_PARAM nodeTag = JUNIT_SYSTEM_ERR) : XMLNode(nodeTag) {}
 		};
 
 		// Used to report that a test was skipped
-		struct SkippedNode : public JUnitXMLNode
+		struct SkippedNode : public XMLSelfClosingNode
 		{
 		protected:
 			std::string openTag() const override
@@ -273,19 +315,14 @@ namespace partest
 				return makeIndent() + '<' + nodeTag + " message=\"" + sanitizeAttrib(message) + "\" />";
 			}
 
-			std::string closeTag() const override
-			{
-				return "";
-			}
-
 		public:
 			std::string message;
 
-			explicit SkippedNode(PARTEST_STRING_PARAM nodeTag = JUNIT_SKIPPED) : JUnitXMLNode(nodeTag) {}
+			explicit SkippedNode(PARTEST_STRING_PARAM nodeTag = JUNIT_SKIPPED) : XMLSelfClosingNode(nodeTag) {}
 		};
 
 		// Used to report the results of a failed test, usually from a failed assertion
-		struct FailureNode : public JUnitXMLNode
+		struct FailureNode : public XMLNode
 		{
 		protected:
 			std::string openTag() const override
@@ -296,9 +333,9 @@ namespace partest
 					+ "\">";
 			}
 
-			void bodyText(std::ostream &out) const override
+			std::string bodyText() const override
 			{
-				out << sanitizeText(body) << '\n';
+				return sanitizeText(body) + '\n';
 			}
 
 		public:
@@ -306,11 +343,11 @@ namespace partest
 			std::string type;		// Failure type, generally assertion type
 			std::string body;		// Detailed description of the failure
 
-			explicit FailureNode(PARTEST_STRING_PARAM nodeTag = JUNIT_FAILURE) : JUnitXMLNode(nodeTag) {}
+			explicit FailureNode(PARTEST_STRING_PARAM nodeTag = JUNIT_FAILURE) : XMLNode(nodeTag) {}
 		};
 
 		// Same as failure node, but represents an unexpected error during test execution
-		struct ErrorNode : public JUnitXMLNode
+		struct ErrorNode : public XMLNode
 		{
 		protected:
 			std::string openTag() const override
@@ -321,9 +358,9 @@ namespace partest
 					+ "\">";
 			}
 
-			void bodyText(std::ostream &out) const override
+			std::string bodyText() const override
 			{
-				out << sanitizeText(body) << '\n';
+				return sanitizeText(body) + '\n';
 			}
 
 		public:
@@ -331,7 +368,7 @@ namespace partest
 			std::string type;
 			std::string body;
 
-			explicit ErrorNode(PARTEST_STRING_PARAM nodeTag = JUNIT_ERROR) : JUnitXMLNode(nodeTag) {}
+			explicit ErrorNode(PARTEST_STRING_PARAM nodeTag = JUNIT_ERROR) : XMLNode(nodeTag) {}
 		};
 	}
 }
