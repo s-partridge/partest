@@ -145,6 +145,7 @@ jobs:
   build-windows:
     permissions:
       checks: write
+      pull-requests: write
       contents: read
     runs-on: windows-latest
 
@@ -192,10 +193,12 @@ jobs:
           annotate_only: false
 
       - name: Test Report B (publish-unit-test-result)
-        uses: EnricoMi/publish-unit-test-result-action/windows@v2
+        uses: EnricoMi/publish-unit-test-result-action@v2
         if: always()
         with:
           files: testResults.xml
-          check_name: "Partest Results (publish-unit-test-result, Windows)"
-          comment_mode: off
-          action_fail: false
+          check_name: "Partest Results (publish-unit-test-result)"
+          comment_mode: off          # avoid a PR comment while you're just comparing output
+          action_fail: false         # let this stay informational; your build step already governs pass/fail
+          job_summary: true
+          report_individual_runs: true   # show every matrix leg's failure, not just the first seen
