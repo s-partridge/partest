@@ -62,7 +62,7 @@ jobs:
           done
 
       - name: Test Report
-        uses: dorny/test-reporter@v1
+        uses: mikepenz/action-junit-report@v5
         if: always() # && hashFiles('testResults.xml') != '' # Uncomment to only run if the JUnit file is present
         with:
           name: Partest Results
@@ -124,7 +124,7 @@ jobs:
           done
 
       - name: Test Report
-        uses: dorny/test-reporter@v1
+        uses: mikepenz/action-junit-report@v5
         if: always() # && hashFiles('testResults.xml') != '' # Uncomment to only run if the JUnit file is present
         with:
           name: Partest Results
@@ -168,7 +168,7 @@ jobs:
           bin\x64\dbg-c20\partest.exe
 
       - name: Test Report
-        uses: dorny/test-reporter@v1
+        uses: mikepenz/action-junit-report@v5
         if: always() # && hashFiles('testResults.xml') != '' # Uncomment to only run if the JUnit file is present
         with:
           name: Partest Results
