@@ -152,9 +152,10 @@ namespace partest
 					<< " failures=\"" << failures << "\""
 					<< " assertions=\"" << assertions << "\""
 					<< " time=\"" << seconds.count() << "\""
-					<< " timestamp=\"" << toIso8601(timestamp) << "\""
-					<< " file=\"" << sanitizeAttrib(file) << "\""
-					<< ">";
+					<< " timestamp=\"" << toIso8601(timestamp) << "\"";
+				if(!file.empty())
+					out << " file=\"" << sanitizeAttrib(file) << "\"";
+				out << ">";
 
 				return out.str();
 			}
@@ -178,10 +179,12 @@ namespace partest
 					<< " name=\"" << sanitizeAttrib(name) << "\""
 					<< " classname=\"" << sanitizeAttrib(classname) << "\""
 					<< " assertions=\"" << assertions << "\""
-					<< " time=\"" << seconds.count() << "\""
-					<< " file=\"" << sanitizeAttrib(file) << "\""
-					<< " line=\"" << line << "\""
-					<< ">";
+					<< " time=\"" << seconds.count() << "\"";
+				if(!file.empty())
+					out << " file=\"" << sanitizeAttrib(file) << "\"";
+				if(line > 0)
+					out << " line=\"" << line << "\"";
+				out << ">";
 
 				return out.str();
 			}
@@ -195,7 +198,7 @@ namespace partest
 			std::chrono::steady_clock::duration time = std::chrono::steady_clock::duration(0);
 
 			std::string file;		// Source code file of this test case
-			int line = 1;			// Source code line number of the start of this test case
+			int line = 0;			// Source code line number of the start of this test case
 
 			explicit TestCaseNode(PARTEST_STRING_PARAM nodeTag = JUNIT_TESTCASE) : JUnitXMLNode(nodeTag) {}
 		};
