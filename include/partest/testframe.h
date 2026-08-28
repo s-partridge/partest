@@ -198,7 +198,7 @@ namespace partest
 		void abortTest(PARTEST_STRING_PARAM message)
 		{
 			// Mark the test as aborted and log a generic message.
-			updateStatus(TestStatus::Aborted);
+			updateStatus(TestStatus::Aborting);
 			// Ensure that the test result was set. A generic exception indicates test failure.
 			updateResult(TestResult::Failed);
 			recordLog(LogLevel::Error, LOG_TYPE_EXCEPTION, message);
@@ -318,8 +318,10 @@ namespace partest
 		AssertionConstIter assertionsBegin() const noexcept { return m_assertions.cbegin(); }
 		AssertionConstIter assertionsEnd() const noexcept { return m_assertions.cend(); }
 
-		bool initializeTest(TestContext& context)
+		bool initializeTest(TestContext& ctx)
 		{
+			assert(getStatus() == TestStatus::Awaiting && "Test frame is already initialized or has already run.");
+
 			m_timeStarted = std::chrono::system_clock::now();
 			m_eventEmitter->emitBeginTest(TestFrameView(*this), m_timeStarted);
 			// If effective flags indicate the test should be skipped, do nothing and return immediately
@@ -331,9 +333,10 @@ namespace partest
 			}
 			else
 			{
+				updateStatus(TestStatus::SettingUp);
 				if(m_testSetup != nullptr)
 				{
-					m_testSetup(context);
+					m_testSetup(ctx);
 				}
 
 				return true;
@@ -345,31 +348,55 @@ namespace partest
 		*
 		* @throws std::runtime_error if no test function is set.
 		*/
-		void runTestFunction(TestContext& context)
+		void runTestFunction(TestContext& ctx)
 		{
+			assert(!wasSkipped() && "Invalid test state. Test should not be run if it was skipped.");
+
 			if(m_testFunction == nullptr)
 				throw std::runtime_error("Attempted to run a test function that is not set.");
 
-			struct ClockGuard
+			struct RunGuard
 			{
 				TestFrame *frame;
-				~ClockGuard()
+				~RunGuard()
 				{
 					frame->m_endTime = std::chrono::steady_clock::now();
+					frame->updateStatus(TestStatus::TearingDown);
 				}
 			} guard{this};
 
 			updateStatus(TestStatus::Running);
 			m_startTime = std::chrono::steady_clock::now();
-			m_testFunction(context);
-			// ClockGuard sets endTime automatically on return
+			m_testFunction(ctx);
+			// RunGuard updates the status and end time automatically via RAII when this function exits, even if an exception is thrown.
 		}
 
-		TestFrame *finalizeTest(TestContext& context)
+		TestFrame *finalizeTest(TestContext& ctx)
 		{
 			// If effective flags indicate the test should be skipped, do nothing and return immediately
-			if(getEffectiveFlags().skip == FlagState::Disabled)
+			if(getEffectiveFlags().skip != FlagState::Enabled)
 			{
+				// Flag state/run status invariant. Test should not be marked as skipped if the skip flag is not set.
+				assert(!wasSkipped() && "Invalid test state. Test should not have been skipped without skip flag set.");
+				// Run status invariant. A test should only be finalized if it is in the process of tearing down or has been aborted.
+				assert(getStatus() == TestStatus::TearingDown || getStatus() == TestStatus::Aborting && "Test frame is not in a valid state to finalize. Test should be tearing down or aborted.");
+
+				// TODO: Refactor this to iterate over subtests instead of the child calling on the parent.
+				// This moves the call to the logical end of the test tree, where the parent can evaluate all subtests and update its own state accordingly.
+				// It also provides a place to potentially ensure that concurrent subtests have completed. At this point, if they have not, something is wrong.
+
+				for(TestFrame *subtest : m_subtests)
+				{
+					if(subtest->hasFinishedRunning() || subtest->wasSkipped())
+					{
+						updateResultFromSubtest(subtest->state);
+					}
+					else
+					{
+						recordLog(LogLevel::Warning, LOG_TYPE_TEST, "Subtest \"" + subtest->fullTestName() + "\" has not completed. This may indicate a problem with the test framework or a test that did not complete properly.");
+					}
+				}
+
 				if(getEffectiveResult() == TestResult::NoResult)
 				{
 					recordLog(LogLevel::Warning, LOG_TYPE_TEST, "\"" + fullTestName() + "\" completed without any assertions. Defaulting to PASSED.");
@@ -377,22 +404,18 @@ namespace partest
 					state.updateResultFromAssertion(true);
 				}
 
-				if(getStatus() != TestStatus::Aborted)
+				if(m_testTeardown != nullptr)
+				{
+					m_testTeardown(ctx);
+				}
+
+				if(getStatus() != TestStatus::Aborting)
 				{
 					updateStatus(TestStatus::Completed);
 				}
-
-				// TODO: Refactor this to iterate over subtests instead of the child calling on the parent.
-				// This moves the call to the logical end of the test tree, where the parent can evaluate all subtests and update its own state accordingly.
-				// It also provides a place to potentially ensure that concurrent subtests have completed. At this point, if they have not, something is wrong.
-				if(m_parent != nullptr)
+				else
 				{
-					m_parent->updateResultFromSubtest(state);
-				}
-
-				if(m_testTeardown != nullptr)
-				{
-					m_testTeardown(context);
+					updateStatus(TestStatus::Aborted);
 				}
 			}
 			m_eventEmitter->emitEndTest(TestFrameView(*this), std::chrono::system_clock::now());
