@@ -20,8 +20,11 @@ namespace partest
 	enum class TestStatus : uint8_t
 	{
 		Awaiting = 0,
+		SettingUp,
 		Running,
+		TearingDown,
 		Completed,
+		Aborting,
 		Aborted,
 		Skipped
 	};
@@ -303,7 +306,28 @@ namespace partest
 				return m_result;
 			}
 		}
+		
+		/**
+		* Check whether the test has started. This will be true from the moment the test is invoked onward.
+		* 
+		* @return true if the test has started, false otherwise.
+		*/
+		PARTEST_CONSTEXPR_11 bool hasTestStarted() const noexcept { return m_status != TestStatus::Awaiting; }
 
+		/**
+		* Check whether the test is currently running. This should be true from the moment the test function itself is invoked, only until the test function returns, and does not include setup or teardown phases.
+		* 
+		* @return true if the test is currently running, false otherwise.
+		*/
+		PARTEST_CONSTEXPR_11 bool isRunning() const noexcept { return m_status == TestStatus::Running; }
+
+		/**
+		* Check whether the test is in any version of active, from setting up to tearing down or aborting. This is more comprehensive than isRunning(), which only checks for the Running state.
+		* 
+		* @return true if the test is in progress, false otherwise.
+		*/
+		PARTEST_CONSTEXPR_11 bool isInProgress() const noexcept { return m_status == TestStatus::SettingUp || m_status == TestStatus::Running || m_status == TestStatus::TearingDown || m_status == TestStatus::Aborting; }
+		
 		/**
 		* Check whether the test has completed.
 		* 
@@ -311,7 +335,13 @@ namespace partest
 		*/
 		PARTEST_CONSTEXPR_11 bool hasFinishedRunning() const noexcept { return m_status == TestStatus::Completed || m_status == TestStatus::Aborted; }
 
+		/**
+		* Check whether the test has passed.
+		* 
+		* @return true if the test has passed, false otherwise.
+		*/
 		PARTEST_CONSTEXPR_11 bool passed() const noexcept { return m_result == TestResult::Passed; }
+		
 
 		/**
 		* Check whether the test has failed or has mixed results (some assertions passed, some failed).
@@ -415,10 +445,16 @@ namespace partest
 		{
 		case TestStatus::Awaiting:
 			return "AWAITING";
+		case TestStatus::SettingUp:
+			return "SETTING_UP";
 		case TestStatus::Running:
 			return "RUNNING";
+		case TestStatus::TearingDown:
+			return "TEARING_DOWN";
 		case TestStatus::Completed:
 			return "COMPLETED";
+		case TestStatus::Aborting:
+			return "ABORTING";
 		case TestStatus::Aborted:
 			return "ABORTED";
 		case TestStatus::Skipped:
@@ -458,10 +494,16 @@ namespace partest
 		in >> statusString;
 		if(statusString == "AWAITING")
 			status = TestStatus::Awaiting;
+		else if(statusString == "SETTING_UP")
+			status = TestStatus::SettingUp;
 		else if(statusString == "RUNNING")
 			status = TestStatus::Running;
+		else if(statusString == "TEARING_DOWN")
+			status = TestStatus::TearingDown;
 		else if(statusString == "COMPLETED")
 			status = TestStatus::Completed;
+		else if(statusString == "ABORTING")
+			status = TestStatus::Aborting;
 		else if(statusString == "ABORTED")
 			status = TestStatus::Aborted;
 		else if(statusString == "SKIPPED")
@@ -482,11 +524,20 @@ namespace partest
 		case TestStatus::Awaiting:
 			statusString = "AWAITING";
 			break;
+		case TestStatus::SettingUp:
+			statusString = "SETTING_UP";
+			break;
 		case TestStatus::Running:
 			statusString = "RUNNING";
 			break;
+		case TestStatus::TearingDown:
+			statusString = "TEARING_DOWN";
+			break;
 		case TestStatus::Completed:
 			statusString = "COMPLETED";
+			break;
+		case TestStatus::Aborting:
+			statusString = "ABORTING";
 			break;
 		case TestStatus::Aborted:
 			statusString = "ABORTED";
