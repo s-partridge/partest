@@ -42,7 +42,7 @@ namespace partest
 			unsigned depth = 0;
 
 			virtual std::string openTag() const { return makeIndent() + '<' + nodeTag + '>'; }
-			virtual std::string bodyText() const { return ""; }
+			virtual std::string bodyText() const = 0;
 			virtual std::string closeTag() const { return makeIndent() + "</" + nodeTag + '>'; }
 
 			virtual std::string makeWholeTag() const
@@ -66,7 +66,9 @@ namespace partest
 		public:
 			std::string nodeTag;
 
-			explicit XMLNode(PARTEST_STRING_PARAM nodeTag) : nodeTag(sanitizeText(nodeTag)) {}
+			// TODO: Should nodeTag be sanitized at all? The tag is a fixed string, not user input
+			// I'm not even sure whether a tag name can have escape characters in it
+			explicit XMLNode(PARTEST_STRING_PARAM nodeTag) : nodeTag(sanitizeAttrib(nodeTag)) {}
 			virtual ~XMLNode() = default;
 		
 			friend struct XMLContainerNode;
@@ -83,7 +85,7 @@ namespace partest
 		struct XMLSelfClosingNode : public XMLNode
 		{
 		protected:
-			std::string openTag() const override { return makeIndent() + '<' + nodeTag + "/>"; }
+			std::string openTag() const override { return makeIndent() + '<' + nodeTag + " />"; }
 			std::string bodyText() const final { return ""; }
 			std::string closeTag() const final { return ""; }
 
@@ -114,7 +116,7 @@ namespace partest
 				return out.str();
 			}
 
-			virtual std::string bodyText(void) const { return walkChildren(); }
+			virtual std::string bodyText(void) const override { return walkChildren(); }
 
 			void updateDepth(unsigned newDepth) override
 			{
