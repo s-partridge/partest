@@ -97,10 +97,10 @@ namespace partest
 			else
 			{
 				oss << "FAILED: " << assertion.assertType() << '(' << assertion.getMetadata(MetaKeys::FullExpr) << ')'
-					<< "\n (" << assertion.getMetadata(MetaKeys::ExprA) 
-					<< ") == " << assertion.getMetadata(MetaKeys::Actual)
-					<< "\n expected: (" << assertion.getMetadata(MetaKeys::ExprB)
-					<< ") as: " << assertion.getMetadata(MetaKeys::Expected);
+					<< "\n Actual (" << assertion.getMetadata(MetaKeys::ExprA) 
+					<< "):\n " << assertion.getMetadata(MetaKeys::Actual)
+					<< "\n Expected (" << assertion.getMetadata(MetaKeys::ExprB)
+					<< "):\n " << assertion.getMetadata(MetaKeys::Expected);
 			}
 			oss << std::endl;
 			appendSourceInfo(oss, assertion);
@@ -120,10 +120,10 @@ namespace partest
 			else
 			{
 				oss << "FAILED: " << assertion.assertType() << '(' << assertion.getMetadata(MetaKeys::FullExpr) << ')'
-					<< "\n (" << assertion.getMetadata(MetaKeys::ExprA) 
-					<< ") == " << assertion.getMetadata(MetaKeys::Actual)
-					<< "\n Not within tolerance: (" << assertion.getMetadata(MetaKeys::ExprB) << ") +- (" << assertion.getMetadata(MetaKeys::ExprC)
-					<< ")\n as: " << assertion.getMetadata(MetaKeys::Expected) << " +-" << assertion.getMetadata(MetaKeys::Epsilon);
+					<< "\n Actual (" << assertion.getMetadata(MetaKeys::ExprA) 
+					<< "):\n " << assertion.getMetadata(MetaKeys::Actual)
+					<< "\n Not within tolerance (" << assertion.getMetadata(MetaKeys::ExprB) << ") +- (" << assertion.getMetadata(MetaKeys::ExprC)
+					<< "):\n " << assertion.getMetadata(MetaKeys::Expected) << " +-" << assertion.getMetadata(MetaKeys::Epsilon);
 			}
 			oss << std::endl;
 			appendSourceInfo(oss, assertion);
@@ -142,10 +142,10 @@ namespace partest
 			else
 			{
 				oss << "FAILED: " << assertion.assertType() << '(' << assertion.getMetadata(MetaKeys::FullExpr) << ')'
-					<< "\n (" << assertion.getMetadata(MetaKeys::ExprA) 
-					<< ") was: " << assertion.getMetadata(MetaKeys::Actual)
-					<< "\n Should not be within tolerance: (" << assertion.getMetadata(MetaKeys::ExprB) << ") +- (" << assertion.getMetadata(MetaKeys::ExprC)
-					<< ")\n as: " << assertion.getMetadata(MetaKeys::Expected) << " +-" << assertion.getMetadata(MetaKeys::Epsilon);
+					<< "\n Actual (" << assertion.getMetadata(MetaKeys::ExprA) 
+					<< "):\n " << assertion.getMetadata(MetaKeys::Actual)
+					<< "\n Should not be within tolerance (" << assertion.getMetadata(MetaKeys::ExprB) << ") +- (" << assertion.getMetadata(MetaKeys::ExprC)
+					<< "):\n " << assertion.getMetadata(MetaKeys::Expected) << " +-" << assertion.getMetadata(MetaKeys::Epsilon);
 			}
 			oss << std::endl;
 			appendSourceInfo(oss, assertion);

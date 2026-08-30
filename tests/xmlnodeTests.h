@@ -104,7 +104,7 @@ public:
 
 		const char *nodeName = "dummy";
 		const char *expectedChain = "<dummy>\n    sample\n</dummy>\n";
-		const char *chainWithIndent = "        <dummy>        \n    sample\n        </dummy>\n";
+		const char *chainWithIndent = "        <dummy>\n    sample\n        </dummy>\n";
 
 		ctx.subtest("doesConstructorSetName", PARTEST_CTX(nodeName)
 		{
