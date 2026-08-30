@@ -11,13 +11,41 @@ class XMLNodeTests : public partest::TestBase
 public:
 	XMLNodeTests() : partest::TestBase("XMLNodeTests", "Validation for JUnit XML node types")
 	{
-		addTest("Test Time Conversion", "Ensure that clock to string conversion is correct",
+		addTest("TimeConversion", "Ensure that clock to string conversion is correct",
 			partest::TEST_FLAGS_INHERIT,
 			PARTEST_CTX(this) { testTimeConversion(ctx); });
 
-		addTest("Test Basic XMLNode", "Ensure base node functionality is correct",
+		addTest("BasicXMLNode", "Ensure base node functionality is correct",
 			partest::TEST_FLAGS_INHERIT,
 			PARTEST_CTX(this) { tesXMLNode(ctx); });
+
+		addTest("TestSuitesNode", "Ensure testsuites node is handled correctly",
+			partest::TEST_FLAGS_SKIP,
+			PARTEST_CTX(this) { testTestSuitesNode(ctx); });
+
+		addTest("TestSuiteNode", "Ensure testsuite node is handled correctly",
+			partest::TEST_FLAGS_SKIP,
+			PARTEST_CTX(this) { testTestSuiteNode(ctx); });
+
+		addTest("TestCaseNode", "Ensure testcase node is handled correctly",
+			partest::TEST_FLAGS_SKIP,
+			PARTEST_CTX(this) { testTestCaseNode(ctx); });
+		
+		addTest("PropertiesNode", "Ensure properties node is handled correctly",
+			partest::TEST_FLAGS_SKIP,
+			PARTEST_CTX(this) { testPropertiesNode(ctx); });
+		
+		addTest("PropertyNode", "Ensure property node is handled correctly",
+			partest::TEST_FLAGS_SKIP,
+			PARTEST_CTX(this) { testPropertyNode(ctx); });
+
+		addTest("LoggingNodes", "Ensure system-out node is handled correctly",
+			partest::TEST_FLAGS_SKIP,
+			PARTEST_CTX(this) { testLoggingNodes(ctx); });
+
+		addTest("ResultNodes", "Ensure result nodes are handled correctly",
+			partest::TEST_FLAGS_SKIP,
+			PARTEST_CTX(this) { testResultNodes(ctx); });
 	}
 
 		//constexpr const char *JUNIT_TESTSUITES = "testsuites";
@@ -79,8 +107,17 @@ public:
 	void testTestCaseNode(TestContext &ctx) {}
 	void testPropertiesNode(TestContext &ctx) {}
 	void testPropertyNode(TestContext &ctx) {}
-	void testSystemOutNode(TestContext &ctx) {}
-	void testSystemErrNode(TestContext &ctx) {}
+	
+	void testLoggingNodes(TestContext &ctx)
+	{
+		ctx.subtest("SystemOutNodeTest", PARTEST_CTX()
+		{
+		});
+		
+		ctx.subtest("SystemErrNodeTest", PARTEST_CTX()
+		{
+		});
+	}
 
 	// This covers skipped, failure, and error nodes
 	void testResultNodes(TestContext &ctx)
