@@ -76,29 +76,7 @@ namespace partest
 		template<class Rep, class Period>
 		bool try_acquire_for(const std::chrono::duration<Rep, Period>& rel_time)
 		{
-			// lock down remaining time from rel_time
-			std::chrono::steady_clock::time_point deadline = std::chrono::steady_clock::now() + rel_time;
-
-			std::unique_lock<std::mutex> lock(m_mutex);
-			assert(m_count >= 0 && m_count <= least_max_value && "Precondition: Semaphore count must be non-negative and not exceed the maximum value.");
-
-			// Condition variable forces the use of unique_lock
-			while(m_count == 0)
-			{
-				std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
-
-				if(now >= deadline)
-					break;
-
-				m_cv.wait_for(lock, deadline - now);
-			}
-			assert(m_count >= 0 && m_count <= least_max_value && "Invariant violated: semaphore count is out of bounds.");
-			if (m_count > 0)
-			{
-				--m_count;
-				return true;
-			}
-			return false;
+			return try_acquire_until(std::chrono::steady_clock::now() + rel_time);
 		}
 
 		template<class Clock, class Duration>

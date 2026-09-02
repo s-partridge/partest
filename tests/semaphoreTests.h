@@ -5,6 +5,8 @@
 #include <vector>
 #include <chrono>
 #include <thread>
+#include <mutex>
+#include <condition_variable>
 
 #include <partest/testbase.h>
 #include <partest/semaphore.h>
@@ -103,7 +105,7 @@ public:
 		std::chrono::milliseconds durationZero = std::chrono::milliseconds(0);
 		std::chrono::milliseconds durationError = std::chrono::milliseconds(-500);
 
-		ctx.subtest(partest::TestInfo("TryAcquireSucess", "Validate that semaphore can be acquired after specified wait."), PARTEST_CTX(&)
+		ctx.subtest(partest::TestInfo("TryAcquireSucess", "Validate that semaphore can be acquired after specified wait."), PARTEST_CTX(durationSuccess)
 		{
 			std::thread forThread, untilThread;
 			partest::counting_semaphore<> forSem(0);
@@ -111,13 +113,39 @@ public:
 			std::atomic<bool> acquiredFor(false);
 			std::atomic<bool> acquiredUntil(false);
 
+			// Test thread will pause for waitTime before releasing semaphores
+			std::chrono::milliseconds sleepTime = std::chrono::milliseconds(10);
+
+			std::mutex waitMutex;
+			std::condition_variable waitCV;
+			unsigned readyCount = 0;
+
 			forThread = std::thread([&](){
+				std::unique_lock<std::mutex> lock(waitMutex);
+				++readyCount;
+				lock.unlock();
+				waitCV.notify_one();
+
 				acquiredFor = forSem.try_acquire_for(durationSuccess);
 			});
+
 			untilThread = std::thread([&](){
+				std::unique_lock<std::mutex> lock(waitMutex);
+				++readyCount;
+				lock.unlock();
+				waitCV.notify_one();
+
 				acquiredUntil = untilSem.try_acquire_until(std::chrono::steady_clock::now() + durationSuccess);
 			});
-			std::this_thread::sleep_for(waitTime);
+
+			std::unique_lock<std::mutex> lock(waitMutex);
+			while(readyCount < 2)
+			{
+				waitCV.wait(lock);
+			}
+			lock.unlock();
+
+			std::this_thread::sleep_for(sleepTime);
 
 			forSem.release();
 			untilSem.release();
@@ -133,7 +161,7 @@ public:
 			ASSERT_EQUAL(untilSem.count_snapshot(), 0);
 		});
 
-		ctx.subtest(partest::TestInfo("TryAcquireFailure", "Validate that semaphore won't be acquired if wait time expires."), PARTEST_CTX(&)
+		ctx.subtest(partest::TestInfo("TryAcquireFailure", "Validate that semaphore won't be acquired if wait time expires."), PARTEST_CTX(durationFailure, durationSuccess)
 		{
 			std::thread forThread, untilThread;
 			partest::counting_semaphore<> forSem(0);
@@ -141,13 +169,39 @@ public:
 			std::atomic<bool> acquiredFor(false);
 			std::atomic<bool> acquiredUntil(false);
 
+			// Test thread will pause for waitTime before releasing semaphores
+			std::chrono::milliseconds sleepTime = std::chrono::milliseconds(durationSuccess);
+
+			std::mutex waitMutex;
+			std::condition_variable waitCV;
+			unsigned readyCount = 0;
+
 			forThread = std::thread([&](){
+				std::unique_lock<std::mutex> lock(waitMutex);
+				++readyCount;
+				lock.unlock();
+				waitCV.notify_one();
+
 				acquiredFor = forSem.try_acquire_for(durationFailure);
 			});
+
 			untilThread = std::thread([&](){
+				std::unique_lock<std::mutex> lock(waitMutex);
+				++readyCount;
+				lock.unlock();
+				waitCV.notify_one();
+
 				acquiredUntil = untilSem.try_acquire_until(std::chrono::steady_clock::now() + durationFailure);
 			});
-			std::this_thread::sleep_for(waitTime);
+
+			std::unique_lock<std::mutex> lock(waitMutex);
+			while(readyCount < 2)
+			{
+				waitCV.wait(lock);
+			}
+			lock.unlock();
+
+			std::this_thread::sleep_for(durationSuccess);
 
 			forSem.release();
 			untilSem.release();
