@@ -50,12 +50,10 @@ namespace partest
 			assert(m_count >= 0 && m_count <= least_max_value && "Precondition: Semaphore count must be non-negative and not exceed the maximum value.");
 
 			// Condition variable forces the use of unique_lock
-			m_cv.wait(lock, [this]() { return m_count > 0; });
-			// Remove predicate, use explicit while loop instead to avoid spurious wakeups
-			/*while(m_count == 0)
+			while(m_count == 0)
 			{
 				m_cv.wait(lock);
-			}*/
+			}
 
 			assert(m_count >= 0 && m_count <= least_max_value && "Invariant violated: semaphore count is out of bounds.");
 			--m_count;
@@ -78,13 +76,24 @@ namespace partest
 		template<class Rep, class Period>
 		bool try_acquire_for(const std::chrono::duration<Rep, Period>& rel_time)
 		{
+			// lock down remaining time from rel_time
+			std::chrono::steady_clock::time_point deadline = std::chrono::steady_clock::now() + rel_time;
+
 			std::unique_lock<std::mutex> lock(m_mutex);
 			assert(m_count >= 0 && m_count <= least_max_value && "Precondition: Semaphore count must be non-negative and not exceed the maximum value.");
 
 			// Condition variable forces the use of unique_lock
-			bool success = m_cv.wait_for(lock, rel_time, [this]() { return m_count > 0; });
+			while(m_count == 0)
+			{
+				std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+
+				if(now >= deadline)
+					break;
+
+				m_cv.wait_for(lock, deadline - now);
+			}
 			assert(m_count >= 0 && m_count <= least_max_value && "Invariant violated: semaphore count is out of bounds.");
-			if (success)
+			if (m_count > 0)
 			{
 				--m_count;
 				return true;
@@ -104,9 +113,13 @@ namespace partest
 			assert(m_count >= 0 && m_count <= least_max_value && "Precondition: Semaphore count must be non-negative and not exceed the maximum value.");
 
 			// Condition variable forces the use of unique_lock
-			bool success = m_cv.wait_until(lock, abs_time, [this]() { return m_count > 0; });
+			while(m_count == 0)
+			{
+				if(m_cv.wait_until(lock, abs_time) == std::cv_status::timeout)
+					break;
+			}
 			assert(m_count >= 0 && m_count <= least_max_value && "Invariant violated: semaphore count is out of bounds.");
-			if (success)
+			if (m_count > 0)
 			{
 				--m_count;
 				return true;
