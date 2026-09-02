@@ -362,9 +362,9 @@ namespace partest
 			return m_testTree->subtestCount();
 		}
 
-		size_t getAssertionCount(bool onlyCountFailures = false) const
+		size_t getAssertionCount(const char *testName, bool onlyCountFailures = false) const
 		{
-			return m_testTree->getAssertionCount(onlyCountFailures);
+			return getAssertionCount(std::string(testName), onlyCountFailures);
 		}
 
 		size_t getAssertionCount(PARTEST_STRING_PARAM testName, bool onlyCountFailures = false) const
@@ -377,14 +377,14 @@ namespace partest
 			return subtest->getAssertionCount(onlyCountFailures);
 		}
 
-		size_t getTestFailureCount(unsigned depth = 1) const
+		size_t getAssertionCount(bool onlyCountFailures = false) const
 		{
-			return m_testTree->getTestFailureCount(depth);
+			return m_testTree->getAssertionCount(onlyCountFailures);
 		}
 
-		size_t getTestSkippedCount(unsigned depth = 1) const
+		size_t getTestFailureCount(const char *testName, unsigned depth = 0) const
 		{
-			return m_testTree->getTestSkippedCount(depth);
+			return getTestFailureCount(std::string(testName), depth);
 		}
 
 		size_t getTestFailureCount(PARTEST_STRING_PARAM testName, unsigned depth = 0) const
@@ -395,6 +395,16 @@ namespace partest
 				return 0;
 
 			return subtest->getTestFailureCount(depth);
+		}
+
+		size_t getTestFailureCount(unsigned depth = 1) const
+		{
+			return m_testTree->getTestFailureCount(depth);
+		}
+
+		size_t getTestSkippedCount(unsigned depth = 1) const
+		{
+			return m_testTree->getTestSkippedCount(depth);
 		}
 	};
 
