@@ -51,6 +51,12 @@ namespace partest
 
 			// Condition variable forces the use of unique_lock
 			m_cv.wait(lock, [this]() { return m_count > 0; });
+			// Remove predicate, use explicit while loop instead to avoid spurious wakeups
+			/*while(m_count == 0)
+			{
+				m_cv.wait(lock);
+			}*/
+
 			assert(m_count >= 0 && m_count <= least_max_value && "Invariant violated: semaphore count is out of bounds.");
 			--m_count;
 		}
