@@ -133,12 +133,20 @@ namespace partest
 			return m_dispatcher->pushEvent(makeEventLog(TestFrameView::getNullTestFrameView(), LogEntry(level, logType, message), std::chrono::system_clock::now()));
 		}
 
-		void readAllTests(TestFrameReaderInterface *reader)
+		/**
+		* Read all tests using the provided TestFrameReaderInterface. Test suites cannot be read until they have finished running, so this function will return false if any test has not yet completed.
+		* 
+		* @param reader A pointer to the TestFrameReaderInterface used to read the test frames.
+		* @return true if all tests were read successfully, false otherwise.
+		*/
+		bool readAllTests(TestFrameReaderInterface *reader)
 		{
+			bool success = true;
 			for(TestBase *test : m_tests)
 			{
-				test->readTestTree(reader);
-			}
+				success &= test->readTestTree(reader);
+			}			
+			return success;
 		}
 
 		// TODO: Finish once PostMortemReporters are implemented
@@ -166,7 +174,7 @@ namespace partest
 			size_t failureCount = 0;
 			for(TestBase *test : m_tests)
 			{
-				failureCount += test->getAssertionFailureCount();
+				failureCount += test->getAssertionCount(true);
 			}
 
 			return failureCount;

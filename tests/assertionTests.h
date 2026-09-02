@@ -592,11 +592,11 @@ public:
 		ASSERT_TRUE(m_innerTests.containsTest(PASSING_TEST));
 		ASSERT_TRUE(m_innerTests.containsTest(FAILING_TEST));
 
-		size_t failureCount = m_innerTests.getAssertionFailureCount(PASSING_TEST);
+		size_t failureCount = m_innerTests.getAssertionCount(PASSING_TEST, true);
 		// If no assertions fail, this subtest passed.
 		ASSERT_EQUAL(failureCount, 0); // Ensure that no assertions have failed in this subtest
 
-		failureCount = m_innerTests.getAssertionFailureCount(FAILING_TEST);
+		failureCount = m_innerTests.getAssertionCount(FAILING_TEST, true);
 		size_t expectedCount = m_innerTests.getAssertionCount(FAILING_TEST);
 		// If any assertions passed, this subtest failed
 		ASSERT_EQUAL(failureCount, expectedCount);

@@ -152,6 +152,8 @@ namespace partest
 		void runBaseTests(TestContext& ctx)
 		{
 			// Iterate through all registered tests
+			// The root of the test tree is an exception to thread safety concerns. It is encapsulated entirely here.
+			// Root test tree immutability is an invariant of the framework, enforced by addTest. No new test nodes can be adde while this function is running.
 			for(std::vector<TestFrame*>::iterator test = m_testTree->subtestsBegin(); test != m_testTree->subtestsEnd(); ++test)
 			{
 				runTest(*test);
@@ -259,6 +261,7 @@ namespace partest
 		>
 		void addTest(const TestInfo &metadata, const TestFlags &flags, Func &&testFunc, SetupFunc &&setupFunc = nullptr, TeardownFunc &&teardownFunc = nullptr)
 		{
+			assert(!m_testTree->isRunning() && "Cannot add top-level tests while the test suite is running. Ensure tests are registered prior to calling run()");
 			m_testTree->addSubtest(partest::make_unique<TestFrame>(&m_eventEmitter, flags, metadata, testFunc, setupFunc, teardownFunc));
 		}
 
@@ -269,6 +272,7 @@ namespace partest
 		>
 		void addTest(PARTEST_STRING_PARAM name, const TestFlags &flags, Func &&testFunc, SetupFunc &&setupFunc = nullptr, TeardownFunc &&teardownFunc = nullptr)
 		{
+			assert(!m_testTree->isRunning() && "Cannot add top-level tests while the test suite is running. Ensure tests are registered prior to calling run()");
 			m_testTree->addSubtest(partest::make_unique<TestFrame>(&m_eventEmitter, flags, TestInfo(name), testFunc, setupFunc, teardownFunc));
 		}
 
@@ -279,6 +283,7 @@ namespace partest
 		>
 		void addTest(PARTEST_STRING_PARAM name, PARTEST_STRING_PARAM description, const TestFlags &flags, Func &&testFunc, SetupFunc &&setupFunc = nullptr, TeardownFunc &&teardownFunc = nullptr)
 		{
+			assert(!m_testTree->isRunning() && "Cannot add top-level tests while the test suite is running. Ensure tests are registered prior to calling run()");
 			m_testTree->addSubtest(partest::make_unique<TestFrame>(&m_eventEmitter, flags, TestInfo(name, description), testFunc, setupFunc, teardownFunc));
 		}
 
@@ -307,6 +312,8 @@ namespace partest
 			m_testTree->setTeardownFunction([this](TestContext& context) { this->teardown(context); });
 
 		#if PARTEST_CPP_VERSION >= 20
+			// from PARTEST_SOURCE_LOCATION_OPT, only available automatically in C++20 and later.
+			// For earlier versions, users must set the file and line manually in the derived class constructor.
 			m_testTree->setTestFile(getFilename(location.file_name()));
 			m_testTree->setTestLine(location.line());
 		#endif
@@ -339,24 +346,35 @@ namespace partest
 			runTest(m_testTree.get());
 		}
 
+		bool readTestTree(TestFrameReaderInterface *reader)
+		{
+			// Ensure test suite is not being modified while reading the tree. This is a safety check to prevent concurrent modifications during test execution.
+			if(!m_testTree->isRunning())
+			{
+				reader->readTree(*m_testTree);
+				return true;
+			}
+			return false;
+		}
+
 		size_t getTestCount() const
 		{
 			return m_testTree->subtestCount();
 		}
 
-		size_t getAssertionCount() const
+		size_t getAssertionCount(bool onlyCountFailures = false) const
 		{
-			return m_testTree->getAssertionCount();
+			return m_testTree->getAssertionCount(onlyCountFailures);
 		}
 
-		size_t getAssertionCount(PARTEST_STRING_PARAM testName) const
+		size_t getAssertionCount(PARTEST_STRING_PARAM testName, bool onlyCountFailures = false) const
 		{
 			const TestFrame *subtest = m_testTree->getSubtest(testName);
 
 			if(!subtest)
 				return 0;
 
-			return subtest->getAssertionCount();
+			return subtest->getAssertionCount(onlyCountFailures);
 		}
 
 		size_t getTestFailureCount(unsigned depth = 1) const
@@ -369,11 +387,6 @@ namespace partest
 			return m_testTree->getTestSkippedCount(depth);
 		}
 
-		size_t getAssertionFailureCount() const
-		{
-			return m_testTree->getAssertionFailureCount();
-		}
-
 		size_t getTestFailureCount(PARTEST_STRING_PARAM testName, unsigned depth = 0) const
 		{
 			const TestFrame *subtest = m_testTree->getSubtest(testName);
@@ -382,21 +395,6 @@ namespace partest
 				return 0;
 
 			return subtest->getTestFailureCount(depth);
-		}
-
-		size_t getAssertionFailureCount(PARTEST_STRING_PARAM testName) const
-		{
-			const TestFrame *subtest = m_testTree->getSubtest(testName);
-			
-			if(!subtest)
-				return 0;
-
-			return subtest->getAssertionFailureCount();
-		}
-
-		void readTestTree(TestFrameReaderInterface *reader)
-		{
-			reader->readTree(*m_testTree);
 		}
 	};
 

@@ -116,13 +116,12 @@ namespace partest
 			node->message = "Test aborted";
 			node->type = "Aborted";
 
-			const std::deque<LogEntry> &logs = testFrame->getLogs();
 			// Find any logs with level Error or type EXCEPTION and add them to the error node body.
-			for(auto log : logs)
+			for(TestFrame::LogEntryConstIter log = testFrame->logsBegin(); log != testFrame->logsEnd(); ++log)
 			{
-				if(log.level == LogLevel::Error || log.type == LOG_TYPE_EXCEPTION)
+				if(log->level == LogLevel::Error || log->type == LOG_TYPE_EXCEPTION)
 				{
-					node->body += '\n' + log.message;
+					node->body += '\n' + log->message;
 				}
 			}
 		}

@@ -4,6 +4,7 @@
 #include <chrono>
 #include <vector>
 #include <deque>
+#include <mutex>
 #include <memory>
 #include <functional>
 
@@ -42,23 +43,23 @@ namespace partest
 		
 		size_t assertionCount() const noexcept;
 		size_t subtestCount() const noexcept;
-		size_t testSkippedCount() const noexcept;
+		size_t testSkippedCount() const;
 		
-		size_t assertionFailureCount() const noexcept;
-		size_t subtestFailureCount(unsigned depth = 1) const noexcept;
+		size_t assertionFailureCount() const;
+		size_t subtestFailureCount(unsigned depth = 1) const;
 
 		const TestInfo &info() const noexcept;
 		PARTEST_STRING_PARAM name() const noexcept;
 		PARTEST_STRING_PARAM description() const noexcept;
 		const TestFlags &flags() const noexcept;
-		const TestState &state() const noexcept;
+		const TestState &state() const;
 		
 		std::string fullTestName() const;
 		std::string testNameToDepth(size_t depth) const;
 
-		TestStatus getStatus() const noexcept;
-		TestResult getEffectiveResult() const noexcept;
-		bool getExpectFailure() const noexcept;
+		TestStatus getStatus() const;
+		TestResult getEffectiveResult() const;
+		bool getExpectFailure() const;
 
 		std::chrono::steady_clock::duration duration() const noexcept { return endTime() - startTime(); }
 
@@ -79,6 +80,7 @@ namespace partest
 
 		EventEmitterInterface *m_eventEmitter;
 		TestFrameView m_testFrameView;
+		TestState state;
 
 		std::vector<TestFrame *> m_subtests; // Vector of sub-tests
 		std::deque<LogEntry> m_logs; // Logs associated with this test frame
@@ -90,6 +92,12 @@ namespace partest
 		std::function<void(TestContext&)> m_testFunction = nullptr; // Test function associated with this frame
 		std::function<void(TestContext&)> m_testTeardown = nullptr; // Test function associated with this frame
 
+		// Concurrency primitives
+		mutable std::mutex m_subtestsMutex; // Mutex for synchronizing access to subtests
+		mutable std::mutex m_logsMutex; // Mutex for synchronizing access to logs
+		mutable std::mutex m_assertionsMutex; // Mutex for synchronizing access to assertions
+		mutable std::mutex m_statusMutex; // Mutex for synchronizing access to test status and state
+		mutable std::mutex m_resultMutex; // Mutex for synchronizing access to test result
 		/**
 		* Get a globally incrementing counter. Used internally to assign IDs to newly created test frames.
 		* 
@@ -134,8 +142,7 @@ namespace partest
 
 		~TestFrame()
 		{
-			for(TestFrame *subtest : m_subtests)
-				delete subtest;
+			clearSubtests();
 		}
 
 		static const TestFrame &getNullTestFrameInstance()
@@ -174,7 +181,6 @@ namespace partest
 
 		TestInfo metadata; // Test metadata, including name and description
 		TestFlags flags; // Effective flags for this test frame
-		TestState state; // Result of the test
 
 		void setSetupFunction(const std::function<void(TestContext&)> &setupFunction) { m_testSetup = setupFunction; }
 		void setTestFunction(const std::function<void(TestContext&)> &testFunction) { m_testFunction = testFunction; }
@@ -184,15 +190,21 @@ namespace partest
 		bool hasTestFunction() const noexcept { return m_testFunction != nullptr; }
 		bool hasTeardownFunction() const noexcept { return m_testTeardown != nullptr; }
 
-		PARTEST_CONSTEXPR_14 void updateResult(const TestResult &result) noexcept { state.updateResult(result); }
-		PARTEST_CONSTEXPR_14 void updateResultFromSubtest(const TestState &subtestState) noexcept { state.updateResultFromSubtest(subtestState); }
-		PARTEST_CONSTEXPR_14 void updateStatus(TestStatus status) noexcept { state.updateStatus(status); }
-
 		void processAssertion(const AssertionResult &result)
 		{
+			AssertionResult *res = new AssertionResult(result);
+			std::unique_lock<std::mutex> assertionLock(m_assertionsMutex, std::defer_lock);
+			std::unique_lock<std::mutex> resultLock(m_resultMutex, std::defer_lock);
+			
+			std::lock(assertionLock, resultLock);
+			
 			state.updateResultFromAssertion(result.passed());
 			m_assertions.push_back(result);
-			m_eventEmitter->emitAssertion(m_testFrameView, m_assertions.back(), std::chrono::system_clock::now());
+			
+			resultLock.unlock();
+			assertionLock.unlock();
+
+			m_eventEmitter->emitAssertion(m_testFrameView, *res, std::chrono::system_clock::now());
 		}
 
 		void abortTest(PARTEST_STRING_PARAM message)
@@ -206,36 +218,103 @@ namespace partest
 
 		void recordLog(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message)
 		{
+			std::unique_lock<std::mutex> logLock(m_logsMutex);
 			m_logs.push_back(LogEntry(level, type, message));
-			m_eventEmitter->emitLog(m_testFrameView, m_logs.back(), std::chrono::system_clock::now());
+			LogEntry &logEntry = m_logs.back();
+			logLock.unlock();
+
+			m_eventEmitter->emitLog(m_testFrameView, logEntry, std::chrono::system_clock::now());
 		}
 
-		const std::deque<LogEntry> &getLogs() const noexcept { return m_logs; }
+		void clearLogs()
+		{
+			std::lock_guard<std::mutex> logLock(m_logsMutex);
+			m_logs.clear();
+		}
 
-		void clearLogs() noexcept { m_logs.clear(); }
-
-		void clearSubtests() noexcept 
+		void clearSubtests() 
 		{ 
+			std::lock_guard<std::mutex> subtestsLock(m_subtestsMutex);
 			for(TestFrame *subtest : m_subtests)
 				delete subtest;
 			m_subtests.clear();
+		}
+
+		void resetState() 
+		{ 
+			std::unique_lock<std::mutex> statusLock(m_statusMutex, std::defer_lock);
+			std::unique_lock<std::mutex> resultLock(m_resultMutex, std::defer_lock);
+			std::lock(statusLock, resultLock);
+
+			state = TestState::defaultState(); 
 		}
 
 		void clearAll() 
 		{ 
 			clearLogs(); 
 			clearSubtests(); 
-			state = TestState::defaultState();
+			resetState();
 		}
 
-		PARTEST_CONSTEXPR_14 TestStatus getStatus() const noexcept { return state.getStatus(); }
+		// Add locks around accessors and mutators to status and result.
+		TestStatus getStatus() const
+		{
+			std::lock_guard<std::mutex> statusLock(m_statusMutex);
+			return state.getStatus();
+		}
+		TestResult getEffectiveResult() const
+		{
+			std::lock_guard<std::mutex> resultLock(m_resultMutex);
+			return state.getEffectiveResult();
+		}
 
-		PARTEST_CONSTEXPR_14 TestResult getEffectiveResult() const noexcept { return state.getEffectiveResult(); }
+		bool isRunning() const
+		{
+			std::lock_guard<std::mutex> statusLock(m_statusMutex);
+			return state.isRunning();
+		}
 
-		PARTEST_CONSTEXPR_14 bool hasFinishedRunning() const noexcept { return state.hasFinishedRunning(); }
-		PARTEST_CONSTEXPR_14 bool hasFailures() const noexcept { return state.hasFailures(); }
-		PARTEST_CONSTEXPR_14 bool wasSkipped() const noexcept { return state.getStatus() == TestStatus::Skipped; }
-		PARTEST_CONSTEXPR_14 bool getExpectFailure() const noexcept { return state.getExpectFailure(); }
+		bool hasFinishedRunning() const
+		{
+			std::lock_guard<std::mutex> statusLock(m_statusMutex);
+			return state.hasFinishedRunning();
+		}
+
+		bool hasFailures() const
+		{
+			std::lock_guard<std::mutex> resultLock(m_resultMutex);
+			return state.hasFailures();
+		}
+
+		bool wasSkipped() const
+		{
+			std::lock_guard<std::mutex> statusLock(m_statusMutex);
+			return state.wasSkipped();
+		}
+
+		bool getExpectFailure() const
+		{
+			std::lock_guard<std::mutex> statusLock(m_statusMutex);
+			return state.getExpectFailure();
+		}
+
+		void updateResult(const TestResult &result)
+		{
+			std::lock_guard<std::mutex> resultLock(m_resultMutex);
+			state.updateResult(result);
+		}
+
+		void updateResultFromSubtest(const TestState &subtestState)
+		{
+			std::lock_guard<std::mutex> resultLock(m_resultMutex);
+			state.updateResultFromSubtest(subtestState);
+		}
+
+		void updateStatus(TestStatus status)
+		{
+			std::lock_guard<std::mutex> statusLock(m_statusMutex);
+			state.updateStatus(status);
+		}
 
 		/**
 		* Check whether this test frame descends from `other`
@@ -275,10 +354,16 @@ namespace partest
 		*/
 		TestFrame *getParent() const noexcept { return m_parent; }
 		bool hasParent() const noexcept { return m_parent != nullptr; }
-		bool hasSubtests() const noexcept { return !m_subtests.empty(); }
+
+		bool hasSubtests() const
+		{
+			std::lock_guard<std::mutex> subtestsLock(m_subtestsMutex);
+			return !m_subtests.empty();
+		}
 
 		const TestFrame *getSubtest(PARTEST_STRING_PARAM subtestName) const
 		{
+			std::lock_guard<std::mutex> subtestsLock(m_subtestsMutex);
 			for(TestFrame *subtest: m_subtests)
 			{
 				if(subtest && subtest->metadata.name == subtestName)
@@ -295,14 +380,19 @@ namespace partest
 		*/
 		TestFrame *addSubtest(std::unique_ptr<TestFrame> subtest)
 		{
-			m_subtests.push_back(subtest.release());
-			m_subtests.back()->m_parent = this;
-
-			return m_subtests.back();
+			TestFrame *subtestPtr = subtest.release();
+			{
+				std::lock_guard<std::mutex> subtestsLock(m_subtestsMutex);
+				m_subtests.push_back(subtestPtr);
+			}
+			subtestPtr->m_parent = this;
+			return subtestPtr;
 		}
 
 		/**
-		* Iterator access for subtests
+		* Iterator access for subtests, logs, and assertions. These iterators are not thread-safe.
+		* As separate, atomic operations, iterators cannot be guaranteed to be valid unless the test frame is not being modified,
+		* so instead, access to TestFrame itself is strictly controlled through TestContext and TestBase.
 		*/
 		size_t subtestCount() const noexcept { return m_subtests.size(); }
 		TestFrameIter subtestsBegin() noexcept { return m_subtests.begin(); }
@@ -310,9 +400,9 @@ namespace partest
 		TestFrameConstIter subtestsBegin() const noexcept{ return m_subtests.cbegin(); }
 		TestFrameConstIter subtestsEnd() const noexcept { return m_subtests.cend(); }
 
-		size_t logEntryCount() const noexcept { return m_logs.size(); }
-		LogEntryConstIter logEntryBegin() const noexcept { return m_logs.cbegin(); }
-		LogEntryConstIter logEntryEnd() const noexcept { return m_logs.cend(); }
+		size_t logCount() const noexcept { return m_logs.size(); }
+		LogEntryConstIter logsBegin() const noexcept { return m_logs.cbegin(); }
+		LogEntryConstIter logsEnd() const noexcept { return m_logs.cend(); }
 
 		size_t assertionCount() const noexcept { return m_assertions.size(); }
 		AssertionConstIter assertionsBegin() const noexcept { return m_assertions.cbegin(); }
@@ -350,8 +440,11 @@ namespace partest
 		*/
 		void runTestFunction(TestContext& ctx)
 		{
+			// Framework invariant: A test should not be run if it was skipped. This is enforced by the test framework, and should never be violated.
 			assert(!wasSkipped() && "Invalid test state. Test should not be run if it was skipped.");
 
+			// This precedes the run guard because the guard itself would temporarily override status.
+			// Correct status transitions from SettingUp to Aborting on the failed path, skipping TearingDown entirely.
 			if(m_testFunction == nullptr)
 				throw std::runtime_error("Attempted to run a test function that is not set.");
 
@@ -431,10 +524,11 @@ namespace partest
 		*/
 		size_t getTestFailureCount(unsigned depth = 1) const
 		{
+			std::lock_guard<std::mutex> subtestLock(m_subtestsMutex);
 			// Only evaluate this frame's result if we're at evaluation depth, or if no subtests exist.
 			if(depth == 0 || m_subtests.empty())
 				return hasFailures() ? 1 : 0;
-			
+
 			size_t failureCount = 0;
 
 			for(TestFrame *subtest : m_subtests)
@@ -453,6 +547,7 @@ namespace partest
 		*/
 		size_t getTestSkippedCount(unsigned depth = 1) const
 		{
+			std::lock_guard<std::mutex> subtestLock(m_subtestsMutex);
 			// Only evaluate this frame's result if we're at evaluation depth, or if no subtests exist.
 			if(depth == 0 || m_subtests.empty())
 				return wasSkipped() ? 1 : 0;
@@ -467,14 +562,33 @@ namespace partest
 			return skippedCount;
 		}
 
-		size_t getAssertionCount() const
+		size_t getAssertionCount(bool onlyCountFailures = false) const
 		{
-			size_t total = (unsigned)m_assertions.size();
-			for(TestFrame *subtest : m_subtests)
+			size_t total = 0;
+			if(!onlyCountFailures)
 			{
-				total += subtest->getAssertionCount();
+				m_assertionsMutex.lock();
+				//guaranteed noexcept and no early return
+				total = (unsigned)m_assertions.size();
+				m_assertionsMutex.unlock();
+			}
+			else
+			{
+				m_assertionsMutex.lock();
+				//guaranteed noexcept and no early return
+				for(const AssertionResult &result : m_assertions)
+				{
+					if(!result.passed())
+						++total;
+				}
+				m_assertionsMutex.unlock();
 			}
 
+			std::lock_guard<std::mutex> subtestLock(m_subtestsMutex);
+			for(TestFrame *subtest : m_subtests)
+			{
+				total += subtest->getAssertionCount(onlyCountFailures);
+			}
 			return total;
 		}
 
@@ -487,18 +601,34 @@ namespace partest
 		{
 			size_t failureCount = 0;
 
+			std::unique_lock<std::mutex> assertionLock(m_assertionsMutex);
 			for(const AssertionResult &result : m_assertions)
 			{
 				if(!result.passed())
 					++failureCount;
 			}
+			assertionLock.unlock();
 
+			std::lock_guard<std::mutex> subtestLock(m_subtestsMutex);
 			for(TestFrame *subtest : m_subtests)
 			{
 				failureCount += subtest->getAssertionFailureCount();
 			}
 
 			return failureCount;
+		}
+
+		/**
+		* Get a snapshot of this frame's current state
+		* 
+		* @returns A copy of the current state for this test frame
+		*/
+		TestState getCurrentState() const
+		{
+			std::unique_lock<std::mutex> statusLock(m_statusMutex, std::defer_lock);
+			std::unique_lock<std::mutex> resultLock(m_resultMutex, std::defer_lock);
+			std::lock(statusLock, resultLock);
+			return state;
 		}
 
 		/**
@@ -534,22 +664,22 @@ namespace partest
 	inline size_t TestFrameView::assertionCount() const noexcept { return m_testFrame->assertionCount(); }
 	inline size_t TestFrameView::subtestCount() const noexcept { return m_testFrame->subtestCount(); }
 
-	inline size_t TestFrameView::assertionFailureCount() const noexcept { return m_testFrame->getAssertionFailureCount(); }
-	inline size_t TestFrameView::subtestFailureCount(unsigned depth) const noexcept { return m_testFrame->getTestFailureCount(depth); }
-	inline size_t TestFrameView::testSkippedCount() const noexcept { return m_testFrame->getTestSkippedCount(1); }
+	inline size_t TestFrameView::assertionFailureCount() const { return m_testFrame->getAssertionFailureCount(); }
+	inline size_t TestFrameView::subtestFailureCount(unsigned depth) const { return m_testFrame->getTestFailureCount(depth); }
+	inline size_t TestFrameView::testSkippedCount() const { return m_testFrame->getTestSkippedCount(1); }
 
 	inline const TestInfo &TestFrameView::info() const noexcept { return m_testFrame->metadata; }
 	inline PARTEST_STRING_PARAM TestFrameView::name() const noexcept { return m_testFrame->metadata.name; }
 	inline PARTEST_STRING_PARAM TestFrameView::description() const noexcept { return m_testFrame->metadata.description; }
-	inline const TestFlags &TestFrameView::flags() const noexcept { return m_testFrame->flags; }
-	inline const TestState &TestFrameView::state() const noexcept { return m_testFrame->state; }
+	inline const TestFlags &TestFrameView::flags() const noexcept { return m_testFrame->getEffectiveFlags(); }
+	inline const TestState &TestFrameView::state() const { return m_testFrame->getCurrentState(); }
 
 	inline std::string TestFrameView::fullTestName() const { return m_testFrame->fullTestName(); }
 	inline std::string TestFrameView::testNameToDepth(size_t depth) const { return m_testFrame->testNameToDepth(depth); }
 
-	inline TestStatus TestFrameView::getStatus() const noexcept { return m_testFrame->state.getStatus(); }
-	inline TestResult TestFrameView::getEffectiveResult() const noexcept { return m_testFrame->getEffectiveResult(); }
-	inline bool TestFrameView::getExpectFailure() const noexcept { return m_testFrame->getExpectFailure(); }
+	inline TestStatus TestFrameView::getStatus() const { return m_testFrame->getStatus(); }
+	inline TestResult TestFrameView::getEffectiveResult() const { return m_testFrame->getEffectiveResult(); }
+	inline bool TestFrameView::getExpectFailure() const { return m_testFrame->getExpectFailure(); }
 
 	inline std::chrono::steady_clock::time_point TestFrameView::startTime() const noexcept { return m_testFrame->startTime(); }
 	inline std::chrono::steady_clock::time_point TestFrameView::endTime() const noexcept { return m_testFrame->endTime(); }

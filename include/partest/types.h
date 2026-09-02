@@ -341,7 +341,6 @@ namespace partest
 		* @return true if the test has passed, false otherwise.
 		*/
 		PARTEST_CONSTEXPR_11 bool passed() const noexcept { return m_result == TestResult::Passed; }
-		
 
 		/**
 		* Check whether the test has failed or has mixed results (some assertions passed, some failed).
@@ -357,6 +356,12 @@ namespace partest
 		*/
 		PARTEST_CONSTEXPR_14 bool didPassUnexpectedly() const noexcept { return getEffectiveResult() == TestResult::UnexpectedPass; }
 
+		/**
+		* Check whether the test was skipped.
+		* 
+		* @return true if the test was skipped, false otherwise.
+		*/
+		PARTEST_CONSTEXPR_11 bool wasSkipped() const noexcept { return m_status == TestStatus::Skipped; }
 
 		/**
 		* Update the test status.
