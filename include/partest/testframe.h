@@ -51,8 +51,8 @@ namespace partest
 		const TestInfo &info() const noexcept;
 		PARTEST_STRING_PARAM name() const noexcept;
 		PARTEST_STRING_PARAM description() const noexcept;
-		const TestFlags &flags() const noexcept;
-		const TestState &state() const;
+		TestFlags flags() const noexcept;
+		TestState state() const;
 		
 		std::string fullTestName() const;
 		std::string testNameToDepth(size_t depth) const;
@@ -192,7 +192,6 @@ namespace partest
 
 		void processAssertion(const AssertionResult &result)
 		{
-			AssertionResult *res = new AssertionResult(result);
 			std::unique_lock<std::mutex> assertionLock(m_assertionsMutex, std::defer_lock);
 			std::unique_lock<std::mutex> resultLock(m_resultMutex, std::defer_lock);
 			
@@ -204,7 +203,7 @@ namespace partest
 			resultLock.unlock();
 			assertionLock.unlock();
 
-			m_eventEmitter->emitAssertion(m_testFrameView, *res, std::chrono::system_clock::now());
+			m_eventEmitter->emitAssertion(m_testFrameView, result, std::chrono::system_clock::now());
 		}
 
 		void abortTest(PARTEST_STRING_PARAM message)
@@ -380,12 +379,14 @@ namespace partest
 		*/
 		TestFrame *addSubtest(std::unique_ptr<TestFrame> subtest)
 		{
-			TestFrame *subtestPtr = subtest.release();
+			TestFrame *subtestPtr = subtest.get();
 			{
 				std::lock_guard<std::mutex> subtestsLock(m_subtestsMutex);
 				m_subtests.push_back(subtestPtr);
 			}
 			subtestPtr->m_parent = this;
+			subtest.release();
+
 			return subtestPtr;
 		}
 
@@ -671,8 +672,8 @@ namespace partest
 	inline const TestInfo &TestFrameView::info() const noexcept { return m_testFrame->metadata; }
 	inline PARTEST_STRING_PARAM TestFrameView::name() const noexcept { return m_testFrame->metadata.name; }
 	inline PARTEST_STRING_PARAM TestFrameView::description() const noexcept { return m_testFrame->metadata.description; }
-	inline const TestFlags &TestFrameView::flags() const noexcept { return m_testFrame->getEffectiveFlags(); }
-	inline const TestState &TestFrameView::state() const { return m_testFrame->getCurrentState(); }
+	inline TestFlags TestFrameView::flags() const noexcept { return m_testFrame->getEffectiveFlags(); }
+	inline TestState TestFrameView::state() const { return m_testFrame->getCurrentState(); }
 
 	inline std::string TestFrameView::fullTestName() const { return m_testFrame->fullTestName(); }
 	inline std::string TestFrameView::testNameToDepth(size_t depth) const { return m_testFrame->testNameToDepth(depth); }
