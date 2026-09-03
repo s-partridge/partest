@@ -6,6 +6,7 @@
 #include <chrono>
 #include <thread>
 #include <mutex>
+#include <random>
 #include <condition_variable>
 
 #include <partest/testbase.h>
@@ -28,15 +29,18 @@ public:
 		addTest("AcquireWithTryAcquire", "Validate concurrency for try_acquire.",
 			flags,
 			PARTEST_CTX(this) { return this->tryAcquire(ctx); });
-		addTest("acquireWithTryAcquireTimed", "Validate non-blocking acquire with wait times.",
+		addTest("AcquireWithTryAcquireTimed", "Validate non-blocking acquire with wait times.",
 			flags,
 			PARTEST_CTX(this) { return this->TryAcquireWithTimeout(ctx); });
 		addTest("ReleaseWakesThreads", "Validate that release wakes up waiting threads.",
 			flags.withStopOnFail(),
 			PARTEST_CTX(this) { return this->releaseWakesThreads(ctx, 10); });
-		addTest("thunderingHerdQueue", "Validate large numbers of threads with many concurrent operations.",
+		addTest("ThunderingHerdQueue", "Validate large numbers of threads with many concurrent operations.",
 			flags,
 			PARTEST_CTX(this) { return this->thunderingHerdQueue(ctx, 1000, 10); });
+		addTest("ThunderingHerdWithRandomizedLoads", "Validate large numbers of threads with many concurrent operations and randomized loads.",
+			flags.withStopOnFail(),
+			PARTEST_CTX(this) { return this->thunderingHerdWithRandomizedLoads(ctx, 1000, 10); });
 	}
 
 	// Validate acquire and release functionality in a multithreaded context.
@@ -413,9 +417,13 @@ public:
 		}
 		readyLock.unlock();
 
+		sem.release(0); // Release 0 threads to ensure that no threads are awakened
+		std::this_thread::sleep_for(pauseDuration);
+		ASSERT_EQUAL(sem.count_snapshot(), 0);
+
 		// Try waking one thread
 		sem.release(1);
-		std::this_thread::sleep_for(pauseDuration);		
+		std::this_thread::sleep_for(pauseDuration);
 
 		std::unique_lock<std::mutex> completedLock(completedMutex);
 		stopTime = std::chrono::steady_clock::now() + timeout;
@@ -425,9 +433,6 @@ public:
 			ASSERT_EQUAL(status, std::cv_status::no_timeout);
 		}
 		completedLock.unlock();
-
-		if(threadCount < 2)
-			return;
 
 		// Try waking two threads
 		sem.release(2);
@@ -441,9 +446,6 @@ public:
 			ASSERT_EQUAL(status, std::cv_status::no_timeout);
 		}
 		completedLock.unlock();
-
-		if(threadCount < 4)
-			return;
 
 		// Try waking all remaining threads
 		sem.release(threadCount - 3);
@@ -489,6 +491,164 @@ public:
 		}
 
 		ASSERT_EQUAL(counter, iterationsPerThread * threadsPerChannel);
+	}
+
+	void thunderingHerdWithRandomizedLoads(TestContext &ctx, unsigned totalWorkUnits = 100000, unsigned threadsPerChannel = 10)
+	{
+		// RAII wrapper for vectors of threads
+		struct ThreadPool
+		{
+			std::vector<std::thread> producers;
+			std::vector<std::thread> consumers;
+
+			~ThreadPool()
+			{
+				for(std::thread &thread : producers)
+				{
+					if(thread.joinable())
+						thread.detach();
+				}
+				for(std::thread &thread : consumers)
+				{
+					if(thread.joinable())
+						thread.detach();
+				}
+			}
+		};
+
+		std::random_device rd;
+		unsigned controlSeed = rd(); // Generate a master seed, used to seed individual threads for reproducibility
+		std::mt19937 gen(controlSeed);
+
+		ThreadPool pool;
+
+		partest::counting_semaphore<> sem(0);
+
+		std::mutex producerMutex;
+		std::mutex consumerMutex;
+		std::condition_variable completedCV;
+
+		std::atomic<unsigned> lockedThreads(0);
+
+		std::atomic<unsigned> workUnitsSpawned(0);
+		std::atomic<unsigned> workUnitsCompleted(0);
+
+		for(unsigned x = 0; x < threadsPerChannel; ++x)
+		{
+			unsigned seed = gen(); // Generate a unique seed for each thread
+			std::thread producer = std::thread([&sem, &producerMutex, &workUnitsSpawned, seed, threadsPerChannel, totalWorkUnits]() {
+				std::mt19937 gen(seed);
+				std::uniform_int_distribution<unsigned> dist(1, threadsPerChannel >> 1); // Random work units between 1 and half the number of consumer threads
+
+				while(true)
+				{
+					// Randomly release some number of work units.
+					unsigned jobs = dist(gen);
+
+					std::unique_lock<std::mutex> lock(producerMutex);
+					if(workUnitsSpawned.load() >= totalWorkUnits)
+						break;
+
+					// Ensure we don't exceed totalWorkUnits
+					jobs = jobs + workUnitsSpawned.load() > totalWorkUnits ? totalWorkUnits - workUnitsSpawned.load() : jobs;
+					workUnitsSpawned.fetch_add(jobs);
+					lock.unlock();
+
+					sem.release(jobs);
+				};
+			});
+
+			seed = gen(); // Generate a unique seed for each thread
+			std::thread consumer = std::thread([&sem, &consumerMutex, &workUnitsCompleted, &lockedThreads, &completedCV, seed, totalWorkUnits]() {				
+				std::mt19937 gen(seed);
+				// Randomly select a type of acquisition to perform. 0 = try_acquire, 1 = try_acquire_for, 2 = try_acquire_until, 3 = acquire
+				std::uniform_int_distribution<unsigned> dist(0, 3);
+
+				while(true)
+				{
+					std::unique_lock<std::mutex> lock(consumerMutex);
+					if(workUnitsCompleted.load() >= totalWorkUnits)
+						break;
+
+					unsigned op = dist(gen);
+					// Acquire blocks permanently, so we need to track how many threads are blocked on acquire so we can release them at the end of the test.
+					if(op == 3)
+						lockedThreads.fetch_add(1);
+					lock.unlock();
+
+					switch(op)
+					{
+					// Any of these may or may not succeed, depending on whether the semaphore has been released by a producer thread. If it succeeds, increment the workUnitsCompleted counter.
+					case 0:
+						if(sem.try_acquire())
+						{
+							workUnitsCompleted.fetch_add(1);
+							completedCV.notify_one();
+						}
+						break;
+					case 1:
+						if(sem.try_acquire_for(std::chrono::milliseconds(10)))
+						{
+							workUnitsCompleted.fetch_add(1);
+							completedCV.notify_one();
+						}
+						break;
+					case 2:
+						if(sem.try_acquire_until(std::chrono::steady_clock::now() + std::chrono::milliseconds(10)))
+						{
+							workUnitsCompleted.fetch_add(1);
+							completedCV.notify_one();
+						}
+						break;
+					case 3:
+						sem.acquire();
+						lockedThreads.fetch_add(-1);
+						workUnitsCompleted.fetch_add(1);
+						completedCV.notify_one();
+						break;
+					}
+				}
+			});
+
+			pool.producers.emplace_back(std::move(producer));
+			pool.consumers.emplace_back(std::move(consumer));
+		}
+
+		std::unique_lock<std::mutex> lock(consumerMutex);
+		std::chrono::system_clock::time_point deadline = std::chrono::system_clock::now() + std::chrono::seconds(10);
+		bool timedOut = false;
+		while(workUnitsCompleted < totalWorkUnits)
+		{
+			timedOut = completedCV.wait_until(lock, deadline) == std::cv_status::timeout;
+			if(!timedOut)
+			{
+				ctx.recordLog(partest::LogLevel::Error, partest::LOG_TYPE_ASSERT, "Failed run with control seed: " + std::to_string(controlSeed));
+			}
+			ASSERT_FALSE(timedOut); // Ensure we didn't timeout
+		}
+		lock.unlock();
+
+		unsigned bonusWorkUnits = lockedThreads.load();
+		if(bonusWorkUnits > 0)
+		{
+			ctx.recordLog(partest::LogLevel::Info, partest::LOG_TYPE_TEST, "Some threads ended in acquire state: " + std::to_string(bonusWorkUnits));
+			// Release any remaining locked threads
+			// Some threads may be blocked on acquire, so we need to release them to allow them to finish.
+			sem.release(bonusWorkUnits);
+		}
+
+		if(totalWorkUnits != workUnitsCompleted.load())
+		{
+			ctx.recordLog(partest::LogLevel::Error, partest::LOG_TYPE_ASSERT, "Failed run with ontrol seed: " + std::to_string(controlSeed));
+		}
+		ASSERT_EQUAL(totalWorkUnits, workUnitsSpawned.load());
+		ASSERT_EQUAL(totalWorkUnits, workUnitsCompleted.load() + bonusWorkUnits);
+
+		for(unsigned x = 0; x < threadsPerChannel; ++x)
+		{
+			pool.producers[x].join();
+			pool.consumers[x].join();
+		}
 	}
 
 private:
