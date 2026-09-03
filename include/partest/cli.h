@@ -129,7 +129,7 @@ namespace partest
 	}
 
 	// Parse command line arguments into a collection
-	ValidArgs parseArgs(int argc, const char **argv)
+	inline ValidArgs parseArgs(int argc, const char **argv)
 	{
 		ValidArgs args;
 		for(int currentArg = 1; currentArg < argc; ++currentArg)
