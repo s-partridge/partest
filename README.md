@@ -10,9 +10,10 @@ Partest provides a lightweight testing framework designed to be usable and easy 
 
 - **Parameterized Testing**: Run the same test logic with different input parameters
 - **Subtests**: Organize related test cases within a single test function
-- **Header-Only**: 
+- **Header-Only**: No build steps beyond including the framework in your project
 - **Cross-Standard**: Supports building on C++11/14/17/20, optimized with newer language features when available
 - **Cross-platform**: Actively tested on Windows and Linux, with validation for MSVC, GCC, and Clang
+- **Thread-safe**: Tests are isolated and can be run concurrently without issue
 - **Extensible**: Assertion system designed for potential future extension
 
 ## Current Status
@@ -26,7 +27,7 @@ This is an early implementation with manual setup requirements. The framework is
  - Live test progress in console
  - Concurrent test execution
  - Command line arguments to control test execution, verbosity, and concurrency
- 
+ - Threaded dispatch for subtests
  - Parameterized testing: this is available for free via lambda closures, but could be supported explicitly with better constraints
  
 ### Implemented features
@@ -46,12 +47,18 @@ Tests must be implemented within subclasses of TestBase.
 Test functions should be registered within the constructor of a Test class.
 Test functions are executed automatically when `runTests()` is called on a Test class.
 
+Test functions can take the form of any invocable oject with the signature `void(TestContext &ctx)`. `ctx` encapsulates the scope of the currently running test; it provides access to assertions, scoped logging, and subtest invocation.
+
 Test functions can take the form of any invocable object with signature `void()`, but are required to operate within the scope of the running Test class.
 
 In practice, this means:
-- `subtest` can only be invoked from within a member function of a Test class.
-- Assertions can only be raised from within the scope of a running test.
-- Test functions themselves are simplest to use when they are implemented as members of a Test class.
+- Free functions with the correct signature may be added as tests directly. All others, including member functions, must be invoked through a lambda closure.
+
+As a convenience, `PARTEST_CTX` is provided with the following expansion:
+`#define PARTEST_CTX(...) [__VA_ARGS__](partest::TestContext &ctx)`
+It is used in place of the conventional signature for a lambda closure.
+
+Assertions are provided in the form of macros. Internally, each macro invokes assertion resolution as a member function of `ctx`.
 
 ### Test creation
 
@@ -68,13 +75,22 @@ public:
 		
 		addTest(partest::TestInfo("ValidateState", "Simple smoke test"),
 			flags,
-			[this]() { return this->validateState(0, 0); }
+			PARTEST_CTX(this) { return this->validateState(ctx, 0, 0); }
 		);
 	}
 	
-	void validateState(unsigned x, unsigned y)
+	bool isStateValid(const SomeState stateObj) { ... }
+	
+	void validateState(TestContext &ctx, unsigned x, unsigned y)
 	{
 		ASSERT_EQUAL(x, y);
+		
+		SomeState state;
+		
+		ctx.subtest("DoesUpdateState", partest::TEST_FLAGS_INHERIT, PARTEST_CTX(this, &state)
+		{
+			ASSERT_TRUE(this->isStateValid(state));
+		});
 	}
 }
 ```
@@ -115,6 +131,13 @@ More comprehensive examples of test use cases can be found in `/tests`, which co
 ## Test configuration
 Any test or subtest can be configured with a name, a description, and execution flags. Test suites, test functions, and subtests can be individually configured with their own values.
 
+## Command Line Arguments
+| Argument | Usage |
+| ----------- | ----------- |
+| -f, --filter <testNames> | Run only the specified test suites, with names separated by spaces. Names must match the strings declared in your test suites. Default behavior is to run all configured suites. |
+| -o, --output <path> | Specify an output path for the JUnit report. Default location is `./testResults.xml` |
+| -c, --concurrent | If set, test suites will run in parallel, based on system capability. If unset, test suites run sequentially. |
+
 ### Test Flags
 TestFlags currently contains the following flags:
 - skip: When enabled, the test or subtest will not be run
@@ -143,11 +166,11 @@ FlagState::withExpectFaliure(FlagState enabled = FlagState::Enabled) - Returns a
 Expected usage:
 ```cpp
 // A subtest that will stop on first failure
-subtest("testName", TEST_FLAGS_INHERIT.withStopOnFail() ...
+ctx.subtest("testName", TEST_FLAGS_INHERIT.withStopOnFail() ...
 
 // A subtest configured to recognize failures as expected
-subtest("testName", TEST_FLAGS_INHERIT.withExpectFaliure() ...
+ctx.subtest("testName", TEST_FLAGS_INHERIT.withExpectFaliure() ...
 
 // A subtest configured to do both
-subtest("testName", TEST_FLAGS_INHERIT.withStopOnFail().withExpectFaliure() ...
+ctx.subtest("testName", TEST_FLAGS_INHERIT.withStopOnFail().withExpectFaliure() ...
 ```
