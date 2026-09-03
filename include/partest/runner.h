@@ -8,6 +8,7 @@
 #include <partest/simplelogger.h>
 #include <partest/testframe.h>
 #include <partest/testbase.h>
+#include <partest/cli.h>
 
 namespace partest
 {
@@ -17,6 +18,8 @@ namespace partest
 		std::vector<TestBase *> m_tests; // Vector of tests to run
 		std::vector<EventReporterInterface *> m_reporters;
 		EventDispatcherInterface *m_dispatcher;
+		ValidArgs m_args;
+
 		bool m_concurrent;
 
 		TestRunner(bool concurrent = true) : m_concurrent(concurrent)
@@ -29,6 +32,28 @@ namespace partest
 			{
 				m_dispatcher = new SerialEventDispatcher();
 			}
+		}
+
+		void runTestsByName()
+		{
+			const std::vector<TestNameURL> &testNames = m_args.getTestNames();
+			bool foundAny = false;
+
+			for(TestBase *test : m_tests)
+			{
+				// For now, only validate the top-level test name.
+				// TODO: Expand to support hierarchical test names.
+				for(const TestNameURL &name : testNames)
+				{
+					if(test->getName() == name.front())
+					{
+						test->run();
+						foundAny = true;
+					}
+				}
+			}
+			if(!foundAny)
+				recordLog(LogLevel::Error, LOG_TYPE_DEFAULT, "No tests found matching the provided names.\n");
 		}
 	public:
 		// Delete copy and move constructors and assignment operators to enforce singleton pattern
@@ -46,7 +71,7 @@ namespace partest
 				delete reporter;
 			}
 
-			for(TestBase *test : m_tests)
+			for(TestBase *test: m_tests)
 			{
 				delete test;
 			}
@@ -61,6 +86,19 @@ namespace partest
 			return instance;
 		}
 
+		const ValidArgs &getArgs() const noexcept { return m_args; }
+
+		bool parseCommandLineArgs(int argc, const char **argv)
+		{
+			m_args = parseArgs(argc, argv);
+			return m_args.filtered();
+		}
+
+		/**
+		* Add a reporter to the runner.
+		* 
+		* @param reporter A unique pointer to the EventReporterInterface instance representing the reporter to add.
+		*/
 		void addReporter(std::unique_ptr<EventReporterInterface> reporter)
 		{
 			m_dispatcher->registerReporter(reporter.get());
@@ -87,9 +125,14 @@ namespace partest
 			if(m_concurrent)
 				dispatcherThread = std::thread([this]() { this->m_dispatcher->dispatchEvents(); });
 
-			for(TestBase *test : m_tests)
+			if(m_args.filtered() && !m_args.getTestNames().empty())
+				runTestsByName();
+			else
 			{
-				test->run();
+				for(TestBase *test : m_tests)
+				{
+					test->run();
+				}
 			}
 
 			m_dispatcher->killDispatcher();

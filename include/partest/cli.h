@@ -10,6 +10,8 @@ namespace partest
 {
 	using TestNameURL = std::vector<std::string>;
 
+	inline bool isFlag(const char *arg) noexcept;
+
 	class ValidArgs
 	{
 		bool m_filtered = false;
@@ -21,9 +23,9 @@ namespace partest
 	public:
 		ValidArgs() = default;
 		bool filtered() const noexcept { return m_filtered; }
-		void filtered(bool value) noexcept { m_filtered = value; }
+		void setFiltered(bool value) noexcept { m_filtered = value; }
 		bool output() const noexcept { return m_output; }
-		void output(bool value) noexcept { m_output = value; }
+		void setOutput(bool value) noexcept { m_output = value; }
 		// This is currently always true.
 		// Future additions will set this to false if the argument list makes test execution impossible.
 		bool validState() const noexcept { return m_validState; }
@@ -108,7 +110,6 @@ namespace partest
 				m_outputFile = argv[currentArg];
 				++currentArg;
 			}
-			m_output = true;
 			return currentArg;
 		}
 
@@ -117,37 +118,37 @@ namespace partest
 	};
 
 
-	inline bool isFlag(const std::string &arg) noexcept
+	inline bool isFlag(const char *arg) noexcept
 	{
-		return !arg.empty() && arg[0] == '-';
+		return strlen(arg) && arg[0] == '-';
 	}
 
-	// Filter command line arguments into a collection
-	ValidArgs filterArgs(int argc, const char **argv)
+	// Parse command line arguments into a collection
+	ValidArgs parseArgs(int argc, const char **argv)
 	{
 		ValidArgs args;
-		for(int i = 1; i < argc; ++i)
+		for(int currentArg = 1; currentArg < argc; ++currentArg)
 		{
-			if(isFlag(argv[argc]))
+			if(isFlag(argv[currentArg]))
 			{
-				if(strcmp(argv[argc], "-f") || strcmp(argv[argc], "--filter"))
+				if(strcmp(argv[currentArg], "-f") == 0 || strcmp(argv[currentArg], "--filter") == 0)
 				{
-					args.filtered(true);
-					i = args.setTestNamesFromArgs(argc, argv, i + 1);
+					args.setFiltered(true);
+					currentArg = args.setTestNamesFromArgs(argc, argv, currentArg + 1);
 				}
-				if(strcmp(argv[argc], "-o") || strcmp(argv[argc], "--output"))
+				else if(strcmp(argv[currentArg], "-o") == 0 || strcmp(argv[currentArg], "--output") == 0)
 				{
-					args.output(true);
-					i = args.setOutputFileFromArgs(argc, argv, i + 1);
+					args.setOutput(true);
+					currentArg = args.setOutputFileFromArgs(argc, argv, currentArg + 1);
 				}
 				else
 				{
-					std::cout << "Unrecognized flag: '" << argv[i] << "" << std::endl;
+					std::cout << "Unrecognized flag: '" << argv[currentArg] << "" << std::endl;
 				}
 			}
 			else
 			{
-				std::cout << "Unknown argument: '" << argv[i] << "'" << std::endl;
+				std::cout << "Unknown argument: '" << argv[currentArg] << "'" << std::endl;
 			}
 		}
 		return args;
