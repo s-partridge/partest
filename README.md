@@ -167,7 +167,7 @@ Several constants exist to initialize the flags for a test:
 ### Flag Chaining
 Some flags can be chained to modify functionality on one line:
 - `FlagState::withStopOnFail(FlagState enabled = FlagState::Enabled)` - Returns a copy of the state with stopOnFail explicitly configured.
-- `FlagState::withExpectFaliure(FlagState enabled = FlagState::Enabled)` - Returns a copy of the state with expectFailure explicitly configured.
+- `FlagState::withExpectFailure(FlagState enabled = FlagState::Enabled)` - Returns a copy of the state with expectFailure explicitly configured.
 
 Expected usage:
 ```cpp
