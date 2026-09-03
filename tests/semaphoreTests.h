@@ -571,41 +571,36 @@ public:
 						break;
 
 					unsigned op = dist(gen);
-					// Acquire blocks permanently, so we need to track how many threads are blocked on acquire so we can release them at the end of the test.
-					if(op == 3)
-						lockedThreads.fetch_add(1);
+					// Ensure that the main thread is always aware of how many threads are blocked on acquire, so that it can release them if necessary.
+					lockedThreads.fetch_add(1);
 					lock.unlock();
+
+					bool succeeded = false;
 
 					switch(op)
 					{
 					// Any of these may or may not succeed, depending on whether the semaphore has been released by a producer thread. If it succeeds, increment the workUnitsCompleted counter.
 					case 0:
-						if(sem.try_acquire())
-						{
-							workUnitsCompleted.fetch_add(1);
-							completedCV.notify_one();
-						}
+						succeeded = sem.try_acquire();
 						break;
 					case 1:
-						if(sem.try_acquire_for(std::chrono::milliseconds(10)))
-						{
-							workUnitsCompleted.fetch_add(1);
-							completedCV.notify_one();
-						}
+
+						succeeded = sem.try_acquire_for(std::chrono::milliseconds(10));
 						break;
 					case 2:
-						if(sem.try_acquire_until(std::chrono::steady_clock::now() + std::chrono::milliseconds(10)))
-						{
-							workUnitsCompleted.fetch_add(1);
-							completedCV.notify_one();
-						}
+						succeeded = sem.try_acquire_until(std::chrono::steady_clock::now() + std::chrono::milliseconds(10));
 						break;
 					case 3:
 						sem.acquire();
-						lockedThreads.fetch_add(-1);
+						succeeded = true;
+						break;
+					}
+
+					lockedThreads.fetch_add(-1); // Decrement the lockedThreads counter if the thread was blocked on acquire, regardless of whether it succeeded or not.
+					if(succeeded)
+					{
 						workUnitsCompleted.fetch_add(1);
 						completedCV.notify_one();
-						break;
 					}
 				}
 			});
@@ -617,16 +612,15 @@ public:
 		std::unique_lock<std::mutex> lock(consumerMutex);
 		std::chrono::system_clock::time_point deadline = std::chrono::system_clock::now() + std::chrono::seconds(10);
 		bool timedOut = false;
-		while(workUnitsCompleted < totalWorkUnits)
+		while(workUnitsCompleted.load() < totalWorkUnits)
 		{
 			timedOut = completedCV.wait_until(lock, deadline) == std::cv_status::timeout;
-			if(!timedOut)
+			if(timedOut)
 			{
 				ctx.recordLog(partest::LogLevel::Error, partest::LOG_TYPE_ASSERT, "Failed run with control seed: " + std::to_string(controlSeed));
 			}
-			ASSERT_FALSE(timedOut); // Ensure we didn't timeout
+			ASSERT_FALSE(timedOut); // Ensure we didn't time out
 		}
-		lock.unlock();
 
 		unsigned bonusWorkUnits = lockedThreads.load();
 		if(bonusWorkUnits > 0)
@@ -637,12 +631,24 @@ public:
 			sem.release(bonusWorkUnits);
 		}
 
-		if(totalWorkUnits != workUnitsCompleted.load())
+		deadline = std::chrono::system_clock::now() + std::chrono::seconds(1);
+		while(workUnitsCompleted.load() < totalWorkUnits + bonusWorkUnits)
+		{
+			timedOut = completedCV.wait_until(lock, deadline) == std::cv_status::timeout;
+			if(timedOut)
+			{
+				ctx.recordLog(partest::LogLevel::Error, partest::LOG_TYPE_ASSERT, "Failed run with control seed: " + std::to_string(controlSeed));
+			}
+			ASSERT_FALSE(timedOut); // Ensure we didn't time out
+		}
+		lock.unlock();
+
+		if(workUnitsCompleted.load() != totalWorkUnits + bonusWorkUnits)
 		{
 			ctx.recordLog(partest::LogLevel::Error, partest::LOG_TYPE_ASSERT, "Failed run with ontrol seed: " + std::to_string(controlSeed));
 		}
-		ASSERT_EQUAL(totalWorkUnits, workUnitsSpawned.load());
-		ASSERT_EQUAL(totalWorkUnits, workUnitsCompleted.load() + bonusWorkUnits);
+		ASSERT_EQUAL(workUnitsSpawned.load(), totalWorkUnits);
+		ASSERT_EQUAL(workUnitsCompleted.load(), totalWorkUnits + bonusWorkUnits);
 
 		for(unsigned x = 0; x < threadsPerChannel; ++x)
 		{
