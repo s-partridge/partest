@@ -34,26 +34,68 @@ namespace partest
 			}
 		}
 
-		void runTestsByName()
+		void runTestsInParallel()
+		{
+			unsigned int threadCount = std::thread::hardware_concurrency();
+			// Default if hardware_concurrency returns 0, which indicates that the number of threads could not be determined.
+			if(threadCount == 0)
+				threadCount = 4;
+
+			std::vector<std::thread> workers;
+			std::mutex testMutex;
+			std::atomic<unsigned> nextTestIndex(0);
+			std::atomic<bool> foundNamedTest(!shouldFilterTests());	// Always true if filtering is disabled.
+
+			for(unsigned int i = 0; i < threadCount; ++i)
+			{
+				workers.emplace_back([this, &testMutex, &nextTestIndex, &foundNamedTest]() 
+				{
+					unsigned localTestIndex = 0;
+					//lock and get next test pointer
+					while(true)
+					{
+						std::unique_lock<std::mutex> lock(testMutex);
+						localTestIndex = nextTestIndex.fetch_add(1);
+						lock.unlock();
+						
+						if(localTestIndex >= m_tests.size())
+							break;
+
+						if(!shouldFilterTests() || isNameInFilterList(m_tests[localTestIndex]->getName()))
+						{
+							m_tests[localTestIndex]->run();
+							foundNamedTest.store(true);
+						}
+					}
+				});
+			}
+
+			for(std::vector<std::thread>::iterator worker = workers.begin(); worker != workers.end(); ++worker)
+			{
+				if(worker->joinable())
+					worker->join();
+			}
+
+			if(!foundNamedTest)
+				recordLog(LogLevel::Error, LOG_TYPE_DEFAULT, "No tests found matching the provided names.\n");
+		}
+		
+		bool isNameInFilterList(PARTEST_STRING_PARAM name) const
 		{
 			const std::vector<TestNameURL> &testNames = m_args.getTestNames();
-			bool foundAny = false;
-
-			for(TestBase *test : m_tests)
+			for(const TestNameURL &testName : testNames)
 			{
 				// For now, only validate the top-level test name.
 				// TODO: Expand to support hierarchical test names.
-				for(const TestNameURL &name : testNames)
-				{
-					if(test->getName() == name.front())
-					{
-						test->run();
-						foundAny = true;
-					}
-				}
+				if(testName.front() == name)
+					return true;
 			}
-			if(!foundAny)
-				recordLog(LogLevel::Error, LOG_TYPE_DEFAULT, "No tests found matching the provided names.\n");
+			return false;
+		}
+
+		bool shouldFilterTests() const noexcept
+		{
+			return m_args.filtered() && !m_args.getTestNames().empty();
 		}
 	public:
 		// Delete copy and move constructors and assignment operators to enforce singleton pattern
@@ -125,15 +167,30 @@ namespace partest
 			if(m_concurrent)
 				dispatcherThread = std::thread([this]() { this->m_dispatcher->dispatchEvents(); });
 
-			if(m_args.filtered() && !m_args.getTestNames().empty())
-				runTestsByName();
+			bool foundNamedTest = !shouldFilterTests();	// Always true if filtering is disabled.
+
+			// TODO: Refactor these names.
+			// the CL `concurrent` arg is not the same as `m_concurrent.
+			// This name is confusing, because concurrent *test* running is not the same as
+			// running the dispatcher itself in concurrent mode. The dispatcher is always running in its own thread if m_concurrent is true, but the tests themselves are still run sequentially.
+			if(m_args.concurrent())
+			{
+				runTestsInParallel();
+			}
 			else
 			{
-				for(TestBase *test : m_tests)
+				for(TestBase *test: m_tests)
 				{
-					test->run();
+					if(!shouldFilterTests() || isNameInFilterList(test->getName()))
+					{
+						test->run();
+						foundNamedTest = true;
+					}
 				}
 			}
+
+			if(!foundNamedTest)
+				recordLog(LogLevel::Error, LOG_TYPE_DEFAULT, "No tests found matching the provided names.\n");
 
 			m_dispatcher->killDispatcher();
 

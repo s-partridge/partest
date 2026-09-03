@@ -17,6 +17,7 @@ namespace partest
 	{
 		bool m_filtered = false;
 		bool m_output = false;
+		bool m_concurrent = false;
 
 		bool m_validState = true;
 		std::vector<TestNameURL> m_testNames;
@@ -27,6 +28,9 @@ namespace partest
 		void setFiltered(bool value) noexcept { m_filtered = value; }
 		bool output() const noexcept { return m_output; }
 		void setOutput(bool value) noexcept { m_output = value; }
+		bool concurrent() const noexcept { return m_concurrent; }
+		void setConcurrent(bool value) noexcept { m_concurrent = value; }
+
 		// This is currently always true.
 		// Future additions will set this to false if the argument list makes test execution impossible.
 		bool validState() const noexcept { return m_validState; }
@@ -141,6 +145,10 @@ namespace partest
 				{
 					args.setOutput(true);
 					currentArg = args.setOutputFileFromArgs(argc, argv, currentArg + 1);
+				}
+				else if(std::strcmp(argv[currentArg], "-c") == 0 || std::strcmp(argv[currentArg], "--concurrent") == 0)
+				{
+					args.setConcurrent(true);
 				}
 				else
 				{

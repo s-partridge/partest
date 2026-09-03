@@ -31,22 +31,17 @@ namespace partest
 		else
 		{
 			xmlPath = makeAbsolutePath("testResults.xml");
+			if(args.output())
+				testRunner().recordLog(LogLevel::Warning, LOG_TYPE_DEFAULT, "No output file specified. Defaulting to '" + xmlPath + "'.\n");
+		}
+
+		if(args.filtered() && args.getTestNames().empty())
+		{
+			testRunner().recordLog(LogLevel::Warning, LOG_TYPE_DEFAULT, "Filter flag was specified, but no test suites were provided. Running in default configuration.\n");
 		}
 
 		testRunner().addReporter(partest::make_unique<SimpleLogger>(std::cout, false, partest::LogLevel::Warning));
 		testRunner().addReporter(partest::make_unique<JUnitLogger>(xmlPath));
-
-		if(args.filtered() && args.getTestNames().empty())
-		{
-			testRunner().recordLog(LogLevel::Error, LOG_TYPE_DEFAULT, "Filter flag was specified, but no test suites were provided. Running in default configuration.\n");
-		}
-
-		// Validation is here, rather than at xmlPath creation, since the path needs to be determined before
-		// the reporter itself is created but the log won't go anywhere without an actual reporter listening.
-		if(args.output() && args.getOutputFile().empty())
-		{
-			testRunner().recordLog(LogLevel::Error, LOG_TYPE_DEFAULT, "Output flag was specified, but no output file was provided. Defaulting to 'testResults.xml' in cwd.\n");
-		}
 
 		if(!maybeOpenFile(xmlPath, std::ios::out))
 			testRunner().recordLog(LogLevel::Error, LOG_TYPE_DEFAULT, "Unable to open file for JUnit reporting: '" + xmlPath + "'.\n");
