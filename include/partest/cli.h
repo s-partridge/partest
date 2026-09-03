@@ -2,6 +2,7 @@
 #define PARTEST_CLI_H
 
 #include <iostream>
+#include <cstring>	// For strcmp
 
 #include <partest/stringops.h>
 #include <partest/fileops.h>
@@ -120,7 +121,7 @@ namespace partest
 
 	inline bool isFlag(const char *arg) noexcept
 	{
-		return strlen(arg) && arg[0] == '-';
+		return std::strlen(arg) && arg[0] == '-';
 	}
 
 	// Parse command line arguments into a collection
@@ -131,12 +132,12 @@ namespace partest
 		{
 			if(isFlag(argv[currentArg]))
 			{
-				if(strcmp(argv[currentArg], "-f") == 0 || strcmp(argv[currentArg], "--filter") == 0)
+				if(std::strcmp(argv[currentArg], "-f") == 0 || std::strcmp(argv[currentArg], "--filter") == 0)
 				{
 					args.setFiltered(true);
 					currentArg = args.setTestNamesFromArgs(argc, argv, currentArg + 1);
 				}
-				else if(strcmp(argv[currentArg], "-o") == 0 || strcmp(argv[currentArg], "--output") == 0)
+				else if(std::strcmp(argv[currentArg], "-o") == 0 || std::strcmp(argv[currentArg], "--output") == 0)
 				{
 					args.setOutput(true);
 					currentArg = args.setOutputFileFromArgs(argc, argv, currentArg + 1);

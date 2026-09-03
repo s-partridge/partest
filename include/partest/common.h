@@ -227,7 +227,7 @@ namespace partest
 			const char *typeName = typeid(T).name();
 
 			std::string result;
-			result.reserve(19 + strlen(typeName) + 1);
+			result.reserve(19 + std::strlen(typeName) + 1);
 			result += "<unprintable type: ";
 			result += typeName;
 			result += ">";
@@ -281,7 +281,7 @@ namespace partest
 		const char *typeName = typeid(T).name();
 
 		std::string result;
-		result.reserve(19 + strlen(typeName) + 1);
+		result.reserve(19 + std::strlen(typeName) + 1);
 		result += "<unprintable type: ";
 		result += typeName;
 		result += '>';
