@@ -20,16 +20,16 @@ public:
 	{
 		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
 
-		addTest(partest::TestInfo("Acquire", "Validate semaphore via acquire with single blocking thread."),
+		addTest("Acquire", "Validate semaphore via acquire with single blocking thread.",
 			flags,
 			PARTEST_CTX(this) { return this->acquire(ctx); });
-		addTest(partest::TestInfo("AcquireAsQueue", "Simulate a producer/consumer queue to validate quick concurrency."),
+		addTest("AcquireAsQueue", "Simulate a producer/consumer queue to validate quick concurrency.",
 			flags,
 			PARTEST_CTX(this) { return this->acquireAsQueue(ctx, 10000); });
-		addTest("AcquireWithTryAcquire", "Validate concurrency for try_acquire.",
+		addTest("TryAcquire", "Validate concurrency for try_acquire.",
 			flags,
 			PARTEST_CTX(this) { return this->tryAcquire(ctx); });
-		addTest("AcquireWithTryAcquireTimed", "Validate non-blocking acquire with wait times.",
+		addTest("TryAcquireWithTimeout", "Validate non-blocking acquire with wait times.",
 			flags,
 			PARTEST_CTX(this) { return this->TryAcquireWithTimeout(ctx); });
 		addTest("ReleaseWakesThreads", "Validate that release wakes up waiting threads.",
