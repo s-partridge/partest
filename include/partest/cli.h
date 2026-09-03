@@ -13,11 +13,20 @@ namespace partest
 	class ValidArgs
 	{
 		bool m_filtered = false;
+		bool m_output = false;
+
+		bool m_validState = true;
 		std::vector<TestNameURL> m_testNames;
+		std::string m_outputFile;
 	public:
 		ValidArgs() = default;
 		bool filtered() const noexcept { return m_filtered; }
 		void filtered(bool value) noexcept { m_filtered = value; }
+		bool output() const noexcept { return m_output; }
+		void output(bool value) noexcept { m_output = value; }
+		// This is currently always true.
+		// Future additions will set this to false if the argument list makes test execution impossible.
+		bool validState() const noexcept { return m_validState; }
 
 		/**
 		* Convert a string into a period-delimited vector of substrings, representing the hierarchical structure of a test name.
@@ -92,7 +101,19 @@ namespace partest
 			return currentArg;
 		}
 
+		int setOutputFileFromArgs(int argc, const char **argv, int currentArg)
+		{
+			if(currentArg < argc && !isFlag(argv[currentArg]))
+			{
+				m_outputFile = argv[currentArg];
+				++currentArg;
+			}
+			m_output = true;
+			return currentArg;
+		}
+
 		const std::vector<TestNameURL> &getTestNames() const noexcept { return m_testNames; }
+		const std::string &getOutputFile() const noexcept { return m_outputFile; }
 	};
 
 
@@ -112,9 +133,12 @@ namespace partest
 				if(strcmp(argv[argc], "-f") || strcmp(argv[argc], "--filter"))
 				{
 					args.filtered(true);
-
 					i = args.setTestNamesFromArgs(argc, argv, i + 1);
-					continue;
+				}
+				if(strcmp(argv[argc], "-o") || strcmp(argv[argc], "--output"))
+				{
+					args.output(true);
+					i = args.setOutputFileFromArgs(argc, argv, i + 1);
 				}
 				else
 				{
