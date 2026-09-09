@@ -206,15 +206,6 @@ namespace partest
 			m_eventEmitter->emitAssertion(m_testFrameView, result, std::chrono::system_clock::now());
 		}
 
-		void abortTest(PARTEST_STRING_PARAM message)
-		{
-			// Mark the test as aborted and log a generic message.
-			updateStatus(TestStatus::Aborting);
-			// Ensure that the test result was set. A generic exception indicates test failure.
-			updateResult(TestResult::Failed);
-			recordLog(LogLevel::Error, LOG_TYPE_EXCEPTION, message);
-		}
-
 		void recordLog(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message)
 		{
 			std::unique_lock<std::mutex> logLock(m_logsMutex);
@@ -515,6 +506,63 @@ namespace partest
 			m_eventEmitter->emitEndTest(TestFrameView(*this), std::chrono::system_clock::now());
 
 			return m_parent;
+		}
+
+		void abortTest(PARTEST_STRING_PARAM message)
+		{
+			// Mark the test as aborted and log a generic message.
+			updateStatus(TestStatus::Aborting);
+			// Ensure that the test result was set. A generic exception indicates test failure.
+			updateResult(TestResult::Failed);
+			recordLog(LogLevel::Error, LOG_TYPE_EXCEPTION, message);
+		}
+
+		/**
+		* Check if the current test should raise an assertion failure based on its status and flags. Used in ASSERT macros.
+		* 
+		* @param file The file where the assertion is being checked. Typically provided by the __FILE__ macro.
+		* @param line The line number where the assertion is being checked. Typically provided by the __LINE__ macro.
+		* @param condition The condition being asserted, as a string. Typically provided by the condition expression itself.
+		* @throws AssertionFailure if the current test has failed and stopOnFail is enabled.
+		*/
+		void maybeRaiseOnAssertion(const char *file, int line, PARTEST_STRING_PARAM condition)
+		{
+			if(getEffectiveFlags().stopOnFail == FlagState::Enabled && (hasFailures()))
+			{
+				throw AssertionFailure(file, line, condition);
+			}
+		}
+
+		void maybeRaiseOnReturn(const char *file, int line, PARTEST_STRING_PARAM condition)
+		{
+			if(getEffectiveFlags().stopOnFail == FlagState::Enabled && getTestFailureCount())
+			{
+				throw AssertionFailure(file, line, condition);
+			}
+		}
+
+		/**
+		* Check if the current test should raise an assertion failure based on its status and flags. Used in ASSERT macros.
+		* 
+		* @param result Object containing the evaluated result of an assertion
+		* @throws AssertionFailure if the current test has failed and stopOnFail is enabled.
+		*/
+		void maybeRaiseOnAssertion(const AssertionResult &result, TestFrame *test) { maybeRaiseOnAssertion(result.file.c_str(), result.line, result.getCondition()); }
+
+		/**
+		* Process an evaluated assertion. Log it and raise an exception if necessary.
+		* 
+		* @param result Output of an evaluated assertion. AssertionResults should be produced by assertion handlers.
+		* @throws AssertionFailure if the assertion result did not pass and stopOnFail is enabled.
+		*/
+		void commitAssertion(const AssertionResult &result)
+		{
+			// Pass the assertion result on to the test frame
+			processAssertion(result);
+
+			// On failure, allow an exception to be raised if the current test frame is configured to do so.
+			if(!result.passed())
+				maybeRaiseOnAssertion(result.file.c_str(), result.line, result.getCondition());
 		}
 
 		/**

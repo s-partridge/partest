@@ -165,80 +165,6 @@ namespace partest
 			}
 		}
 
-		/**
-		* Check if the current test should raise an assertion failure based on its status and flags. Used in ASSERT macros.
-		* 
-		* @param file The file where the assertion is being checked. Typically provided by the __FILE__ macro.
-		* @param line The line number where the assertion is being checked. Typically provided by the __LINE__ macro.
-		* @param condition The condition being asserted, as a string. Typically provided by the condition expression itself.
-		* @throws AssertionFailure if the current test has failed and stopOnFail is enabled.
-		*/
-		void maybeRaiseOnAssertion(const char *file, int line, PARTEST_STRING_PARAM condition, TestFrame *test)
-		{
-			if(test->getEffectiveFlags().stopOnFail == FlagState::Enabled && (test->hasFailures()))
-			{
-				throw AssertionFailure(file, line, condition);
-			}
-		}
-
-		void maybeRaiseOnSubtestReturned(const char *file, int line, PARTEST_STRING_PARAM condition, TestFrame *test)
-		{
-			if(test->getEffectiveFlags().stopOnFail == FlagState::Enabled && test->getTestFailureCount(1))
-			{
-				throw AssertionFailure(file, line, condition);
-			}
-		}
-
-		/**
-		* Check if the current test should raise an assertion failure based on its status and flags. Used in ASSERT macros.
-		* 
-		* @param result Object containing the evaluated result of an assertion
-		* @throws AssertionFailure if the current test has failed and stopOnFail is enabled.
-		*/
-		void maybeRaiseOnAssertion(const AssertionResult &result, TestFrame *test) { maybeRaiseOnAssertion(result.file.c_str(), result.line, result.getCondition(), test); }
-
-		/////////////////////
-		//Subtest overloads//
-		/////////////////////
-		template<PARTEST_INVOCABLE_WITH(Func, TestContext&)>
-		void subtest(const TestInfo &testInfo, const TestFlags& flags, Func &&testFunc, TestFrame *parent)
-		{
-			assert(parent != nullptr && "Parent test frame is null. Subtests must be added to a valid parent test frame.");
-
-			TestFrame *subtest = parent->addSubtest(partest::make_unique<TestFrame>(&m_eventEmitter, flags, testInfo, testFunc));
-			runTest(subtest);
-			subtest->setTestFunction(nullptr); // Clear the function to avoid dangling references. This is only necessary for subtests because they are intended to be run immediately and then discarded.
-
-			maybeRaiseOnSubtestReturned("", 0, "Stopped on failure in " + parent->metadata.name, subtest);
-		}
-
-		/**
-		* Process an evaluated assertion. Log it and raise an exception if necessary.
-		* 
-		* @param result Output of an evaluated assertion. AssertionResults should be produced by assertion handlers.
-		* @throws AssertionFailure if the assertion result did not pass and stopOnFail is enabled.
-		*/
-		void commitAssertion(const AssertionResult &result, TestFrame *test)
-		{
-			// Pass the assertion result on to the test frame
-			test->processAssertion(result);
-
-			// On failure, allow an exception to be raised if the current test frame is configured to do so.
-			if(!result.passed())
-				maybeRaiseOnAssertion(result.file.c_str(), result.line, result.getCondition(), test);
-		}
-
-		/**
-		* Log a message.
-		* @param level The log level.
-		* @param type The log type.
-		* @param message The log message.
-		*/
-		void recordLog(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message, TestFrame *test)
-		{
-			test->recordLog(level, type, message);
-		}
-
 	protected:
 		/** 
 		* Adds a test function to the list of tests to be executed. Expected to be called in the constructor of derived classes.
@@ -413,12 +339,12 @@ namespace partest
 
 	inline void TestContext::commitAssertion(const AssertionResult &result)
 	{
-		m_testSuite->commitAssertion(result, m_currentFrame);
+		m_currentFrame->commitAssertion(result);
 	}
 
 	inline void TestContext::recordLog(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message)
 	{
-		m_testSuite->recordLog(level, type, message, m_currentFrame);
+		m_currentFrame->recordLog(level, type, message);
 	}
 
 	inline void TestContext::setTestFile(PARTEST_STRING_PARAM fileName) { m_currentFrame->setTestFile(fileName); }
