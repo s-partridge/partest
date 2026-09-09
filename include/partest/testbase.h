@@ -47,7 +47,6 @@
 
 namespace partest
 {
-
 	class TestBase;
 
 	class TestContext

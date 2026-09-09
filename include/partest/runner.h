@@ -3,11 +3,14 @@
 
 #include <vector>
 #include <thread>
+#include <mutex>
+#include <condition_variable>
 
 #include <partest/eventdispatcher.h>
 #include <partest/simplelogger.h>
 #include <partest/testframe.h>
 #include <partest/testbase.h>
+#include <partest/exceptions.h>
 #include <partest/cli.h>
 
 namespace partest
@@ -97,6 +100,34 @@ namespace partest
 		{
 			return m_args.filtered() && !m_args.getTestNames().empty();
 		}
+
+		static std::mutex &aliveMutex()
+		{
+			// Use placement-new to create permanent mutex in static storage, which does not have its destructor called at program exit. This avoids potential issues with static destruction order.
+			static alignas(std::mutex) std::uint8_t mutexStorage[sizeof(std::mutex)];
+			static std::mutex *mutexPtr = new (mutexStorage) std::mutex();
+			return *mutexPtr;
+		}
+
+		static std::condition_variable &aliveCondition()
+		{
+			static alignas(std::condition_variable) std::uint8_t conditionStorage[sizeof(std::condition_variable)];
+			static std::condition_variable *conditionPtr = new (conditionStorage) std::condition_variable();
+			return *conditionPtr;
+		}
+
+		static bool &isAlive()
+		{
+			static bool alive = true;
+			return alive;
+		}
+
+		static std::atomic<unsigned> &inUseCounter()
+		{
+			static std::atomic<unsigned> counter(0);
+			return counter;
+		}
+
 	public:
 		// Delete copy and move constructors and assignment operators to enforce singleton pattern
 		TestRunner(const TestRunner &) = delete;
@@ -106,16 +137,61 @@ namespace partest
 
 		~TestRunner()
 		{
+			std::unique_lock<std::mutex> lock(aliveMutex());
+			isAlive() = false;
+
+			aliveCondition().wait(lock, []()
+			{
+				return inUseCounter().load(std::memory_order_acquire) == 0;
+			});
+
 			delete m_dispatcher;
 
 			for(EventReporterInterface *reporter: m_reporters)
 			{
-				delete reporter;
+				try
+				{
+					delete reporter;
+				}
+				catch(...)
+				{
+					std::string message = "Error: Unhandled exception during Reporter shutdown: " + stringFromCurrentException();
+					fprintf(stderr, "%s\n", message.c_str());
+				}
 			}
 
 			for(TestBase *test: m_tests)
 			{
-				delete test;
+				try
+				{
+					delete test;
+				}
+				catch(...)
+				{
+					std::string message = "Error: Unhandled exception during Test Suite shutdown: " + stringFromCurrentException();
+					fprintf(stderr, "%s\n", message.c_str());
+				}
+			}
+		}
+
+		bool requestAccessIfAlive()
+		{
+			std::lock_guard<std::mutex> lock(aliveMutex());
+			if(isAlive())
+			{
+				inUseCounter().fetch_add(1, std::memory_order_acq_rel);
+				return true;
+			}
+			return false;
+		}
+
+		void releaseAccess()
+		{
+			std::lock_guard<std::mutex> lock(aliveMutex());
+			inUseCounter().fetch_sub(1, std::memory_order_acq_rel);
+			if(inUseCounter().load(std::memory_order_acquire) == 0)
+			{
+				aliveCondition().notify_all();
 			}
 		}
 
@@ -289,6 +365,9 @@ namespace partest
 			}
 			return skipCount;
 		}
+
+		// For access to mutex and access counter
+		friend TestContext;
 	};
 };
 
