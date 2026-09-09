@@ -126,6 +126,15 @@ namespace partest
 		using AssertionConstIter = std::deque<AssertionResult>::const_iterator;
 
 		TestFrame(EventEmitterInterface *eventEmitter) : m_eventEmitter(eventEmitter), flags(), metadata(), state(), m_id(nextId()), m_testFrameView(*this) { }
+
+		TestFrame(const TestFlags &flags, const TestInfo &metadata,
+				const std::function<void(TestContext&)> &testFunction = nullptr,
+				const std::function<void(TestContext&)> &testSetup = nullptr,
+				const std::function<void(TestContext&)> &testTeardown = nullptr)
+			: m_eventEmitter(nullptr), flags(flags), metadata(metadata), state(flags.expectFailure == FlagState::Enabled),
+				m_testFunction(testFunction), m_testSetup(testSetup), m_testTeardown(testTeardown),
+			m_id(nextId()), m_testFrameView(*this) { }
+
 		TestFrame(EventEmitterInterface *eventEmitter, const TestFlags &flags, const TestInfo &metadata,
 				const std::function<void(TestContext&)> &testFunction = nullptr,
 				const std::function<void(TestContext&)> &testSetup = nullptr,
@@ -133,7 +142,7 @@ namespace partest
 			: m_eventEmitter(eventEmitter), flags(flags), metadata(metadata), state(flags.expectFailure == FlagState::Enabled),
 				m_testFunction(testFunction), m_testSetup(testSetup), m_testTeardown(testTeardown),
 				m_id(nextId()), m_testFrameView(*this) { }
-	
+
 		// Nothing should be moving or copying TestFrame instances. They exist as part of a tree structure managed by TestBase.
 		TestFrame(const TestFrame &) = delete; // Disable copy constructor
 		TestFrame &operator=(const TestFrame &) = delete; // Disable copy assignment
@@ -370,12 +379,15 @@ namespace partest
 		*/
 		TestFrame *addSubtest(std::unique_ptr<TestFrame> subtest)
 		{
+			assert(m_eventEmitter != nullptr && "Event emitter must be set before adding subtests.");
+
 			TestFrame *subtestPtr = subtest.get();
 			{
 				std::lock_guard<std::mutex> subtestsLock(m_subtestsMutex);
 				m_subtests.push_back(subtestPtr);
 			}
 			subtestPtr->m_parent = this;
+			subtestPtr->m_eventEmitter = m_eventEmitter;
 			subtest.release();
 
 			return subtestPtr;

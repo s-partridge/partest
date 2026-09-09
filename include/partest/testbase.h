@@ -52,11 +52,12 @@ namespace partest
 	class TestContext
 	{
 		TestFrame *m_currentFrame;
-		TestBase *m_testSuite;
+		//Replace test suite ref with a function pointer for runTest, to avoid circular dependency. This will be a function pointer to TestBase::runTest
+		void (*m_runTestFunc)(TestFrame *test);
 
 	public:
-		TestContext(TestBase *testSuite, TestFrame *currentFrame)
-			: m_testSuite(testSuite), m_currentFrame(currentFrame) {
+		TestContext(TestFrame *currentFrame, void (*runTestFunc)(TestFrame *test))
+			: m_currentFrame(currentFrame), m_runTestFunc(runTestFunc) {
 		}
 
 		template<PARTEST_INVOCABLE_WITH(Func, TestContext&)>
@@ -100,8 +101,6 @@ namespace partest
 	*/
 	class TestBase
 	{
-		friend class TestContext;
-
 	protected:
 		using TestContext = partest::TestContext;
 		using TestFrame = partest::TestFrame;
@@ -335,7 +334,12 @@ namespace partest
 
 	template<PARTEST_INVOCABLE_WITH_DEF(Func, TestContext&)>
 	void TestContext::subtest(const TestInfo &testInfo, const TestFlags& flags, Func &&testFunc)
-	{ m_testSuite->subtest(testInfo, flags,testFunc, m_currentFrame); }
+	{
+		assert(m_currentFrame!= nullptr && "Parent test frame is null. Subtests must be added to a valid parent test frame.");
+
+		TestFrame *subtest = m_currentFrame->addSubtest(partest::make_unique<TestFrame>(flags, testInfo, testFunc));
+		m_runTestFunc(subtest);
+	}
 
 	inline void TestContext::commitAssertion(const AssertionResult &result)
 	{
