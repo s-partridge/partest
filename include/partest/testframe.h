@@ -447,28 +447,44 @@ namespace partest
 			// Framework invariant: A test should not be run if it was skipped. This is enforced by the test framework, and should never be violated.
 			assert(!wasSkipped() && "Invalid test state. Test should not be run if it was skipped.");
 
-			// This precedes the run guard because the guard itself would temporarily override status.
-			// Correct status transitions from SettingUp to Aborting on the failed path, skipping TearingDown entirely.
-			if(m_testFunction == nullptr)
-				throw std::runtime_error("Attempted to run a test function that is not set.");
-
-			struct RunGuard
+			try
 			{
-				TestFrame *frame;
-				~RunGuard()
-				{
-					frame->m_endTime = std::chrono::steady_clock::now();
-					frame->updateStatus(TestStatus::TearingDown);
-				}
-			} guard{this};
+				// This precedes the run guard because the guard itself would temporarily override status.
+				// Correct status transitions from SettingUp to Aborting on the failed path, skipping TearingDown entirely.
+				if(m_testFunction == nullptr)
+					throw std::runtime_error("Attempted to run a test function that is not set.");
 
-			updateStatus(TestStatus::Running);
-			m_startTime = std::chrono::steady_clock::now();
-			m_testFunction(ctx);
+				struct RunGuard
+				{
+					TestFrame *frame;
+					~RunGuard()
+					{
+						frame->m_endTime = std::chrono::steady_clock::now();
+						frame->updateStatus(TestStatus::TearingDown);
+					}
+				} guard{this};
+
+				updateStatus(TestStatus::Running);
+				m_startTime = std::chrono::steady_clock::now();
+				m_testFunction(ctx);
+			}
+			// A test returned early due to an assertion failure with stopOnFail enabled
+			// Nothing special to do here, but this is necessary to prevent the exception from propagating further.
+
+			// Assertion failures indicate that the test has already been marked as Failed, so no additional action is needed here 
+			catch(const partest::AssertionFailure &)
+			{ }
+			// Unexpected exceptions will generally indicate errors within the user's test code and must be reported
+			catch(...)
+			{
+				std::string message = "Error: Unhandled exception in test '" + metadata.name + "': " + stringFromCurrentException();
+				abortTest(message);
+			}
+
 			// RunGuard updates the status and end time automatically via RAII when this function exits, even if an exception is thrown.
 		}
 
-		TestFrame *finalizeTest(TestContext& ctx)
+		void finalizeTest(TestContext& ctx)
 		{
 			// If effective flags indicate the test should be skipped, do nothing and return immediately
 			if(getEffectiveFlags().skip != FlagState::Enabled)

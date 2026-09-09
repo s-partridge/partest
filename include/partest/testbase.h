@@ -110,37 +110,24 @@ namespace partest
 		std::unique_ptr<TestFrame> m_testTree; // Dynamically growing tree of test frames
 		EventEmitter m_eventEmitter; // Component that transmits events to a dispatcher
 
-		void runTest(TestFrame *test)
+		static void runTest(TestFrame *test)
 		{
 			// There is no point where this should be null in production code.
 			// If it is, it indicates a serious issue with the test framework itself.
 			assert(test != nullptr && "Test was run with a null TestFrame pointer.");
 
-			TestContext ctx(this, test);
+			TestContext ctx(test, runTest);
 
 			if(test->initializeTest(ctx))
 			{
-				std::stringstream resultStream;
-				try
-				{
-					test->runTestFunction(ctx);
-				}
-				
-				// A test returned early due to an assertion failure with stopOnFail enabled
-				// Nothing special to do here, but this is necessary to prevent the exception from propagating further.
-
-				// Assertion failures indicate that the test has already been marked as Failed, so no additional action is needed here 
-				catch(const partest::AssertionFailure &)
-				{ }
-				// Unexpected exceptions will generally indicate errors within the user's test code and must be reported
-				catch(...)
-				{
-					std::string message = "Error: Unhandled exception in test '" + test->metadata.name + "': " + stringFromCurrentException();
-					test->abortTest(message);
-				}
-
-				test->finalizeTest(ctx);
+				test->runTestFunction(ctx);
 			}
+
+			test->finalizeTest(ctx);
+			// TODO: Re-evaluate. Is this correct or necessary? I'm not sure it's the right behavior, and it might be confusing.
+			// It's certainly wrong if I ever implement recurrent tests, which might be a reasonable addition.
+			//if(test->hasParent())
+			//	test->setTestFunction(nullptr); // Clear the function to avoid dangling references. This is only necessary for subtests because they are intended to be run immediately and then discarded.
 		}
 
 		/**
