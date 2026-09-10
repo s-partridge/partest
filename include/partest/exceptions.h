@@ -3,6 +3,7 @@
 
 #include <stdexcept>
 #include <string>
+#include <cstdio>
 #include <partest/common.h>
 
 namespace partest
@@ -107,5 +108,30 @@ namespace partest
 			return "unknown exception";
 		}
 	}
-}
-#endif
+
+	inline const char* cstringFromCurrentException()
+	{
+		try
+		{
+			throw;
+		}
+		catch(const AssertionFailure &e)
+		{
+			return e.what();
+		}
+		catch(const std::exception &e)
+		{
+			return e.what();
+		}
+		catch(const char *s)
+		{
+			return s ? s : "(null)";
+		}
+		catch(const std::string &s)
+		{
+			return s.c_str();
+		}
+		catch(int v)
+		{
+			static thread_local char intBuffer[32]; // Buffer for integer to string conversion
+			snprintf(intBuffer, sizeof(intBuffer), "int: %
