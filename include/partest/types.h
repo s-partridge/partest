@@ -327,7 +327,15 @@ namespace partest
 		* @return true if the test is in progress, false otherwise.
 		*/
 		PARTEST_CONSTEXPR_11 bool isInProgress() const noexcept { return m_status == TestStatus::SettingUp || m_status == TestStatus::Running || m_status == TestStatus::TearingDown || m_status == TestStatus::Aborting; }
-		
+
+		/**
+		* Check whether the test is in the process of deconstructing, which includes both aborting and tearing down.
+		* This is useful for determining if the test is in a state where it is cleaning up after itself, regardless of whether it completed successfully or was aborted.
+		*
+		* @return true if the test status is Aborting or TearingDown, false otherwise.
+		*/
+		PARTEST_CONSTEXPR_11 bool isDeconstructing() const noexcept { return m_status == TestStatus::Aborting || m_status == TestStatus::TearingDown; }
+
 		/**
 		* Check whether the test has completed.
 		* 

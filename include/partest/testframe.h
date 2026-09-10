@@ -273,6 +273,12 @@ namespace partest
 			return state.isRunning();
 		}
 
+		bool isDeconstructing() const
+		{
+			std::lock_guard<std::mutex> statusLock(m_statusMutex);
+			return state.isDeconstructing();
+		}
+
 		bool hasFinishedRunning() const
 		{
 			std::lock_guard<std::mutex> statusLock(m_statusMutex);
@@ -312,6 +318,15 @@ namespace partest
 		void updateStatus(TestStatus status)
 		{
 			std::lock_guard<std::mutex> statusLock(m_statusMutex);
+			state.updateStatus(status);
+		}
+
+		void updateState(const TestResult &result, const TestStatus &status)
+		{
+			std::unique_lock<std::mutex> statusLock(m_statusMutex, std::defer_lock);
+			std::unique_lock<std::mutex> resultLock(m_resultMutex, std::defer_lock);
+			std::lock(statusLock, resultLock);
+			state.updateResult(result);
 			state.updateStatus(status);
 		}
 
@@ -492,7 +507,7 @@ namespace partest
 				// Flag state/run status invariant. Test should not be marked as skipped if the skip flag is not set.
 				assert(!wasSkipped() && "Invalid test state. Test should not have been skipped without skip flag set.");
 				// Run status invariant. A test should only be finalized if it is in the process of tearing down or has been aborted.
-				assert(getStatus() == TestStatus::TearingDown || getStatus() == TestStatus::Aborting && "Test frame is not in a valid state to finalize. Test should be tearing down or aborted.");
+				assert(isDeconstructing() && "Test frame is not in a valid state to finalize. Test should be tearing down or aborted.");
 
 				// TODO: Refactor this to iterate over subtests instead of the child calling on the parent.
 				// This moves the call to the logical end of the test tree, where the parent can evaluate all subtests and update its own state accordingly.
@@ -517,9 +532,21 @@ namespace partest
 					state.updateResultFromAssertion(true);
 				}
 
-				if(m_testTeardown != nullptr)
+				try
 				{
-					m_testTeardown(ctx);
+					if(m_testTeardown != nullptr)
+					{
+						m_testTeardown(ctx);
+					}
+				}
+				catch(FatalFrameworkError &)
+				{
+					throw;
+				}
+				catch(...)
+				{
+					recordLog(LogLevel::Error, LOG_TYPE_EXCEPTION, "Unhandled exception in test teardown for \"" + fullTestName() + "\".");
+					updateState(TestResult::Failed, TestStatus::Aborted);
 				}
 
 				if(getStatus() != TestStatus::Aborting)
@@ -533,20 +560,19 @@ namespace partest
 			}
 			m_eventEmitter->emitEndTest(TestFrameView(*this), std::chrono::system_clock::now());
 
-			return m_parent;
+			maybeRaiseOnReturn("", 0, "Stopped on failure in " + metadata.name);
 		}
 
 		void abortTest(PARTEST_STRING_PARAM message)
 		{
 			// Mark the test as aborted and log a generic message.
-			updateStatus(TestStatus::Aborting);
 			// Ensure that the test result was set. A generic exception indicates test failure.
-			updateResult(TestResult::Failed);
+			updateState(TestResult::Failed, TestStatus::Aborting);
 			recordLog(LogLevel::Error, LOG_TYPE_EXCEPTION, message);
 		}
 
 		/**
-		* Check if the current test should raise an assertion failure based on its status and flags. Used in ASSERT macros.
+		* Check whether the current test should raise an assertion failure based on its status and flags. Used in ASSERT macros.
 		* 
 		* @param file The file where the assertion is being checked. Typically provided by the __FILE__ macro.
 		* @param line The line number where the assertion is being checked. Typically provided by the __LINE__ macro.
@@ -561,9 +587,18 @@ namespace partest
 			}
 		}
 
+		/**
+		* Check whether the current test should raise an assertion failure based on its status and flags.
+		* 
+		* @param file The file where the assertion is being checked. Typically provided by the __FILE__ macro.
+		* @param line The line number where the assertion is being checked. Typically provided by the __LINE__ macro.
+		* @param condition The condition being asserted, as a string. Typically provided by the condition expression itself.
+		* 
+		* @throws AssertionFailure if the current test has failed and stopOnFail is enabled, but NOT on the root test frame. Since this is called from finalize, raising an exception on the root would be meaningless.
+		*/
 		void maybeRaiseOnReturn(const char *file, int line, PARTEST_STRING_PARAM condition)
 		{
-			if(getEffectiveFlags().stopOnFail == FlagState::Enabled && getTestFailureCount())
+			if(m_parent != nullptr && getEffectiveFlags().stopOnFail == FlagState::Enabled && getTestFailureCount())
 			{
 				throw AssertionFailure(file, line, condition);
 			}
