@@ -104,14 +104,14 @@ namespace partest
 		static std::mutex &aliveMutex()
 		{
 			// Use placement-new to create permanent mutex in static storage, which does not have its destructor called at program exit. This avoids potential issues with static destruction order.
-			static alignas(std::mutex) std::uint8_t mutexStorage[sizeof(std::mutex)];
+			alignas(std::mutex) static std::uint8_t mutexStorage[sizeof(std::mutex)];
 			static std::mutex *mutexPtr = new (mutexStorage) std::mutex();
 			return *mutexPtr;
 		}
 
 		static std::condition_variable &aliveCondition()
 		{
-			static alignas(std::condition_variable) std::uint8_t conditionStorage[sizeof(std::condition_variable)];
+			alignas(std::condition_variable) static std::uint8_t conditionStorage[sizeof(std::condition_variable)];
 			static std::condition_variable *conditionPtr = new (conditionStorage) std::condition_variable();
 			return *conditionPtr;
 		}

@@ -218,7 +218,7 @@ namespace partest
 		{
 			try
 			{
-				return addSubtest(std::make_unique<TestFrame>(m_eventEmitter, flags, metadata, testFunction, testSetup, testTeardown));
+				return addSubtest(partest::make_unique<TestFrame>(m_eventEmitter, flags, metadata, testFunction, testSetup, testTeardown));
 			}
 			catch(std::bad_alloc)
 			{
