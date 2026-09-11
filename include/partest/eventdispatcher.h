@@ -142,6 +142,10 @@ namespace partest
 		*/
 		void dispatchEvents() override
 		{
+			// Create the temporary here, rather than inside the loop.
+			// This allows reallocation to only occur if the number of reporters changes, rather than on every iteration of the loop.
+			std::vector<EventReporterInterface *> localReporters;
+
 			// Block until the queue is not empty. Use semaphore to wait for events to be pushed.
 			while(true)
 			{
@@ -152,9 +156,9 @@ namespace partest
 				std::unique_ptr<Event> event = popEventUnsafe();
 				m_queueMutex.unlock();
 
-				m_reportersMutex.lock();
-				std::vector<EventReporterInterface *> localReporters = m_reporters; // Make a copy of the reporters vector to avoid holding the lock while dispatching
-				m_reportersMutex.unlock();
+				std::unique_lock<std::mutex> reportersLock(m_reportersMutex);
+				localReporters = m_reporters; // Make a copy of the reporters vector to avoid holding the lock while dispatching
+				reportersLock.unlock();
 
 				// Dispatch the event to all registered reporters
 				for(EventReporterInterface *reporter : localReporters)
