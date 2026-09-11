@@ -67,11 +67,80 @@ namespace partest
 	#if PARTEST_CPP_VERSION >= 17
 		TestIntegrityFailure(std::string_view message) : TestIntegrityFailure(std::string(message)) {}
 	#endif
-
 		TestIntegrityFailure(const std::string &message) : TestIntegrityFailure(message.c_str()) {}
-
 		TestIntegrityFailure(const char *message) : std::runtime_error(message) {}
 	};
+
+	/**
+	* Enum class representing the source of a bad allocation, used for errors that can't be propagated reliably.
+	* A bad_alloc within the framework is most likely unrecoverable, unlike potential memory issues within a user test.
+	* This type distinguishes between framework boundaries and user code, allowing for more precise error reporting and handling.
+	*/
+	enum class BadAllocSource : uint8_t
+	{
+		Unknown = 0,
+		TestRegistration = 1,
+		TestInitialization = 2,
+		TestExecution = 3,
+		TestFinalization = 4,
+		AssertionHandling = 5,
+		LogRecording = 6,
+		UserMessageForwarding = 7,
+		TestInfoUpdating = 8
+	};
+
+	class TestFrame;
+	enum class TestStatus : uint8_t;
+
+	class FrameworkAllocationFailure : public std::bad_alloc
+	{
+		BadAllocSource m_source;
+		TestStatus m_testStatus;
+		const TestFrame *m_testFrame;
+	public:
+		FrameworkAllocationFailure(BadAllocSource source, TestStatus testStatus, const TestFrame *testFrame) : std::bad_alloc(), m_source(source), m_testStatus(testStatus), m_testFrame(testFrame) {}
+	};
+
+	// Kill the entire application if the framework fails to allocate memory.
+	// This is a last-resort measure to prevent undefined behavior from propagating through the test framework.
+	[[noreturn]] inline void abortOnFrameworkAllocationError(BadAllocSource source, const char *testName)
+	{
+		// Preallocate a buffer for the error message to avoid further allocation failures.
+		const char *sourceAsString = "Unknown framework operation";
+		char messageBuffer[256] = "";
+		switch(source)
+		{
+		case BadAllocSource::TestRegistration:
+			sourceAsString = "test registration";
+			break;
+		case BadAllocSource::TestInitialization:
+			sourceAsString = "initialization";
+			break;
+		case BadAllocSource::TestExecution:
+			sourceAsString = "execution";
+			break;
+		case BadAllocSource::TestFinalization:
+			sourceAsString = "finalization";
+			break;
+		case BadAllocSource::AssertionHandling:
+			sourceAsString = "assertion handling";
+			break;
+		case BadAllocSource::LogRecording:
+			sourceAsString = "log recording";
+			break;
+		case BadAllocSource::UserMessageForwarding:
+			sourceAsString = "user message forwarding";
+			break;
+		case BadAllocSource::TestInfoUpdating:
+			sourceAsString = "test info updating";
+			break;
+		}
+
+		snprintf(messageBuffer, sizeof(messageBuffer), "Fatal error: Failed to allocate memory during %s for test '%s'. The test framework cannot continue and will abort.", sourceAsString, testName ? testName : "<unknown>");
+		fputs(messageBuffer, stderr);
+
+		std::abort();
+	}
 
 	/**
 	* Call ONLY from within an exception context.
