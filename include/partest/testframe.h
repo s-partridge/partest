@@ -83,6 +83,9 @@ namespace partest
 		TestState state;
 
 		std::vector<TestFrame *> m_subtests; // Vector of sub-tests
+		// TODO: Consider vectors of pointers instead. Deque has high default overhead on GCC,
+		// and pointers would consolidate ownership here without introducing any concerns about reference invalidation.
+
 		std::deque<LogEntry> m_logs; // Logs associated with this test frame
 		std::deque<AssertionResult> m_assertions; // Results of assertions triggered by this test frame
 
@@ -98,6 +101,8 @@ namespace partest
 		mutable std::mutex m_assertionsMutex; // Mutex for synchronizing access to assertions
 		mutable std::mutex m_statusMutex; // Mutex for synchronizing access to test status and state
 		mutable std::mutex m_resultMutex; // Mutex for synchronizing access to test result
+
+		
 		/**
 		* Get a globally incrementing counter. Used internally to assign IDs to newly created test frames.
 		* 
@@ -106,6 +111,53 @@ namespace partest
 		static unsigned int nextId() noexcept {
 			static std::atomic<unsigned int> frameCount(NO_TEST_ID + 1);
 			return frameCount.fetch_add(1, std::memory_order_relaxed);
+		}
+
+		void recordLogUnchecked(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message)
+		{
+			std::unique_lock<std::mutex> logLock(m_logsMutex);
+			m_logs.push_back(LogEntry(level, type, message));
+			LogEntry &logEntry = m_logs.back();
+			logLock.unlock();
+
+			m_eventEmitter->emitLog(m_testFrameView, logEntry, std::chrono::system_clock::now());
+		}
+
+		void recordExceptionLogAndThrow(BadAllocSource processingSource, const char *processingSourceStr)
+		{
+			try
+			{
+				recordLogUnchecked(LogLevel::Error, LOG_TYPE_EXCEPTION, "Memory allocation failed while processing " + std::string(processingSourceStr) + ".");
+			}
+			// If recordLogUnchecked throws a bad_alloc, we eat it and report the original bad_alloc here instead, since it was first.
+			catch(...)
+			{
+			}
+
+			TestStatus currentStatus = getStatus();
+			abortTestImmediately();
+			throw FrameworkAllocationFailure(processingSource, currentStatus, this);
+		}
+
+		/**
+		* Add a subtest to the current test frame.
+		* 
+		* @param subtest Pointer to the subtest to be added
+		*/
+		TestFrame *addSubtest(std::unique_ptr<TestFrame> subtest)
+		{
+			assert(m_eventEmitter != nullptr && "Event emitter must be set before adding subtests.");
+
+			TestFrame *subtestPtr = subtest.get();
+			{
+				std::lock_guard<std::mutex> subtestsLock(m_subtestsMutex);
+				m_subtests.push_back(subtestPtr);
+			}
+			subtestPtr->m_parent = this;
+			subtestPtr->m_eventEmitter = m_eventEmitter;
+			subtest.release();
+
+			return subtestPtr;
 		}
 
 		TestFrame()
@@ -127,7 +179,8 @@ namespace partest
 
 		TestFrame(EventEmitterInterface *eventEmitter) : m_eventEmitter(eventEmitter), flags(), metadata(), state(), m_id(nextId()), m_testFrameView(*this) { }
 
-		TestFrame(const TestFlags &flags, const TestInfo &metadata,
+		TestFrame(const TestFlags &flags,
+				const TestInfo &metadata,
 				const std::function<void(TestContext&)> &testFunction = nullptr,
 				const std::function<void(TestContext&)> &testSetup = nullptr,
 				const std::function<void(TestContext&)> &testTeardown = nullptr)
@@ -135,13 +188,43 @@ namespace partest
 				m_testFunction(testFunction), m_testSetup(testSetup), m_testTeardown(testTeardown),
 			m_id(nextId()), m_testFrameView(*this) { }
 
-		TestFrame(EventEmitterInterface *eventEmitter, const TestFlags &flags, const TestInfo &metadata,
+		TestFrame(EventEmitterInterface *eventEmitter,
+				const TestFlags &flags,
+				const TestInfo &metadata,
 				const std::function<void(TestContext&)> &testFunction = nullptr,
 				const std::function<void(TestContext&)> &testSetup = nullptr,
 				const std::function<void(TestContext&)> &testTeardown = nullptr)
 			: m_eventEmitter(eventEmitter), flags(flags), metadata(metadata), state(flags.expectFailure == FlagState::Enabled),
 				m_testFunction(testFunction), m_testSetup(testSetup), m_testTeardown(testTeardown),
 				m_id(nextId()), m_testFrameView(*this) { }
+
+		TestFrame *addSubtest(
+			const TestFlags &flags,
+			const TestInfo &metadata,
+			const std::function<void(TestContext&)> &testFunction = nullptr,
+			const std::function<void(TestContext&)> &testSetup = nullptr,
+			const std::function<void(TestContext&)> &testTeardown = nullptr)
+		{
+			return addSubtest(m_eventEmitter, flags, metadata, testFunction, testSetup, testTeardown);
+		}
+
+		TestFrame *addSubtest(
+			EventEmitterInterface *eventEmitter,
+			const TestFlags &flags,
+			const TestInfo &metadata,
+			const std::function<void(TestContext&)> &testFunction = nullptr,
+			const std::function<void(TestContext&)> &testSetup = nullptr,
+			const std::function<void(TestContext&)> &testTeardown = nullptr)
+		{
+			try
+			{
+				return addSubtest(std::make_unique<TestFrame>(m_eventEmitter, flags, metadata, testFunction, testSetup, testTeardown));
+			}
+			catch(std::bad_alloc)
+			{
+				recordExceptionLogAndThrow(BadAllocSource::TestCreation, "subtest creation");
+			}
+		}
 
 		// Nothing should be moving or copying TestFrame instances. They exist as part of a tree structure managed by TestBase.
 		TestFrame(const TestFrame &) = delete; // Disable copy constructor
@@ -182,7 +265,17 @@ namespace partest
 		Timestamp timestamp() const noexcept { return m_timeStarted; }
 
 		PARTEST_STRING_PARAM testFile() const noexcept { return metadata.file; }
-		void setTestFile(PARTEST_STRING_PARAM fileName) { metadata.file = fileName; }
+		void setTestFile(PARTEST_STRING_PARAM fileName)
+		{
+			try
+			{
+				metadata.file = fileName;
+			}
+			catch(std::bad_alloc)
+			{
+				recordExceptionLogAndThrow(BadAllocSource::TestInfoUpdating, "test file name");
+			}
+		}
 
 		unsigned testLine() const noexcept { return metadata.line; }
 		void setTestLine(unsigned line) { metadata.line = line; }
@@ -201,28 +294,37 @@ namespace partest
 
 		void processAssertion(const AssertionResult &result)
 		{
-			std::unique_lock<std::mutex> assertionLock(m_assertionsMutex, std::defer_lock);
-			std::unique_lock<std::mutex> resultLock(m_resultMutex, std::defer_lock);
+			try
+			{
+				std::unique_lock<std::mutex> assertionLock(m_assertionsMutex, std::defer_lock);
+				std::unique_lock<std::mutex> resultLock(m_resultMutex, std::defer_lock);
 			
-			std::lock(assertionLock, resultLock);
+				std::lock(assertionLock, resultLock);
 			
-			state.updateResultFromAssertion(result.passed());
-			m_assertions.push_back(result);
+				state.updateResultFromAssertion(result.passed());
+				m_assertions.push_back(result);
 			
-			resultLock.unlock();
-			assertionLock.unlock();
+				resultLock.unlock();
+				assertionLock.unlock();
 
-			m_eventEmitter->emitAssertion(m_testFrameView, result, std::chrono::system_clock::now());
+				m_eventEmitter->emitAssertion(m_testFrameView, result, std::chrono::system_clock::now());
+			}
+			catch(std::bad_alloc)
+			{
+				recordExceptionLogAndThrow(BadAllocSource::AssertionHandling, "assertion processing");
+			}
 		}
 
 		void recordLog(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message)
 		{
-			std::unique_lock<std::mutex> logLock(m_logsMutex);
-			m_logs.push_back(LogEntry(level, type, message));
-			LogEntry &logEntry = m_logs.back();
-			logLock.unlock();
-
-			m_eventEmitter->emitLog(m_testFrameView, logEntry, std::chrono::system_clock::now());
+			try
+			{
+				recordLogUnchecked(level, type, message);
+			}
+			catch(std::bad_alloc)
+			{
+				recordExceptionLogAndThrow(BadAllocSource::LogRecording, "log recording");
+			}
 		}
 
 		void clearLogs()
@@ -387,26 +489,6 @@ namespace partest
 			return nullptr;
 		}
 
-		/**
-		* Add a subtest to the current test frame.
-		* 
-		* @param subtest Pointer to the subtest to be added
-		*/
-		TestFrame *addSubtest(std::unique_ptr<TestFrame> subtest)
-		{
-			assert(m_eventEmitter != nullptr && "Event emitter must be set before adding subtests.");
-
-			TestFrame *subtestPtr = subtest.get();
-			{
-				std::lock_guard<std::mutex> subtestsLock(m_subtestsMutex);
-				m_subtests.push_back(subtestPtr);
-			}
-			subtestPtr->m_parent = this;
-			subtestPtr->m_eventEmitter = m_eventEmitter;
-			subtest.release();
-
-			return subtestPtr;
-		}
 
 		/**
 		* Iterator access for subtests, logs, and assertions. These iterators are not thread-safe.
@@ -432,15 +514,24 @@ namespace partest
 			assert(getStatus() == TestStatus::Awaiting && "Test frame is already initialized or has already run.");
 
 			m_timeStarted = std::chrono::system_clock::now();
-			m_eventEmitter->emitBeginTest(TestFrameView(*this), m_timeStarted);
-			// If effective flags indicate the test should be skipped, do nothing and return immediately
-			if(getEffectiveFlags().skip == FlagState::Enabled)
+
+			try
 			{
-				updateStatus(TestStatus::Skipped);
-				m_eventEmitter->emitEndTest(TestFrameView(*this), std::chrono::system_clock::now());
-				return false;
+				m_eventEmitter->emitBeginTest(TestFrameView(*this), m_timeStarted);
+				// If effective flags indicate the test should be skipped, do nothing and return immediately
+				if(getEffectiveFlags().skip == FlagState::Enabled)
+				{
+					updateStatus(TestStatus::Skipped);
+					m_eventEmitter->emitEndTest(TestFrameView(*this), std::chrono::system_clock::now());
+					return false;
+				}
 			}
-			else
+			catch(std::bad_alloc &)
+			{
+				recordExceptionLogAndThrow(BadAllocSource::TestInitialization, "test initialization");
+			}
+
+			try
 			{
 				updateStatus(TestStatus::SettingUp);
 				if(m_testSetup != nullptr)
@@ -449,6 +540,26 @@ namespace partest
 				}
 
 				return true;
+			}
+			catch(partest::FrameworkAllocationFailure &)
+			{
+				// Rethrow FrameworkAllocationFailure to propagate it to the framework.
+				// The exception could have come from several levels deep. Mark the current test as aborted.
+				abortTestImmediately();
+				throw;
+			}
+			catch(...)
+			{
+				try
+				{
+					std::string message = "Unhandled exception while initializing test '" + metadata.name + "': " + stringFromCurrentException();
+					abortTest(message);
+				}
+				catch(std::bad_alloc &)
+				{
+					recordExceptionLogAndThrow(BadAllocSource::TestInitialization, "test initialization exception handling");
+				}
+				return false;
 			}
 		}
 
@@ -472,7 +583,9 @@ namespace partest
 				struct RunGuard
 				{
 					TestFrame *frame;
-					~RunGuard()
+					// updateStatus could theoretically raise std::system_error if the mutex is already locked.
+					// It shouldn't, but by contract that makes the destructor not noexcept.
+					~RunGuard() noexcept(false)
 					{
 						frame->m_endTime = std::chrono::steady_clock::now();
 						frame->updateStatus(TestStatus::TearingDown);
@@ -485,15 +598,29 @@ namespace partest
 			}
 			// A test returned early due to an assertion failure with stopOnFail enabled
 			// Nothing special to do here, but this is necessary to prevent the exception from propagating further.
-
+			
 			// Assertion failures indicate that the test has already been marked as Failed, so no additional action is needed here 
 			catch(const partest::AssertionFailure &)
 			{ }
+			// FrameworkAllocationFailure is a fatal error that should not be recoverable. It should be handled by the framework and not by the test code.
+			// Rethrow to propagate the error to the framework.
+			catch(const partest::FrameworkAllocationFailure &)
+			{
+				abortTestImmediately();
+				throw;
+			}
 			// Unexpected exceptions will generally indicate errors within the user's test code and must be reported
 			catch(...)
 			{
-				std::string message = "Error: Unhandled exception in test '" + metadata.name + "': " + stringFromCurrentException();
-				abortTest(message);
+				try
+				{
+					std::string message = "Unhandled exception in test '" + metadata.name + "': " + stringFromCurrentException();
+					abortTest(message);
+				}
+				catch(std::bad_alloc &)
+				{
+					recordExceptionLogAndThrow(BadAllocSource::TestExecution, "test function exception handling");
+				}
 			}
 
 			// RunGuard updates the status and end time automatically via RAII when this function exits, even if an exception is thrown.
@@ -501,74 +628,91 @@ namespace partest
 
 		void finalizeTest(TestContext& ctx)
 		{
-			// If effective flags indicate the test should be skipped, do nothing and return immediately
-			if(getEffectiveFlags().skip != FlagState::Enabled)
+			try
 			{
-				// Flag state/run status invariant. Test should not be marked as skipped if the skip flag is not set.
-				assert(!wasSkipped() && "Invalid test state. Test should not have been skipped without skip flag set.");
-				// Run status invariant. A test should only be finalized if it is in the process of tearing down or has been aborted.
-				assert(isDeconstructing() && "Test frame is not in a valid state to finalize. Test should be tearing down or aborted.");
-
-				// TODO: Refactor this to iterate over subtests instead of the child calling on the parent.
-				// This moves the call to the logical end of the test tree, where the parent can evaluate all subtests and update its own state accordingly.
-				// It also provides a place to potentially ensure that concurrent subtests have completed. At this point, if they have not, something is wrong.
-
-				for(TestFrame *subtest : m_subtests)
+				// If effective flags indicate the test should be skipped, do nothing and return immediately
+				if(getEffectiveFlags().skip != FlagState::Enabled)
 				{
-					if(subtest->hasFinishedRunning() || subtest->wasSkipped())
+					// Flag state/run status invariant. Test should not be marked as skipped if the skip flag is not set.
+					assert(!wasSkipped() && "Invalid test state. Test should not have been skipped without skip flag set.");
+					// Run status invariant. A test should only be finalized if it is in the process of tearing down or has been aborted.
+					assert(isDeconstructing() && "Test frame is not in a valid state to finalize. Test should be tearing down or aborted.");
+
+			
+					for(TestFrame *subtest : m_subtests)
 					{
-						updateResultFromSubtest(subtest->state);
+						if(subtest->hasFinishedRunning() || subtest->wasSkipped())
+						{
+							updateResultFromSubtest(subtest->state);
+						}
+						else
+						{
+							recordLogUnchecked(LogLevel::Warning, LOG_TYPE_TEST, "Subtest \"" + subtest->fullTestName() + "\" has not completed. This may indicate a problem with the test framework or a test that did not complete properly.");
+						}
 					}
-					else
+
+					if(getEffectiveResult() == TestResult::NoResult)
 					{
-						recordLog(LogLevel::Warning, LOG_TYPE_TEST, "Subtest \"" + subtest->fullTestName() + "\" has not completed. This may indicate a problem with the test framework or a test that did not complete properly.");
+						recordLogUnchecked(LogLevel::Warning, LOG_TYPE_TEST, "\"" + fullTestName() + "\" completed without any assertions. Defaulting to PASSED.");
+						// Shunt a passing value to the state
+						state.updateResultFromAssertion(true);
 					}
-				}
 
-				if(getEffectiveResult() == TestResult::NoResult)
-				{
-					recordLog(LogLevel::Warning, LOG_TYPE_TEST, "\"" + fullTestName() + "\" completed without any assertions. Defaulting to PASSED.");
-					// Shunt a passing value to the state
-					state.updateResultFromAssertion(true);
-				}
-
-				try
-				{
-					if(m_testTeardown != nullptr)
+					try
 					{
-						m_testTeardown(ctx);
+						if(m_testTeardown != nullptr)
+						{
+							m_testTeardown(ctx);
+						}
+
+						if(getStatus() != TestStatus::Aborting)
+						{
+							updateStatus(TestStatus::Completed);
+						}
+						else
+						{
+							updateStatus(TestStatus::Aborted);
+						}
+					}
+					// Rethrow FrameworkAllocationFailure to propagate it to the framework.
+					catch(partest::FrameworkAllocationFailure &)
+					{
+						abortTestImmediately();
+						throw;
+					}
+					catch(...)
+					{
+						recordLogUnchecked(LogLevel::Error, LOG_TYPE_EXCEPTION, "Unhandled exception in test teardown for \"" + fullTestName() + "\".");
+						abortTestImmediately();
 					}
 				}
-				catch(FatalFrameworkError &)
-				{
-					throw;
-				}
-				catch(...)
-				{
-					recordLog(LogLevel::Error, LOG_TYPE_EXCEPTION, "Unhandled exception in test teardown for \"" + fullTestName() + "\".");
-					updateState(TestResult::Failed, TestStatus::Aborted);
-				}
-
-				if(getStatus() != TestStatus::Aborting)
-				{
-					updateStatus(TestStatus::Completed);
-				}
-				else
-				{
-					updateStatus(TestStatus::Aborted);
-				}
+				m_eventEmitter->emitEndTest(TestFrameView(*this), std::chrono::system_clock::now());
+				maybeRaiseOnReturn("", 0, "Stopped on failure in " + metadata.name);
 			}
-			m_eventEmitter->emitEndTest(TestFrameView(*this), std::chrono::system_clock::now());
-
-			maybeRaiseOnReturn("", 0, "Stopped on failure in " + metadata.name);
+			// Rethrow FrameworkAllocationFailure to propagate it to the framework.
+			catch(partest::FrameworkAllocationFailure &)
+			{
+				throw;
+			}
+			catch(std::bad_alloc &)
+			{
+				recordExceptionLogAndThrow(BadAllocSource::TestFinalization, "test finalization");
+			}
 		}
 
+		// Mark the test to abort immediately, without allowing the test to continue tearing down.
+		// This is used when a framework error is raised during test execution, and the test teardown should not be executed.
+		void abortTestImmediately()
+		{
+			updateState(TestResult::Failed, TestStatus::Aborted);
+		}
+
+		// Mark the test to be aborted, but allow the test to continue tearing down.
+		// This is used when an exception is raised during test execution, but the test teardown should still be executed.
 		void abortTest(PARTEST_STRING_PARAM message)
 		{
-			// Mark the test as aborted and log a generic message.
-			// Ensure that the test result was set. A generic exception indicates test failure.
 			updateState(TestResult::Failed, TestStatus::Aborting);
-			recordLog(LogLevel::Error, LOG_TYPE_EXCEPTION, message);
+			recordLogUnchecked(LogLevel::Error, LOG_TYPE_EXCEPTION, message);
 		}
 
 		/**

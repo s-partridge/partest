@@ -79,7 +79,7 @@ namespace partest
 	enum class BadAllocSource : uint8_t
 	{
 		Unknown = 0,
-		TestRegistration = 1,
+		TestCreation = 1,
 		TestInitialization = 2,
 		TestExecution = 3,
 		TestFinalization = 4,
@@ -110,7 +110,7 @@ namespace partest
 		char messageBuffer[256] = "";
 		switch(source)
 		{
-		case BadAllocSource::TestRegistration:
+		case BadAllocSource::TestCreation:
 			sourceAsString = "test registration";
 			break;
 		case BadAllocSource::TestInitialization:
@@ -203,4 +203,13 @@ namespace partest
 		catch(int v)
 		{
 			static thread_local char intBuffer[32]; // Buffer for integer to string conversion
-			snprintf(intBuffer, sizeof(intBuffer), "int: %
+			snprintf(intBuffer, sizeof(intBuffer), "int: %d", v);
+			return intBuffer;
+		}
+		catch(...)
+		{
+			return "unknown exception";
+		}
+	}
+}
+#endif

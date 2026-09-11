@@ -174,7 +174,7 @@ namespace partest
 		void addTest(const TestInfo &metadata, const TestFlags &flags, Func &&testFunc, SetupFunc &&setupFunc = nullptr, TeardownFunc &&teardownFunc = nullptr)
 		{
 			assert(!m_testTree->isRunning() && "Cannot add top-level tests while the test suite is running. Ensure tests are registered prior to calling run()");
-			m_testTree->addSubtest(partest::make_unique<TestFrame>(&m_eventEmitter, flags, metadata, testFunc, setupFunc, teardownFunc));
+			m_testTree->addSubtest(&m_eventEmitter, flags, metadata, testFunc, setupFunc, teardownFunc);
 		}
 
 		template<
@@ -185,7 +185,7 @@ namespace partest
 		void addTest(PARTEST_STRING_PARAM name, const TestFlags &flags, Func &&testFunc, SetupFunc &&setupFunc = nullptr, TeardownFunc &&teardownFunc = nullptr)
 		{
 			assert(!m_testTree->isRunning() && "Cannot add top-level tests while the test suite is running. Ensure tests are registered prior to calling run()");
-			m_testTree->addSubtest(partest::make_unique<TestFrame>(&m_eventEmitter, flags, TestInfo(name), testFunc, setupFunc, teardownFunc));
+			m_testTree->addSubtest(&m_eventEmitter, flags, TestInfo(name), testFunc, setupFunc, teardownFunc);
 		}
 
 		template<
@@ -196,7 +196,7 @@ namespace partest
 		void addTest(PARTEST_STRING_PARAM name, PARTEST_STRING_PARAM description, const TestFlags &flags, Func &&testFunc, SetupFunc &&setupFunc = nullptr, TeardownFunc &&teardownFunc = nullptr)
 		{
 			assert(!m_testTree->isRunning() && "Cannot add top-level tests while the test suite is running. Ensure tests are registered prior to calling run()");
-			m_testTree->addSubtest(partest::make_unique<TestFrame>(&m_eventEmitter, flags, TestInfo(name, description), testFunc, setupFunc, teardownFunc));
+			m_testTree->addSubtest(&m_eventEmitter, flags, TestInfo(name, description), testFunc, setupFunc, teardownFunc);
 		}
 
 		void setFileName(PARTEST_STRING_PARAM fileName) { m_testTree->setTestFile(fileName); }
@@ -330,10 +330,8 @@ namespace partest
 	template<PARTEST_INVOCABLE_WITH_DEF(Func, TestContext&)>
 	void TestContext::subtest(const TestInfo &testInfo, const TestFlags& flags, Func &&testFunc)
 	{
-		assert(m_currentFrame!= nullptr && "Parent test frame is null. Subtests must be added to a valid parent test frame.");
-
-		TestFrame *subtest = m_currentFrame->addSubtest(partest::make_unique<TestFrame>(flags, testInfo, testFunc));
-		m_runTestFunc(subtest);
+		assert(m_currentFrame != nullptr && "Parent test frame is null. Subtests must be added to a valid parent test frame.");
+		m_runTestFunc(m_currentFrame->addSubtest(flags, testInfo, testFunc));
 	}
 
 	inline void TestContext::commitAssertion(const AssertionResult &result)
@@ -346,8 +344,15 @@ namespace partest
 		m_currentFrame->recordLog(level, type, message);
 	}
 
-	inline void TestContext::setTestFile(PARTEST_STRING_PARAM fileName) { m_currentFrame->setTestFile(fileName); }
-	inline void TestContext::setTestLine(unsigned line) { m_currentFrame->setTestLine(line); }
+	inline void TestContext::setTestFile(PARTEST_STRING_PARAM fileName)
+	{
+		m_currentFrame->setTestFile(fileName);
+	}
+
+	inline void TestContext::setTestLine(unsigned line)
+	{
+		m_currentFrame->setTestLine(line);
+	}
 } // namespace partest
 
 #endif // PARTEST_H
