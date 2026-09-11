@@ -109,6 +109,7 @@ namespace partest
 	private:
 		std::unique_ptr<TestFrame> m_testTree; // Dynamically growing tree of test frames
 		EventEmitter m_eventEmitter; // Component that transmits events to a dispatcher
+		std::atomic<bool> m_started; // Flag indicating whether the test suite has started
 
 		static void runTest(TestFrame *test)
 		{
@@ -214,6 +215,7 @@ namespace partest
 		TestBase(PARTEST_STRING_PARAM name, PARTEST_STRING_PARAM description,
 			const TestFlags &flags = TEST_FLAGS_DISABLED PARTEST_SOURCE_LOCATION_OPT)
 		{
+			m_started.store(false);
 			// Initialize the root test frame. This frame is not associated with any specific test but serves as the root of the test tree.
 			// Its primary purpose is to contain information such as the overall test suite name and description in the same collection as the individual tests.
 			m_testTree = partest::make_unique<TestFrame>(&m_eventEmitter, flags, TestInfo(name, description));
@@ -246,7 +248,7 @@ namespace partest
 		
 		void setFlags(const TestFlags &flags) noexcept { m_testTree->flags.setFlags(flags); }
 		const TestFlags &getFlags() const noexcept { return m_testTree->flags; }
-
+			
 		bool containsTest(PARTEST_STRING_PARAM testName) const
 		{
 			return m_testTree->getSubtest(testName) != nullptr;
@@ -254,6 +256,12 @@ namespace partest
 
 		void run()
 		{
+			// Only allow a run when the test suite has not already started. Once started, throw TestIntegrityError to indicate that the test suite is in an invalid state.
+			if(m_started.exchange(true))
+			{
+				m_testTree->recordLog(LogLevel::Error, LOG_TYPE_TEST, "Attempted to run test while it was already running. A test suite can only be run once per instance.");
+				return;
+			}
 			runTest(m_testTree.get());
 		}
 
