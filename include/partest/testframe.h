@@ -224,6 +224,7 @@ namespace partest
 			{
 				recordExceptionLogAndThrow(BadAllocSource::TestCreation, "subtest creation");
 			}
+			return nullptr; // This line will never be reached, but is here to satisfy the compiler.
 		}
 
 		// Nothing should be moving or copying TestFrame instances. They exist as part of a tree structure managed by TestBase.
