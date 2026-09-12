@@ -113,6 +113,13 @@ namespace partest
 			return frameCount.fetch_add(1, std::memory_order_relaxed);
 		}
 
+		/**
+		* Add a log entry to the current test frame.
+		*
+		* @param entry The log entry to be added
+		* @return true if the log entry was added successfully, false if the test has already finished running
+		* @throws std::bad_alloc if memory allocation fails while adding the log entry
+		*/
 		bool pushLogEntry(const LogEntry &entry)
 		{
 			std::unique_lock<std::mutex> logLock(m_logsMutex, std::defer_lock);
@@ -127,11 +134,27 @@ namespace partest
 			return true;
 		}
 
+		/**
+		* Emit a log entry to the event emitter.
+		*
+		* @param entry The log entry to be emitted
+		* @throws std::bad_alloc if memory allocation fails while emitting the log entry
+		*/
 		void emitLog(const LogEntry &entry)
 		{
 			m_eventEmitter->emitLog(m_testFrameView, entry, std::chrono::system_clock::now());
 		}
 
+		/**
+		* Try to record an exception, and then throw FrameworkAllocationFailure. This is intended to be called from within catch blocks that catch std::bad_alloc.
+		* If this function raises further allocation exceptions, they will be swallowed.
+		* After the first bad_alloc is found, we care more about the original source than subsequent failures.
+		*
+		* @param processingSource The source type of the bad_alloc exception
+		* @param processingSourceStr A string representation of the source of the bad_alloc exception
+		*
+		* @throws FrameworkAllocationFailure after attempting to record the exception log
+		*/
 		void recordExceptionLogAndThrow(BadAllocSource processingSource, const char *processingSourceStr)
 		{
 			try
@@ -153,6 +176,13 @@ namespace partest
 			throw FrameworkAllocationFailure(processingSource, currentStatus, this);
 		}
 
+		/**
+		* Add an assertion result to the current test frame.
+		*
+		* @param result The assertion result to be added
+		* @return true if the assertion result was added successfully, false if the test has already finished running
+		* @throws std::bad_alloc if memory allocation fails while adding the assertion result
+		*/
 		bool pushAssertion(const AssertionResult &result)
 		{
 			std::unique_lock<std::mutex> assertionLock(m_assertionsMutex, std::defer_lock);
@@ -167,11 +197,24 @@ namespace partest
 			return true;
 		}
 
+		/**
+		* Emit an assertion result to the event emitter.
+		*
+		* @param result The assertion result to be emitted
+		* @throws std::bad_alloc if memory allocation fails while emitting the assertion result
+		*/
 		void emitAssertion(const AssertionResult &result)
 		{
 			m_eventEmitter->emitAssertion(m_testFrameView, result, std::chrono::system_clock::now());
 		}
-
+		
+		/**
+		* Process an assertion result by pushing it and emitting it.
+		*
+		* @param result The assertion result to be processed
+		* @return true if the assertion result was processed successfully, false if the test has already finished running
+		* @throws std::bad_alloc if memory allocation fails while processing the assertion result
+		*/
 		bool processAssertion(const AssertionResult &result)
 		{
 			try
@@ -215,6 +258,9 @@ namespace partest
 			return subtestPtr;
 		}
 
+		/**
+		* Default constructor for TestFrame.
+		*/
 		TestFrame()
 			: m_eventEmitter(nullptr), flags(), metadata(), state(), m_id(NO_TEST_ID), m_testFrameView(*this)
 		{
@@ -227,13 +273,28 @@ namespace partest
 		}
 
 	public:
-		using TestFrameIter = std::vector<TestFrame *>::iterator;
-		using TestFrameConstIter = std::vector<TestFrame *>::const_iterator;
-		using LogEntryConstIter = std::deque<LogEntry>::const_iterator;
-		using AssertionConstIter = std::deque<AssertionResult>::const_iterator;
+		using TestFrameIter = std::vector<TestFrame *>::iterator;				// Iterator type for iterating over subtests
+		using TestFrameConstIter = std::vector<TestFrame *>::const_iterator;	// Const iterator type for iterating over subtests
+		using LogEntryConstIter = std::deque<LogEntry>::const_iterator;			// Const iterator type for iterating over log entries
+		using AssertionConstIter = std::deque<AssertionResult>::const_iterator; // Const iterator type for iterating over assertion results
 
+		/**
+		* Constructor for TestFrame.
+		*
+		* @param eventEmitter Pointer to the event emitter
+		*/
 		TestFrame(EventEmitterInterface *eventEmitter) : m_eventEmitter(eventEmitter), flags(), metadata(), state(), m_id(nextId()), m_testFrameView(*this) { }
 
+		/**
+		* Constructor for TestFrame.
+		*
+		* @param flags The test flags for this test frame
+		* @param metadata Metadata for this test frame
+		* @param testFunction The function this test frame will invoke when run. Defaults to nullptr.
+		* @param testSetup The function this test frame will invoke for pre-run setup. Defaults to nullptr.
+		* @param testTeardown The function this test frame will invoke for post-run teardown. Defaults to nullptr.
+		* @note testFunction *must* be set before the test frame is run. Attempting to run a testFrame with a null testFunction will result in a TestIntegrityFailure exception being thrown.
+		*/
 		TestFrame(const TestFlags &flags,
 				const TestInfo &metadata,
 				const std::function<void(TestContext&)> &testFunction = nullptr,
@@ -243,6 +304,17 @@ namespace partest
 				m_testFunction(testFunction), m_testSetup(testSetup), m_testTeardown(testTeardown),
 			m_id(nextId()), m_testFrameView(*this) { }
 
+		/**
+		* Constructor for TestFrame.
+		*
+		* @param eventEmitter Pointer to the event emitter
+		* @param flags The test flags for this test frame
+		* @param metadata Metadata for this test frame
+		* @param testFunction The function this test frame will invoke when run. Defaults to nullptr.
+		* @param testSetup The function this test frame will invoke for pre-run setup. Defaults to nullptr.
+		* @param testTeardown The function this test frame will invoke for post-run teardown. Defaults to nullptr.
+		* @note testFunction *must* be set before the test frame is run. Attempting to run a testFrame with a null testFunction will result in a TestIntegrityFailure exception being thrown.
+		*/
 		TestFrame(EventEmitterInterface *eventEmitter,
 				const TestFlags &flags,
 				const TestInfo &metadata,
@@ -253,6 +325,19 @@ namespace partest
 				m_testFunction(testFunction), m_testSetup(testSetup), m_testTeardown(testTeardown),
 				m_id(nextId()), m_testFrameView(*this) { }
 
+		/**
+		* Create and add a subtest to the current test frame.
+		*
+		* @param flags The test flags for the subtest
+		* @param metadata Metadata for the subtest
+		* @param testFunction The function the subtest will invoke when run. Defaults to nullptr.
+		* @param testSetup The function the subtest will invoke for pre-run setup. Defaults to nullptr.
+		* @param testTeardown The function the subtest will invoke for post-run teardown. Defaults to nullptr.
+		* @return A pointer to the created subtest
+		* @throws FrameworkAllocationFailure if memory allocation fails while creating the subtest
+		* @throws TestIntegrityFailure if invoked while the current test frame is deconstructing or has finished running
+		* @note testFunction *must* be set before the subtest is run. Attempting to run a subtest with a null testFunction will result in a TestIntegrityFailure exception being thrown.
+		*/
 		TestFrame *addSubtest(
 			const TestFlags &flags,
 			const TestInfo &metadata,
@@ -271,6 +356,20 @@ namespace partest
 			return nullptr; // This line will never be reached, but is here to satisfy the compiler.
 		}
 
+		/**
+		* Create and add a subtest to the current test frame.
+		*
+		* @param eventEmitter Pointer to the event emitter
+		* @param flags The test flags for the subtest
+		* @param metadata Metadata for the subtest
+		* @param testFunction The function the subtest will invoke when run. Defaults to nullptr.
+		* @param testSetup The function the subtest will invoke for pre-run setup. Defaults to nullptr.
+		* @param testTeardown The function the subtest will invoke for post-run teardown. Defaults to nullptr.
+		* @return A pointer to the created subtest
+		* @throws FrameworkAllocationFailure if memory allocation fails while creating the subtest
+		* @throws TestIntegrityFailure if invoked while the current test frame is deconstructing or has finished running
+		* @note testFunction *must* be set before the subtest is run. Attempting to run a subtest with a null testFunction will result in a TestIntegrityFailure exception being thrown.
+		*/
 		TestFrame *addSubtest(
 			EventEmitterInterface *eventEmitter,
 			const TestFlags &flags,
@@ -301,6 +400,11 @@ namespace partest
 			clearSubtests();
 		}
 
+		/**
+		* Get a reference to the null TestFrame instance. The null TestFrame is a static instance of TestFrame that represents an empty or uninitialized test frame. It can be used as a placeholder or default value when a valid TestFrame is not available.
+		*
+		* @return A reference to a static null TestFrame instance
+		*/
 		static const TestFrame &getNullTestFrameInstance()
 		{
 			static TestFrame nullInstance;
@@ -355,24 +459,6 @@ namespace partest
 		bool hasSetupFunction() const noexcept { return m_testSetup != nullptr; }
 		bool hasTestFunction() const noexcept { return m_testFunction != nullptr; }
 		bool hasTeardownFunction() const noexcept { return m_testTeardown != nullptr; }
-
-		bool recordLog(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message)
-		{
-			try
-			{
-				LogEntry log = LogEntry(level, type, message);
-				if(pushLogEntry(log))
-				{
-					emitLog(log);
-					return true;
-				}
-			}
-			catch(std::bad_alloc &)
-			{
-				recordExceptionLogAndThrow(BadAllocSource::LogRecording, "log recording");
-			}
-			return false;
-		}
 
 		void clearAssertions()
 		{
@@ -573,6 +659,13 @@ namespace partest
 		AssertionConstIter assertionsBegin() const noexcept { return m_assertions.cbegin(); }
 		AssertionConstIter assertionsEnd() const noexcept { return m_assertions.cend(); }
 
+		/**
+		* Set up the test frame prior to test execution, notify the event emitter, and update status. If set, invokes the test setup function.
+		*
+		* @param ctx The test context to be passed to the test setup function
+		* @return true if the test should be run, false if it was skipped
+		* @throws FrameworkAllocationFailure if memory allocation fails during setup
+		*/
 		bool initializeTest(TestContext& ctx)
 		{
 			assert(getStatus() == TestStatus::Awaiting && "Test frame is already initialized or has already run.");
@@ -628,9 +721,10 @@ namespace partest
 		}
 
 		/**
-		* Run the test function associated with this test frame, if one is set.
+		* Run the test function associated with this test frame and progress the test state accordingly. Updates status and end time when finished.
 		*
-		* @throws std::runtime_error if no test function is set.
+		* @param ctx The test context to be passed to the test function
+		* @throws FrameworkAllocationFailure if memory allocation fails during test execution
 		*/
 		void runTestFunction(TestContext& ctx)
 		{
@@ -642,7 +736,7 @@ namespace partest
 				// This precedes the run guard because the guard itself would temporarily override status.
 				// Correct status transitions from SettingUp to Aborting on the failed path, skipping TearingDown entirely.
 				if(m_testFunction == nullptr)
-					throw std::runtime_error("Attempted to run a test function that is not set.");
+					throw TestIntegrityFailure("Attempted to run a test with no test function set.");
 
 				struct RunGuard
 				{
@@ -658,6 +752,11 @@ namespace partest
 
 				updateStatus(TestStatus::Running);
 				m_startTime = std::chrono::steady_clock::now();
+
+				// TODO: What happens if a user catches (...) and swallows an exception?
+				// If StopOnFail is enabled and the result is "failed", then I can check that here. It means an assertion should have bubbled up and did not.
+				// I should consider logging a test integrity error if thhat happens. It's an indication that the user misused a catch block.
+				// Maybe I should provide a PARTEST_RETHROW macro that simply rethrows my exception types, which can be placed between the user code and his catch block.
 				m_testFunction(ctx);
 			}
 			// A test returned early due to an assertion failure with stopOnFail enabled
@@ -690,6 +789,13 @@ namespace partest
 			// RunGuard updates the status and end time automatically via RAII when this function exits, even if an exception is thrown.
 		}
 
+		/**
+		* Clean up the test frame after test execution, notify the event emitter, and update status. If set, invokes the test teardown function.
+		*
+		* @param ctx The test context to be passed to the test teardown function
+		* @throws FrameworkAllocationFailure if memory allocation fails during test finalization
+		* @throws AssertionFailure if the test has failed and stopOnFail is enabled, except on a root test frame
+		*/
 		void finalizeTest(TestContext& ctx)
 		{
 			try
@@ -770,8 +876,9 @@ namespace partest
 			}
 		}
 
-		// Mark the test to abort immediately, without allowing the test to continue tearing down.
-		// This is used when a framework error is raised during test execution, and the test teardown should not be executed.
+		/**
+		* Mark the test as aborted immediately, bypassing the isDeconstructing state.
+		*/
 		void abortTestImmediately()
 		{
 			updateState(TestResult::Failed, TestStatus::Aborted);
@@ -779,6 +886,12 @@ namespace partest
 
 		// Mark the test to be aborted, but allow the test to continue tearing down.
 		// This is used when an exception is raised during test execution, but the test teardown should still be executed.
+		/**
+		* Prepare the test to be aborted and try to log an error message.
+		*
+		* @param message The error message to be logged
+		* @throws std::bad_alloc if memory allocation fails while logging the error message
+		*/
 		void abortTest(PARTEST_STRING_PARAM message)
 		{
 			updateState(TestResult::Failed, TestStatus::Aborting);
@@ -835,18 +948,51 @@ namespace partest
 		* @param result Output of an evaluated assertion. AssertionResults should be produced by assertion handlers.
 		* @return true if the assertion was processed successfully, false if the test has already finished running and the assertion could not be recorded.
 		* @throws AssertionFailure if the assertion result did not pass and stopOnFail is enabled.
+		* @throws TestIntegrityFailure if the test has already finished running and the assertion could not be recorded.
 		*/
 		bool commitAssertion(const AssertionResult &result)
 		{
 			// Pass the assertion result on to the test frame
 			if(!processAssertion(result))
-				return false;
+				throw TestIntegrityFailure("Cannot record assertion for a test frame that has finished running.");
 
 			// On failure, allow an exception to be raised if the current test frame is configured to do so.
 			if(!result.passed())
 				maybeRaiseOnAssertion(result.file.c_str(), result.line, result.getCondition());
 
 			return true;
+		}
+
+		/**
+		* Record a log entry for the current test frame.
+		* 
+		* @param level The severity level of the log entry
+		* @param type The type or category of the log entry
+		* @param message The log message
+		* @return true if the log entry was recorded successfully
+		* @throws TestIntegrityFailure if the test frame has finished running and the log entry cannot be recorded
+		* @throws FrameworkAllocationFailure if memory allocation fails while recording the log entry
+		*/
+		bool recordLog(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message)
+		{
+			try
+			{
+				LogEntry log = LogEntry(level, type, message);
+				if(pushLogEntry(log))
+				{
+					emitLog(log);
+					return true;
+				}
+				else
+				{
+					throw TestIntegrityFailure("Cannot record log entry for a test frame that has finished running.");
+				}
+			}
+			catch(std::bad_alloc &)
+			{
+				recordExceptionLogAndThrow(BadAllocSource::LogRecording, "log recording");
+			}
+			return false;
 		}
 
 		/**
@@ -895,6 +1041,12 @@ namespace partest
 			return skippedCount;
 		}
 
+		/**
+		* Count the total number of assertions in this frame's subtest tree
+		* 
+		* @param onlyCountFailures If true, only count assertions that failed
+		* @returns The total number of assertions
+		*/
 		size_t getAssertionCount(bool onlyCountFailures = false) const
 		{
 			size_t total = 0;
@@ -902,7 +1054,7 @@ namespace partest
 			{
 				m_assertionsMutex.lock();
 				//guaranteed noexcept and no early return
-				total = (unsigned)m_assertions.size();
+				total = m_assertions.size();
 				m_assertionsMutex.unlock();
 			}
 			else
