@@ -99,6 +99,10 @@ namespace partest
 		const TestFrame *m_testFrame;
 	public:
 		FrameworkAllocationFailure(BadAllocSource source, TestStatus testStatus, const TestFrame *testFrame) : std::bad_alloc(), m_source(source), m_testStatus(testStatus), m_testFrame(testFrame) {}
+
+		BadAllocSource source() const noexcept { return m_source; }
+		TestStatus testStatus() const noexcept { return m_testStatus; }
+		const TestFrame *testFrame() const noexcept { return m_testFrame; }
 	};
 
 	// Kill the entire application if the framework fails to allocate memory.

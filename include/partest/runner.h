@@ -44,39 +44,86 @@ namespace partest
 			if(threadCount == 0)
 				threadCount = 4;
 
+			struct ThreadResult
+			{
+				bool crashed = false;
+				BadAllocSource crashSource = BadAllocSource::Unknown;
+				TestStatus statusBeforeCrash = TestStatus::Awaiting;
+				const TestFrame *crashedTest = nullptr;
+			};
+
 			std::vector<std::thread> workers;
+			std::vector<ThreadResult> threadResults(threadCount);
+
 			std::mutex testMutex;
 			std::atomic<unsigned> nextTestIndex(0);
+			std::atomic<bool> stopEarly(false);
 			std::atomic<bool> foundNamedTest(!shouldFilterTests());	// Always true if filtering is disabled.
 
 			for(unsigned int i = 0; i < threadCount; ++i)
 			{
-				workers.emplace_back([this, &testMutex, &nextTestIndex, &foundNamedTest]() 
+				ThreadResult &result = threadResults[i];
+				workers.emplace_back([this, &testMutex, &nextTestIndex, &stopEarly, &foundNamedTest, &result]()
 				{
 					unsigned localTestIndex = 0;
 					//lock and get next test pointer
 					while(true)
 					{
 						std::unique_lock<std::mutex> lock(testMutex);
+						if(stopEarly.load())
+						{
+							lock.unlock();
+							break;
+						}
 						localTestIndex = nextTestIndex.fetch_add(1);
 						lock.unlock();
 						
 						if(localTestIndex >= m_tests.size())
 							break;
 
-						if(!shouldFilterTests() || isNameInFilterList(m_tests[localTestIndex]->getName()))
+						try
 						{
-							m_tests[localTestIndex]->run();
-							foundNamedTest.store(true);
+							if(!shouldFilterTests() || isNameInFilterList(m_tests[localTestIndex]->getName()))
+							{
+								m_tests[localTestIndex]->run();
+								foundNamedTest.store(true);
+							}
+						}
+						catch(FrameworkAllocationFailure &e)
+						{
+							result.crashed = true;
+							result.statusBeforeCrash = e.testStatus();
+							result.crashSource = e.source();
+							result.crashedTest = e.testFrame();
+							std::lock_guard<std::mutex> stopLock(testMutex);
+							stopEarly.store(true);
+						}
+						catch(...)
+						{
+							result.crashed = true;
+							result.statusBeforeCrash = TestStatus::Awaiting;
+							result.crashSource = BadAllocSource::Unknown;
+							result.crashedTest = nullptr;
+							std::lock_guard<std::mutex> stopLock(testMutex);
+							stopEarly.store(true);
 						}
 					}
 				});
 			}
 
-			for(std::vector<std::thread>::iterator worker = workers.begin(); worker != workers.end(); ++worker)
+			for(std::thread &worker : workers)
 			{
-				if(worker->joinable())
-					worker->join();
+				if(worker.joinable())
+					worker.join();
+			}
+
+			for(ThreadResult &result : threadResults)
+			{
+				// If any thread crashed, prepare abort path.
+				// Should we return to the caller or handle everything here?
+				if(result.crashed)
+				{
+				}
 			}
 
 			if(!foundNamedTest)
@@ -128,6 +175,27 @@ namespace partest
 			return counter;
 		}
 
+		bool requestAccessIfAlive()
+		{
+			std::lock_guard<std::mutex> lock(aliveMutex());
+			if(isAlive())
+			{
+				inUseCounter().fetch_add(1, std::memory_order_acq_rel);
+				return true;
+			}
+			return false;
+		}
+
+		void releaseAccess()
+		{
+			std::lock_guard<std::mutex> lock(aliveMutex());
+			inUseCounter().fetch_sub(1, std::memory_order_acq_rel);
+			if(inUseCounter().load(std::memory_order_acquire) == 0)
+			{
+				aliveCondition().notify_all();
+			}
+		}
+
 	public:
 		// Delete copy and move constructors and assignment operators to enforce singleton pattern
 		TestRunner(const TestRunner &) = delete;
@@ -171,27 +239,6 @@ namespace partest
 					std::string message = "Error: Unhandled exception during Test Suite shutdown: " + stringFromCurrentException();
 					fprintf(stderr, "%s\n", message.c_str());
 				}
-			}
-		}
-
-		bool requestAccessIfAlive()
-		{
-			std::lock_guard<std::mutex> lock(aliveMutex());
-			if(isAlive())
-			{
-				inUseCounter().fetch_add(1, std::memory_order_acq_rel);
-				return true;
-			}
-			return false;
-		}
-
-		void releaseAccess()
-		{
-			std::lock_guard<std::mutex> lock(aliveMutex());
-			inUseCounter().fetch_sub(1, std::memory_order_acq_rel);
-			if(inUseCounter().load(std::memory_order_acquire) == 0)
-			{
-				aliveCondition().notify_all();
 			}
 		}
 
