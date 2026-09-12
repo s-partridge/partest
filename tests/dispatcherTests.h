@@ -263,18 +263,17 @@ public:
 		{
 			producerThreads[x].join();
 		}
-		dispatcher->killDispatcher();
 		// Ensure no events propagate after death
-		bool success = dispatcher->pushEvent(partest::makeEventAssertion(nullTestFrame, m_genericAssertion, std::chrono::system_clock::now()));
-
-		ASSERT_FALSE(success);
+		dispatcher->killDispatcher();
+		bool successAfterKill = dispatcher->pushEvent(partest::makeEventAssertion(nullTestFrame, m_genericAssertion, std::chrono::system_clock::now()));
 
 		dispatcherThread.join();
-
-		success = dispatcher->pushEvent(partest::makeEventAssertion(nullTestFrame, m_genericAssertion, std::chrono::system_clock::now()));
+		bool successAfterJoin = dispatcher->pushEvent(partest::makeEventAssertion(nullTestFrame, m_genericAssertion, std::chrono::system_clock::now()));
 		// Ensure no events propagate after join.
+		
 		// This should be impossible because no thread is running the dispatchEvents() call.
-		ASSERT_FALSE(success);
+		ASSERT_FALSE(successAfterKill);
+		ASSERT_FALSE(successAfterJoin);
 
 		unsigned uncopiedEvents = 0;
 		// Check that all the events from m_logs were propagated to one reporter
@@ -346,15 +345,11 @@ public:
 		// Initialize a series of events to pass to the logger.
 		partest::TestFrameView nullTestFrame = partest::TestFrameView::getNullTestFrameView();
 		
-		partest::counting_semaphore<1> sem(0);
-		std::thread dispatcherThread = std::thread([dispatcher, &sem]() {
+		std::thread dispatcherThread = std::thread([dispatcher]() {
 			dispatcher->dispatchEvents();
 		});
 
-		unsigned success = dispatcher->pushEvent(partest::makeEventAssertion(nullTestFrame, m_genericAssertion, std::chrono::system_clock::now()));
-
-		// Even without reporters registered, the event should be processed.
-		ASSERT_TRUE(success);
+		unsigned successAfterKill = dispatcher->pushEvent(partest::makeEventAssertion(nullTestFrame, m_genericAssertion, std::chrono::system_clock::now()));
 		
 		// Give it time to throw away the event deliberately.
 		std::this_thread::sleep_for(std::chrono::milliseconds(500));
@@ -366,6 +361,9 @@ public:
 		dispatcher->pushEvent(partest::makeEventLog(nullTestFrame, partest::LogEntry(partest::LogLevel::Info, partest::LOG_TYPE_DEFAULT, "Framework log from test code"), std::chrono::system_clock::now()));
 		dispatcher->killDispatcher();
 		dispatcherThread.join();
+
+		// Even without reporters registered, the event should be processed.
+		ASSERT_TRUE(successAfterKill);
 
 		ASSERT_EQUAL(reporter.logs().size(), 2);
 		ASSERT_EQUAL(reporter.logs().front()->getEventType(), partest::EventType::Log);
