@@ -353,6 +353,9 @@ public:
 		});
 	}
 
+	// TODO: Re-evaluate lambda captures. Captures by reference here likely cause issues because
+	// I'm allowing the threads to explicitly detach, which could cause dangling references.
+	// I need to move the captures to a struct and pass it by shared_ptr.
 	void releaseWakesThreads(TestContext &ctx, unsigned threadCount = 10)
 	{
 		if(threadCount < 4)
@@ -493,6 +496,9 @@ public:
 		ASSERT_EQUAL(counter, iterationsPerThread * threadsPerChannel);
 	}
 
+	// TODO: Re-evaluate lambda captures. Captures by reference here likely cause issues because
+	// I'm allowing the threads to explicitly detach, which could cause dangling references.
+	// I need to move the captures to a struct and pass it by shared_ptr.
 	void thunderingHerdWithRandomizedLoads(TestContext &ctx, unsigned totalWorkUnits = 100000, unsigned threadsPerChannel = 10)
 	{
 		// RAII wrapper for vectors of threads
