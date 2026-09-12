@@ -126,6 +126,8 @@ namespace partest
 #if PARTEST_CPP_VERSION >= 20
 	namespace concepts
 	{
+		// Import std::to_string into this namespace for ADL
+		using std::to_string;
 		template <typename T>
 		concept to_stringable = requires(T t) { to_string(t); };
 		template <typename T>
@@ -163,7 +165,8 @@ namespace partest
 	*/
 	inline std::string maybeStringify(char *value)
 	{
-		return maybeStringify(value);
+		// Requires explicit cast to const char* to avoid infinite recursion with this overload.
+		return maybeStringify((const char *)value);
 	}
 
 #if PARTEST_CPP_VERSION >= 20
@@ -230,7 +233,7 @@ namespace partest
 			result.reserve(19 + std::strlen(typeName) + 1);
 			result += "<unprintable type: ";
 			result += typeName;
-			result += ">";
+			result += '>';
 			return result;
 		}
 	}
