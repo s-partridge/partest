@@ -113,36 +113,87 @@ namespace partest
 			return frameCount.fetch_add(1, std::memory_order_relaxed);
 		}
 
-		void recordLogUnchecked(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message)
+		bool pushLogEntry(const LogEntry &entry)
 		{
-			std::unique_lock<std::mutex> logLock(m_logsMutex);
-			m_logs.push_back(LogEntry(level, type, message));
-			LogEntry &logEntry = m_logs.back();
-			logLock.unlock();
+			std::unique_lock<std::mutex> logLock(m_logsMutex, std::defer_lock);
+			std::unique_lock<std::mutex> statusLock(m_statusMutex, std::defer_lock);
+			std::lock(logLock, statusLock);
 
-			m_eventEmitter->emitLog(m_testFrameView, logEntry, std::chrono::system_clock::now());
+			if(state.hasFinishedRunning())
+				return false;
+
+			m_logs.push_back(entry);
+
+			return true;
+		}
+
+		void emitLog(const LogEntry &entry)
+		{
+			m_eventEmitter->emitLog(m_testFrameView, entry, std::chrono::system_clock::now());
 		}
 
 		void recordExceptionLogAndThrow(BadAllocSource processingSource, const char *processingSourceStr)
 		{
 			try
 			{
-				recordLogUnchecked(LogLevel::Error, LOG_TYPE_EXCEPTION, "Memory allocation failed while processing " + std::string(processingSourceStr) + ".");
+				LogEntry log = LogEntry(LogLevel::Error, LOG_TYPE_EXCEPTION, "Memory allocation failed while processing " + std::string(processingSourceStr) + ".");
+				if(pushLogEntry(log))
+					emitLog(log);
+				else
+				{
+					log.message = "Memory allocation failed while processing " + std::string(processingSourceStr) + ", but the test has already finished running. Log entry was not recorded.";
+					emitLog(log);
+				}
 			}
-			// If recordLogUnchecked throws a bad_alloc, we eat it and report the original bad_alloc here instead, since it was first.
-			catch(...)
-			{
-			}
+			// If pushLogEntry or emitLog throws a bad_alloc, we eat it and report the original bad_alloc here instead, since it was first.
+			catch(std::bad_alloc &) { }
 
 			TestStatus currentStatus = getStatus();
 			abortTestImmediately();
 			throw FrameworkAllocationFailure(processingSource, currentStatus, this);
 		}
 
+		bool pushAssertion(const AssertionResult &result)
+		{
+			std::unique_lock<std::mutex> assertionLock(m_assertionsMutex, std::defer_lock);
+			std::unique_lock<std::mutex> resultLock(m_resultMutex, std::defer_lock);
+			std::unique_lock<std::mutex> statusLock(m_statusMutex, std::defer_lock);
+			std::lock(assertionLock, resultLock, statusLock);
+
+			if(state.hasFinishedRunning())
+				return false;
+			state.updateResultFromAssertion(result.passed());
+			m_assertions.push_back(result);
+			return true;
+		}
+
+		void emitAssertion(const AssertionResult &result)
+		{
+			m_eventEmitter->emitAssertion(m_testFrameView, result, std::chrono::system_clock::now());
+		}
+
+		bool processAssertion(const AssertionResult &result)
+		{
+			try
+			{
+				if(pushAssertion(result))
+				{
+					emitAssertion(result);
+					return true;
+				}
+			}
+			catch(std::bad_alloc &)
+			{
+				recordExceptionLogAndThrow(BadAllocSource::AssertionHandling, "assertion processing");
+			}
+			return false;
+		}
+
 		/**
 		* Add a subtest to the current test frame.
 		* 
 		* @param subtest Pointer to the subtest to be added
+		* @return Pointer to the added subtest
 		*/
 		TestFrame *addSubtest(std::unique_ptr<TestFrame> subtest)
 		{
@@ -150,7 +201,11 @@ namespace partest
 
 			TestFrame *subtestPtr = subtest.get();
 			{
-				std::lock_guard<std::mutex> subtestsLock(m_subtestsMutex);
+				std::unique_lock<std::mutex> subtestsLock(m_subtestsMutex, std::defer_lock);
+				std::unique_lock<std::mutex> statusLock(m_statusMutex, std::defer_lock);
+				std::lock(subtestsLock, statusLock);
+				if(state.isDeconstructing() || state.hasFinishedRunning())
+					throw TestIntegrityFailure("Cannot add subtest to a test frame that is deconstructing or has finished running.");
 				m_subtests.push_back(subtestPtr);
 			}
 			subtestPtr->m_parent = this;
@@ -205,7 +260,15 @@ namespace partest
 			const std::function<void(TestContext&)> &testSetup = nullptr,
 			const std::function<void(TestContext&)> &testTeardown = nullptr)
 		{
-			return addSubtest(m_eventEmitter, flags, metadata, testFunction, testSetup, testTeardown);
+			try
+			{
+				return addSubtest(partest::make_unique<TestFrame>(m_eventEmitter, flags, metadata, testFunction, testSetup, testTeardown));
+			}
+			catch(std::bad_alloc &)
+			{
+				recordExceptionLogAndThrow(BadAllocSource::TestCreation, "subtest creation");
+			}
+			return nullptr; // This line will never be reached, but is here to satisfy the compiler.
 		}
 
 		TestFrame *addSubtest(
@@ -220,7 +283,7 @@ namespace partest
 			{
 				return addSubtest(partest::make_unique<TestFrame>(m_eventEmitter, flags, metadata, testFunction, testSetup, testTeardown));
 			}
-			catch(std::bad_alloc)
+			catch(std::bad_alloc &)
 			{
 				recordExceptionLogAndThrow(BadAllocSource::TestCreation, "subtest creation");
 			}
@@ -272,7 +335,7 @@ namespace partest
 			{
 				metadata.file = fileName;
 			}
-			catch(std::bad_alloc)
+			catch(std::bad_alloc &)
 			{
 				recordExceptionLogAndThrow(BadAllocSource::TestInfoUpdating, "test file name");
 			}
@@ -293,39 +356,28 @@ namespace partest
 		bool hasTestFunction() const noexcept { return m_testFunction != nullptr; }
 		bool hasTeardownFunction() const noexcept { return m_testTeardown != nullptr; }
 
-		void processAssertion(const AssertionResult &result)
+		bool recordLog(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message)
 		{
 			try
 			{
-				std::unique_lock<std::mutex> assertionLock(m_assertionsMutex, std::defer_lock);
-				std::unique_lock<std::mutex> resultLock(m_resultMutex, std::defer_lock);
-			
-				std::lock(assertionLock, resultLock);
-			
-				state.updateResultFromAssertion(result.passed());
-				m_assertions.push_back(result);
-			
-				resultLock.unlock();
-				assertionLock.unlock();
-
-				m_eventEmitter->emitAssertion(m_testFrameView, result, std::chrono::system_clock::now());
+				LogEntry log = LogEntry(level, type, message);
+				if(pushLogEntry(log))
+				{
+					emitLog(log);
+					return true;
+				}
 			}
-			catch(std::bad_alloc)
-			{
-				recordExceptionLogAndThrow(BadAllocSource::AssertionHandling, "assertion processing");
-			}
-		}
-
-		void recordLog(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message)
-		{
-			try
-			{
-				recordLogUnchecked(level, type, message);
-			}
-			catch(std::bad_alloc)
+			catch(std::bad_alloc &)
 			{
 				recordExceptionLogAndThrow(BadAllocSource::LogRecording, "log recording");
 			}
+			return false;
+		}
+
+		void clearAssertions()
+		{
+			std::lock_guard<std::mutex> assertionLock(m_assertionsMutex);
+			m_assertions.clear();
 		}
 
 		void clearLogs()
@@ -351,8 +403,13 @@ namespace partest
 			state = TestState::defaultState(); 
 		}
 
+		// TODO: Should this be public? This is probably something only the destructor shoul call.
+		// It's a reset function, and it's intended to be used to restart the entire frame.
+		// But how should it even be accessed? If a rogue thread references anything inside of it, it could end up with a dangling pointer.
+		// Aside from this call, the public interface guarantees that a test tree is not deleted after creation, so this violates that guarantee.
 		void clearAll() 
-		{ 
+		{
+			clearAssertions();
 			clearLogs(); 
 			clearSubtests(); 
 			resetState();
@@ -410,6 +467,12 @@ namespace partest
 		{
 			std::lock_guard<std::mutex> resultLock(m_resultMutex);
 			state.updateResult(result);
+		}
+
+		void updateResultFromAssertion(bool passed)
+		{
+			std::lock_guard<std::mutex> resultLock(m_resultMutex);
+			state.updateResultFromAssertion(passed);
 		}
 
 		void updateResultFromSubtest(const TestState &subtestState)
@@ -639,7 +702,6 @@ namespace partest
 					// Run status invariant. A test should only be finalized if it is in the process of tearing down or has been aborted.
 					assert(isDeconstructing() && "Test frame is not in a valid state to finalize. Test should be tearing down or aborted.");
 
-			
 					for(TestFrame *subtest : m_subtests)
 					{
 						if(subtest->hasFinishedRunning() || subtest->wasSkipped())
@@ -648,15 +710,20 @@ namespace partest
 						}
 						else
 						{
-							recordLogUnchecked(LogLevel::Warning, LOG_TYPE_TEST, "Subtest \"" + subtest->fullTestName() + "\" has not completed. This may indicate a problem with the test framework or a test that did not complete properly.");
+							LogEntry log = LogEntry(LogLevel::Error, LOG_TYPE_TEST, "Subtest \"" + subtest->fullTestName() + "\" has not completed. This may indicate a problem with the test framework or a test that did not complete properly.");
+							if(pushLogEntry(log))
+								emitLog(log);
 						}
 					}
 
 					if(getEffectiveResult() == TestResult::NoResult)
 					{
-						recordLogUnchecked(LogLevel::Warning, LOG_TYPE_TEST, "\"" + fullTestName() + "\" completed without any assertions. Defaulting to PASSED.");
+						LogEntry log = LogEntry(LogLevel::Warning, LOG_TYPE_TEST, "Test \"" + fullTestName() + "\" completed without any assertions. Defaulting to PASSED.");
+						if(pushLogEntry(log))
+							emitLog(log);
+
 						// Shunt a passing value to the state
-						state.updateResultFromAssertion(true);
+						updateResultFromAssertion(true);
 					}
 
 					try
@@ -683,7 +750,9 @@ namespace partest
 					}
 					catch(...)
 					{
-						recordLogUnchecked(LogLevel::Error, LOG_TYPE_EXCEPTION, "Unhandled exception in test teardown for \"" + fullTestName() + "\".");
+						LogEntry log = LogEntry(LogLevel::Error, LOG_TYPE_EXCEPTION, "Unhandled exception in test teardown for \"" + fullTestName() + "\".");
+						if(pushLogEntry(log))
+							emitLog(log);
 						abortTestImmediately();
 					}
 				}
@@ -713,7 +782,10 @@ namespace partest
 		void abortTest(PARTEST_STRING_PARAM message)
 		{
 			updateState(TestResult::Failed, TestStatus::Aborting);
-			recordLogUnchecked(LogLevel::Error, LOG_TYPE_EXCEPTION, message);
+			LogEntry log = LogEntry(LogLevel::Error, LOG_TYPE_EXCEPTION, message);
+
+			if(pushLogEntry(log))
+				emitLog(log);
 		}
 
 		/**
@@ -761,16 +833,20 @@ namespace partest
 		* Process an evaluated assertion. Log it and raise an exception if necessary.
 		* 
 		* @param result Output of an evaluated assertion. AssertionResults should be produced by assertion handlers.
+		* @return true if the assertion was processed successfully, false if the test has already finished running and the assertion could not be recorded.
 		* @throws AssertionFailure if the assertion result did not pass and stopOnFail is enabled.
 		*/
-		void commitAssertion(const AssertionResult &result)
+		bool commitAssertion(const AssertionResult &result)
 		{
 			// Pass the assertion result on to the test frame
-			processAssertion(result);
+			if(!processAssertion(result))
+				return false;
 
 			// On failure, allow an exception to be raised if the current test frame is configured to do so.
 			if(!result.passed())
 				maybeRaiseOnAssertion(result.file.c_str(), result.line, result.getCondition());
+
+			return true;
 		}
 
 		/**
