@@ -220,9 +220,9 @@ namespace partest
 			// Its primary purpose is to contain information such as the overall test suite name and description in the same collection as the individual tests.
 			m_testTree = partest::make_unique<TestFrame>(&m_eventEmitter, flags, TestInfo(name, description));
 			// Set the setup and teardown functions for the root test frame
-			m_testTree->setSetupFunction([this](TestContext& context) { this->setup(context); });
-			m_testTree->setTestFunction([this](TestContext& context) { this->runBaseTests(context); });
-			m_testTree->setTeardownFunction([this](TestContext& context) { this->teardown(context); });
+			m_testTree->setSetupFunction([this](TestContext& ctx) { this->setup(ctx); });
+			m_testTree->setTestFunction([this](TestContext& ctx) { this->runBaseTests(ctx); });
+			m_testTree->setTeardownFunction([this](TestContext& ctx) { this->teardown(ctx); });
 
 		#if PARTEST_CPP_VERSION >= 20
 			// from PARTEST_SOURCE_LOCATION_OPT, only available automatically in C++20 and later.
@@ -331,17 +331,50 @@ namespace partest
 	void TestContext::subtest(const TestInfo &testInfo, const TestFlags& flags, Func &&testFunc)
 	{
 		assert(m_currentFrame != nullptr && "Parent test frame is null. Subtests must be added to a valid parent test frame.");
-		m_runTestFunc(m_currentFrame->addSubtest(flags, testInfo, testFunc));
+		try
+		{
+			m_runTestFunc(m_currentFrame->addSubtest(flags, testInfo, testFunc));
+		}
+		catch(TestIntegrityFailure &)
+		{
+			// If the subtest cannot be added, log the error with the runner and rethrow the exception to indicate that this call was made after the test had finished running.
+			// This should only happen if the subtest was added from a different thread after the test has completed.
+			// TODO: Add call to runner's log function here.
+			// TODO: Remember that if this is run from a raw thread and the user doesn't catch it, it will terminate the program. This will only function from framework-mananged thread wrappers. See partest::thread once it exists.
+			throw;
+		}
 	}
 
 	inline void TestContext::commitAssertion(const AssertionResult &result)
 	{
-		m_currentFrame->commitAssertion(result);
+		try
+		{
+			m_currentFrame->commitAssertion(result);
+		}
+		catch(TestIntegrityFailure &)
+		{
+			// If the assertion cannot be recorded, log the error with the runner and rethrow the exception to indicate that this call was made after the test had finished running.
+			// This should only happen if the assertion was made from a different thread after the test has completed.
+			// TODO: Add call to runner's log function here.
+			// TODO: Remember that if this is run from a raw thread and the user doesn't catch it, it will terminate the program. This will only function from framework-mananged thread wrappers. See partest::thread once it exists.
+			throw;
+		}
 	}
 
 	inline void TestContext::recordLog(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message)
 	{
-		m_currentFrame->recordLog(level, type, message);
+		try
+		{
+			m_currentFrame->recordLog(level, type, message);
+		}
+		catch(TestIntegrityFailure &)
+		{
+			// If the log entry cannot be recorded, log the error with the runner and rethrow the exception to indicate that this call was made after the test had finished running.
+			// This should only happen if the log entry was made from a different thread after the test has completed.
+			// TODO: Add call to runner's log function here.
+			// TODO: Remember that if this is run from a raw thread and the user doesn't catch it, it will terminate the program. This will only function from framework-mananged thread wrappers. See partest::thread once it exists.
+			throw;
+		}
 	}
 
 	inline void TestContext::setTestFile(PARTEST_STRING_PARAM fileName)
