@@ -169,9 +169,9 @@ namespace partest
 			return alive;
 		}
 
-		static std::atomic<unsigned> &inUseCounter()
+		static unsigned &inUseCounter()
 		{
-			static std::atomic<unsigned> counter(0);
+			static unsigned counter = 0;
 			return counter;
 		}
 
@@ -180,7 +180,7 @@ namespace partest
 			std::lock_guard<std::mutex> lock(aliveMutex());
 			if(isAlive())
 			{
-				inUseCounter().fetch_add(1, std::memory_order_acq_rel);
+				++inUseCounter();
 				return true;
 			}
 			return false;
@@ -188,12 +188,14 @@ namespace partest
 
 		void releaseAccess()
 		{
-			std::lock_guard<std::mutex> lock(aliveMutex());
-			inUseCounter().fetch_sub(1, std::memory_order_acq_rel);
-			if(inUseCounter().load(std::memory_order_acquire) == 0)
+			bool released = false;
 			{
-				aliveCondition().notify_all();
+				std::lock_guard<std::mutex> lock(aliveMutex());
+				if(--inUseCounter() == 0)
+					released = true;
 			}
+			if(released)
+				aliveCondition().notify_all();
 		}
 
 	public:
@@ -210,7 +212,7 @@ namespace partest
 
 			aliveCondition().wait(lock, []()
 			{
-				return inUseCounter().load(std::memory_order_acquire) == 0;
+				return inUseCounter() == 0;
 			});
 
 			delete m_dispatcher;
