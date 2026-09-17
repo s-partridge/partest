@@ -1,10 +1,32 @@
 #ifndef PARTEST_TEST_CONTEXT_H
 #define PARTEST_TEST_CONTEXT_H
 
+#include <partest/frameworkcontext.h>
 #include <partest/testframe.h>
 
 namespace partest
 {
+	class LifetimeGuard
+	{
+		bool m_alive;
+	public:
+		LifetimeGuard()
+		{
+			m_alive = FrameworkContext::requestAccessIfAlive();
+		}
+
+		~LifetimeGuard()
+		{
+			if(m_alive)
+				FrameworkContext::releaseAccess();
+		}
+
+		bool isAlive() const noexcept
+		{
+			return m_alive;
+		}
+	};
+
 	class TestContext
 	{
 		TestFrame *m_currentFrame;
@@ -13,8 +35,7 @@ namespace partest
 
 	public:
 		TestContext(TestFrame *currentFrame, void (*runTestFunc)(TestFrame *test))
-			: m_currentFrame(currentFrame), m_runTestFunc(runTestFunc) {
-		}
+			: m_currentFrame(currentFrame), m_runTestFunc(runTestFunc) { }
 
 		template<PARTEST_INVOCABLE_WITH(Func, TestContext&)>
 		void subtest(PARTEST_STRING_PARAM name, Func &&testFunc)
@@ -48,9 +69,20 @@ namespace partest
 		void subtest(const TestInfo &testInfo, const TestFlags& flags, Func &&testFunc)
 		{
 			assert(m_currentFrame != nullptr && "Parent test frame is null. Subtests must be added to a valid parent test frame.");
+			TestFrame *newSubtest = nullptr;
+
+			LifetimeGuard guard;
+			if(!guard.isAlive())
+			{
+				// If the framework context is no longer alive, log the error with the runner and throw an exception to indicate that this call was made after the test had finished running.
+				// This should only happen if the subtest was added from a different thread after the test has completed.
+
+				return; // TODO: Add call to runner's log function here.
+			}
+
 			try
 			{
-				m_runTestFunc(m_currentFrame->addSubtest(flags, testInfo, testFunc));
+				newSubtest = m_currentFrame->addSubtest(flags, testInfo, testFunc);
 			}
 			catch(TestIntegrityFailure &)
 			{
@@ -60,10 +92,20 @@ namespace partest
 				// TODO: Remember that if this is run from a raw thread and the user doesn't catch it, it will terminate the program. This will only function from framework-mananged thread wrappers. See partest::thread once it exists.
 				throw;
 			}
+			m_runTestFunc(newSubtest);
 		}
 
 		void commitAssertion(const AssertionResult &result)
 		{
+			LifetimeGuard guard;
+			if(!guard.isAlive())
+			{
+				// If the framework context is no longer alive, log the error with the runner and throw an exception to indicate that this call was made after the test had finished running.
+				// This should only happen if the subtest was added from a different thread after the test has completed.
+
+				return; // TODO: Add call to runner's log function here.
+			}
+
 			try
 			{
 				m_currentFrame->commitAssertion(result);
@@ -80,6 +122,15 @@ namespace partest
 
 		void recordLog(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message)
 		{
+			LifetimeGuard guard;
+			if(!guard.isAlive())
+			{
+				// If the framework context is no longer alive, log the error with the runner and throw an exception to indicate that this call was made after the test had finished running.
+				// This should only happen if the subtest was added from a different thread after the test has completed.
+
+				return; // TODO: Add call to runner's log function here.
+			}
+
 			try
 			{
 				m_currentFrame->recordLog(level, type, message);
@@ -96,11 +147,27 @@ namespace partest
 
 		void setTestFile(PARTEST_STRING_PARAM fileName)
 		{
+			LifetimeGuard guard;
+			if(!guard.isAlive())
+			{
+				// If the framework context is no longer alive, log the error with the runner and throw an exception to indicate that this call was made after the test had finished running.
+				// This should only happen if the subtest was added from a different thread after the test has completed.
+
+				return; // TODO: Add call to runner's log function here.
+			}
 			m_currentFrame->setTestFile(fileName);
 		}
 
 		void setTestLine(unsigned line)
 		{
+			LifetimeGuard guard;
+			if(!guard.isAlive())
+			{
+				// If the framework context is no longer alive, log the error with the runner and throw an exception to indicate that this call was made after the test had finished running.
+				// This should only happen if the subtest was added from a different thread after the test has completed.
+
+				return; // TODO: Add call to runner's log function here.
+			}
 			m_currentFrame->setTestLine(line);
 		}
 	};

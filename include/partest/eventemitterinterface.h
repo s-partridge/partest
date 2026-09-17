@@ -38,7 +38,8 @@ namespace partest
 		{
 			m_dispatcher = emitterConfig.dispatcher;
 		}
-		
+
+		// TODO: Add early returns for when m_dispatcher is null or not dispatching, to avoid unnecessary event creation and pushing.
 		virtual bool emitBeginTest(TestFrameView testFrame, Timestamp timestamp) = 0;
 		virtual bool emitEndTest(TestFrameView testFrame, Timestamp timestamp) = 0;
 		virtual bool emitAssertion(TestFrameView testFrame, const AssertionResult &assertionResult, Timestamp timestamp) = 0;
