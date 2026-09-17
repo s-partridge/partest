@@ -23,8 +23,8 @@ namespace partest
 		SettingUp,
 		Running,
 		TearingDown,
-		Completed,
 		Aborting,
+		Completed,
 		Aborted,
 		Skipped
 	};

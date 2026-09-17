@@ -145,6 +145,60 @@ namespace partest
 			m_eventEmitter->emitLog(m_testFrameView, entry, std::chrono::system_clock::now());
 		}
 
+		void abortAndCancelSubtests()
+		{
+			std::unique_lock<std::mutex> statusLock(m_statusMutex, std::defer_lock);
+			std::unique_lock<std::mutex> resultLock(m_resultMutex, std::defer_lock);
+			std::lock(statusLock, resultLock);
+			// Using the flag in addition to the status for skipped, since an awaiting test that's not configured to run doesn't matter,
+			// But wouldn't be caught by the status check alone.
+			if(state.getStatus() >= TestStatus::TearingDown || getEffectiveFlags().skip == FlagState::Enabled)
+				return;
+			state.updateResult(TestResult::Failed);
+			if(state.getStatus() != TestStatus::Awaiting)
+				state.updateStatus(TestStatus::Aborting);
+			else
+				state.updateStatus(TestStatus::Aborted);
+			resultLock.unlock();
+			statusLock.unlock();
+
+			std::lock_guard<std::mutex> subtestsLock(m_subtestsMutex);
+			for(TestFrame *subtest : m_subtests)
+			{
+				subtest->abortAndCancelSubtests();
+			}
+		}
+
+		/**
+		* Handle unknown exceptions by aborting and canceling subtests, and logging the exception.
+		*
+		* @throws FrameworkAllocationFailure if memory allocation fails while handling the exception
+		*/
+		void handleUnknownExceptions()
+		{
+			TestStatus status = getStatus();
+			abortAndCancelSubtests();
+			std::string message;
+			try
+			{
+				if(status == TestStatus::SettingUp)
+					message = "Unhandled exception while initializing test '" + metadata.name + "': " + stringFromCurrentException();
+				else if(status == TestStatus::Running)
+					message = "Unhandled exception in test '" + metadata.name + "': " + stringFromCurrentException();
+				else if(status == TestStatus::TearingDown)
+					message = "Unhandled exception while finalizing test '" + metadata.name + "': " + stringFromCurrentException();
+				else
+					message = "Unhandled exception in test '" + metadata.name + "' with test status '" + maybeStringify(status) + "': " + stringFromCurrentException();
+				LogEntry log = LogEntry(LogLevel::Error, LOG_TYPE_EXCEPTION, message);
+				if(pushLogEntry(log))
+					emitLog(log);
+			}
+			catch(std::bad_alloc &)
+			{
+				recordExceptionLogAndThrow(BadAllocSource::TestExecution, "test function exception handling");
+			}
+		}
+
 		/**
 		* Try to record an exception, and then throw FrameworkAllocationFailure. This is intended to be called from within catch blocks that catch std::bad_alloc.
 		* If this function raises further allocation exceptions, they will be swallowed.
@@ -172,7 +226,10 @@ namespace partest
 			catch(std::bad_alloc &) { }
 
 			TestStatus currentStatus = getStatus();
-			abortTestImmediately();
+			// Allow finalize to attempt to call teardown when invoked, and ensure that no subtests are left running.
+			// Early return to avoid re-acquring locks for nothing.
+			if(currentStatus < TestStatus::TearingDown)
+				abortAndCancelSubtests();
 			throw FrameworkAllocationFailure(processingSource, currentStatus, this);
 		}
 
@@ -519,6 +576,12 @@ namespace partest
 			return state.isRunning();
 		}
 
+		bool isAborting() const
+		{
+			std::lock_guard<std::mutex> statusLock(m_statusMutex);
+			return state.getStatus() == TestStatus::Aborting;
+		}
+
 		bool isDeconstructing() const
 		{
 			std::lock_guard<std::mutex> statusLock(m_statusMutex);
@@ -670,16 +733,15 @@ namespace partest
 		{
 			assert(getStatus() == TestStatus::Awaiting && "Test frame is already initialized or has already run.");
 
-			m_timeStarted = std::chrono::system_clock::now();
-
 			try
 			{
-				m_eventEmitter->emitBeginTest(TestFrameView(*this), m_timeStarted);
+				// TODO: Is this right? The timestamp is different from the actual test's run time, which makes sense for *profiling, but it doesn't include setup time.
+				// Should I remove the timestamps from around run() and use a different mechanism for profiling time?
+				m_eventEmitter->emitBeginTest(TestFrameView(*this), std::chrono::system_clock::now());
 				// If effective flags indicate the test should be skipped, do nothing and return immediately
 				if(getEffectiveFlags().skip == FlagState::Enabled)
 				{
 					updateStatus(TestStatus::Skipped);
-					m_eventEmitter->emitEndTest(TestFrameView(*this), std::chrono::system_clock::now());
 					return false;
 				}
 			}
@@ -687,7 +749,6 @@ namespace partest
 			{
 				recordExceptionLogAndThrow(BadAllocSource::TestInitialization, "test initialization");
 			}
-
 			try
 			{
 				updateStatus(TestStatus::SettingUp);
@@ -702,22 +763,14 @@ namespace partest
 			{
 				// Rethrow FrameworkAllocationFailure to propagate it to the framework.
 				// The exception could have come from several levels deep. Mark the current test as aborted.
-				abortTestImmediately();
+				abortAndCancelSubtests();
 				throw;
 			}
 			catch(...)
 			{
-				try
-				{
-					std::string message = "Unhandled exception while initializing test '" + metadata.name + "': " + stringFromCurrentException();
-					abortTest(message);
-				}
-				catch(std::bad_alloc &)
-				{
-					recordExceptionLogAndThrow(BadAllocSource::TestInitialization, "test initialization exception handling");
-				}
-				return false;
+				handleUnknownExceptions();
 			}
+			return false;
 		}
 
 		/**
@@ -736,7 +789,13 @@ namespace partest
 				// This precedes the run guard because the guard itself would temporarily override status.
 				// Correct status transitions from SettingUp to Aborting on the failed path, skipping TearingDown entirely.
 				if(m_testFunction == nullptr)
-					throw TestIntegrityFailure("Attempted to run a test with no test function set.");
+				{
+					LogEntry log = LogEntry(LogLevel::Error, LOG_TYPE_TEST, "Test \"" + fullTestName() + "\" was run with no test function set. Aborting test.");
+					if(pushLogEntry(log))
+						emitLog(log);
+
+					abortAndCancelSubtests();
+				}
 
 				struct RunGuard
 				{
@@ -746,7 +805,11 @@ namespace partest
 					~RunGuard() noexcept(false)
 					{
 						frame->m_endTime = std::chrono::steady_clock::now();
-						frame->updateStatus(TestStatus::TearingDown);
+
+						std::lock_guard<std::mutex> statusLock(frame->m_statusMutex);
+						// Only update the status to TearingDown if the test is still running. If the test was aborted, the status should remain Aborting.
+						if(frame->state.isRunning())
+							frame->state.updateStatus(TestStatus::TearingDown);
 					}
 				} guard{this};
 
@@ -769,21 +832,13 @@ namespace partest
 			// Rethrow to propagate the error to the framework.
 			catch(const partest::FrameworkAllocationFailure &)
 			{
-				abortTestImmediately();
+				abortAndCancelSubtests();
 				throw;
 			}
 			// Unexpected exceptions will generally indicate errors within the user's test code and must be reported
 			catch(...)
 			{
-				try
-				{
-					std::string message = "Unhandled exception in test '" + metadata.name + "': " + stringFromCurrentException();
-					abortTest(message);
-				}
-				catch(std::bad_alloc &)
-				{
-					recordExceptionLogAndThrow(BadAllocSource::TestExecution, "test function exception handling");
-				}
+				handleUnknownExceptions();
 			}
 
 			// RunGuard updates the status and end time automatically via RAII when this function exits, even if an exception is thrown.
@@ -798,82 +853,116 @@ namespace partest
 		*/
 		void finalizeTest(TestContext& ctx)
 		{
-			try
+			struct EndGuard
 			{
-				// If effective flags indicate the test should be skipped, do nothing and return immediately
-				if(getEffectiveFlags().skip != FlagState::Enabled)
+				TestFrame *frame;
+				// True if another exception is already in flight.
+				bool exceptionInFlight;
+				~EndGuard() noexcept(false)
 				{
-					// Flag state/run status invariant. Test should not be marked as skipped if the skip flag is not set.
-					assert(!wasSkipped() && "Invalid test state. Test should not have been skipped without skip flag set.");
-					// Run status invariant. A test should only be finalized if it is in the process of tearing down or has been aborted.
-					assert(isDeconstructing() && "Test frame is not in a valid state to finalize. Test should be tearing down or aborted.");
-
-					for(TestFrame *subtest : m_subtests)
-					{
-						if(subtest->hasFinishedRunning() || subtest->wasSkipped())
-						{
-							updateResultFromSubtest(subtest->state);
-						}
-						else
-						{
-							LogEntry log = LogEntry(LogLevel::Error, LOG_TYPE_TEST, "Subtest \"" + subtest->fullTestName() + "\" has not completed. This may indicate a problem with the test framework or a test that did not complete properly.");
-							if(pushLogEntry(log))
-								emitLog(log);
-						}
-					}
-
-					if(getEffectiveResult() == TestResult::NoResult)
-					{
-						LogEntry log = LogEntry(LogLevel::Warning, LOG_TYPE_TEST, "Test \"" + fullTestName() + "\" completed without any assertions. Defaulting to PASSED.");
-						if(pushLogEntry(log))
-							emitLog(log);
-
-						// Shunt a passing value to the state
-						updateResultFromAssertion(true);
-					}
-
 					try
 					{
-						if(m_testTeardown != nullptr)
-						{
-							m_testTeardown(ctx);
-						}
-
-						if(getStatus() != TestStatus::Aborting)
-						{
-							updateStatus(TestStatus::Completed);
-						}
-						else
-						{
-							updateStatus(TestStatus::Aborted);
-						}
+						frame->m_eventEmitter->emitEndTest(TestFrameView(*frame), std::chrono::system_clock::now());
+						frame->maybeRaiseOnReturn();
 					}
-					// Rethrow FrameworkAllocationFailure to propagate it to the framework.
-					catch(partest::FrameworkAllocationFailure &)
+					catch(std::bad_alloc &)
 					{
-						abortTestImmediately();
-						throw;
+						if(!exceptionInFlight)
+							frame->recordExceptionLogAndThrow(BadAllocSource::TestFinalization, "test finalization");
 					}
-					catch(...)
+					// Under normal conditions this should propagate, but other possible exceptions result in aborted/failed tests.
+					// Since maybeRaiseOnReturn only forwards AssertionFailure, it would be semantically the same as any other exception caught at this point.
+					catch(AssertionFailure &)
 					{
-						LogEntry log = LogEntry(LogLevel::Error, LOG_TYPE_EXCEPTION, "Unhandled exception in test teardown for \"" + fullTestName() + "\".");
-						if(pushLogEntry(log))
-							emitLog(log);
-						abortTestImmediately();
+						if(!exceptionInFlight)
+							throw;
 					}
 				}
-				m_eventEmitter->emitEndTest(TestFrameView(*this), std::chrono::system_clock::now());
-				maybeRaiseOnReturn("", 0, "Stopped on failure in " + metadata.name);
+			} guard{this, true};
+
+			// If effective flags indicate the test should be skipped, do nothing and return immediately
+			if(getEffectiveFlags().skip == FlagState::Enabled)
+			{
+				updateStatus(TestStatus::Skipped);
+				guard.exceptionInFlight = false;
+				return;
+			}
+
+			// Flag state/run status invariant. Test should not be marked as skipped if the skip flag is not set.
+			assert(!wasSkipped() && "Invalid test state. Test should not have been skipped without skip flag set.");
+			// Run status invariant. A test should only be finalized if it is in the process of tearing down or has been aborted.
+			assert(isDeconstructing() && "Test frame is not in a valid state to finalize. Test should be tearing down or aborted.");
+
+			bool loggingAllocationFailed = false;
+			try
+			{
+				std::unique_lock<std::mutex> subtestsLock(m_subtestsMutex);
+				for(TestFrame *subtest : m_subtests)
+				{
+					if(subtest->hasFinishedRunning() || subtest->wasSkipped())
+					{
+						updateResultFromSubtest(subtest->state);
+					}
+					// Unless this test is aborting, all subtests should have finished.
+					else if(!isAborting())
+					{
+						LogEntry log = LogEntry(LogLevel::Error, LOG_TYPE_TEST, "Subtest \"" + subtest->fullTestName() + "\" has not completed.");
+						if(pushLogEntry(log))
+							emitLog(log);
+					}
+				}
+				subtestsLock.unlock();
+
+				if(getEffectiveResult() == TestResult::NoResult)
+				{
+					LogEntry log = LogEntry(LogLevel::Warning, LOG_TYPE_TEST, "Test \"" + fullTestName() + "\" completed without any assertions. Defaulting to PASSED.");
+					if(pushLogEntry(log))
+						emitLog(log);
+
+					// Shunt a passing value to the state
+					updateResultFromAssertion(true);
+				}
+			}
+			catch(std::bad_alloc &)
+			{
+				// Use a flag instead of throwing immediately to give teardown a last-ditch chance to succeed.
+				loggingAllocationFailed = true;
+				updateStatus(TestStatus::Aborting);
+			}
+
+			try
+			{
+				if(m_testTeardown != nullptr)
+				{
+					m_testTeardown(ctx);
+				}
+
+				if(getStatus() != TestStatus::Aborting)
+				{
+					updateStatus(TestStatus::Completed);
+				}
+				else
+				{
+					updateStatus(TestStatus::Aborted);
+				}
 			}
 			// Rethrow FrameworkAllocationFailure to propagate it to the framework.
 			catch(partest::FrameworkAllocationFailure &)
 			{
+				abortTestImmediately();
 				throw;
 			}
-			catch(std::bad_alloc &)
+			catch(...)
 			{
-				recordExceptionLogAndThrow(BadAllocSource::TestFinalization, "test finalization");
+				handleUnknownExceptions();
+				guard.exceptionInFlight = false;
+				return;
 			}
+
+			if(loggingAllocationFailed)
+				recordExceptionLogAndThrow(BadAllocSource::TestFinalization, "test finalization");
+
+			guard.exceptionInFlight = false;
 		}
 
 		/**
@@ -920,17 +1009,14 @@ namespace partest
 		/**
 		* Check whether the current test should raise an assertion failure based on its status and flags.
 		* 
-		* @param file The file where the assertion is being checked. Typically provided by the __FILE__ macro.
-		* @param line The line number where the assertion is being checked. Typically provided by the __LINE__ macro.
-		* @param condition The condition being asserted, as a string. Typically provided by the condition expression itself.
-		* 
 		* @throws AssertionFailure if the current test has failed and stopOnFail is enabled, but NOT on the root test frame. Since this is called from finalize, raising an exception on the root would be meaningless.
 		*/
-		void maybeRaiseOnReturn(const char *file, int line, PARTEST_STRING_PARAM condition)
+		void maybeRaiseOnReturn()
 		{
+			
 			if(m_parent != nullptr && getEffectiveFlags().stopOnFail == FlagState::Enabled && getTestFailureCount())
 			{
-				throw AssertionFailure(file, line, condition);
+				throw AssertionFailure("", 0, "Stopped on failure in " + metadata.name);
 			}
 		}
 
