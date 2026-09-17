@@ -749,6 +749,7 @@ namespace partest
 			{
 				recordExceptionLogAndThrow(BadAllocSource::TestInitialization, "test initialization");
 			}
+
 			try
 			{
 				updateStatus(TestStatus::SettingUp);
@@ -795,6 +796,7 @@ namespace partest
 						emitLog(log);
 
 					abortAndCancelSubtests();
+					return;
 				}
 
 				struct RunGuard
@@ -853,6 +855,10 @@ namespace partest
 		*/
 		void finalizeTest(TestContext& ctx)
 		{
+			if(getStatus() == TestStatus::Aborted)
+			{
+				return;
+			}
 			struct EndGuard
 			{
 				TestFrame *frame;

@@ -48,6 +48,12 @@ namespace partest
 
 		virtual bool pushEvent(std::unique_ptr<Event> event) = 0;
 
+		// TODO: If a reporter throws an exception, it is currently uncaught at any level.
+		// For serial dispatchers this propagates back to the TestFrame it came from and ends up either unhandled or caught where the output would be confusing.
+		// A reporter raising exceptions this could be anywhere between benign and fatal, and the dispatcher should be responsible for handling them.
+		// Probably the correct behavior is to detach a reporter if it raises an exception, push an error log to the *front* of the queue,
+		// and continue dispatching events to the remaining reporters.
+		// If no reporters remain, it should stop dispatching and report to stderr.
 		virtual void dispatchEvents() = 0;
 	};
 
