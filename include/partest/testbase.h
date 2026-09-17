@@ -71,12 +71,30 @@ namespace partest
 
 			TestContext ctx(test, runTest);
 
-			if(test->initializeTest(ctx))
+			try
 			{
-				test->runTestFunction(ctx);
+				if(test->initializeTest(ctx))
+				{
+					test->runTestFunction(ctx);
+				}
 			}
-
+			// If an exception is thrown during initialization or execution, cleanup still needs to happen.
+			// However, the first exception seen is given higher priority, and any exceptions thrown during cleanup are logged but not propagated.
+			// Currently the only exceptions that can escape to this point are TestIntegrityFailure, std::system_error (from locks, threads), and FrameworkAllocationFailure.
+			// All other exceptions are caught and logged by the test frame itself.
+			catch(...)
+			{
+				try
+				{
+					test->finalizeTest(ctx);
+				}
+				catch(...)
+				{ }
+				throw;
+			}
+			
 			test->finalizeTest(ctx);
+
 			// TODO: Re-evaluate. Is this correct or necessary? I'm not sure it's the right behavior, and it might be confusing.
 			// It's certainly wrong if I ever implement recurrent tests, which might be a reasonable addition.
 			//if(test->hasParent())
