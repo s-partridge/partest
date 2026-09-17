@@ -21,6 +21,7 @@
 #include <partest/log.h>
 #include <partest/fileops.h>
 #include <partest/testframe.h>
+#include <partest/testcontext.h>
 #include <partest/exceptions.h>
 #include <partest/eventemitter.h>
 
@@ -47,55 +48,6 @@
 
 namespace partest
 {
-	class TestBase;
-
-	class TestContext
-	{
-		TestFrame *m_currentFrame;
-		//Replace test suite ref with a function pointer for runTest, to avoid circular dependency. This will be a function pointer to TestBase::runTest
-		void (*m_runTestFunc)(TestFrame *test);
-
-	public:
-		TestContext(TestFrame *currentFrame, void (*runTestFunc)(TestFrame *test))
-			: m_currentFrame(currentFrame), m_runTestFunc(runTestFunc) {
-		}
-
-		template<PARTEST_INVOCABLE_WITH(Func, TestContext&)>
-		void subtest(PARTEST_STRING_PARAM name, Func &&testFunc)
-		{ subtest(TestInfo(name), TestFlags::defaultInherit(), testFunc); }
-
-		template<PARTEST_INVOCABLE_WITH(Func, TestContext&)>
-		void subtest(PARTEST_STRING_PARAM name, PARTEST_STRING_PARAM description, Func &&testFunc)
-		{ subtest(TestInfo(name, description), TestFlags::defaultInherit(), testFunc); }
-
-		template<PARTEST_INVOCABLE_WITH(Func, TestContext&)>
-		void subtest(PARTEST_STRING_PARAM name, const TestFlags& flags, Func &&testFunc)
-		{ subtest(TestInfo(name), flags, testFunc); }
-
-		template<PARTEST_INVOCABLE_WITH(Func, TestContext&)>
-		void subtest(PARTEST_STRING_PARAM name, PARTEST_STRING_PARAM description, const TestFlags& flags, Func &&testFunc)
-		{ subtest(TestInfo(name, description), flags, testFunc); }
-
-		template<PARTEST_INVOCABLE_WITH(Func, TestContext&)>
-		void subtest(Func &&testFunc)
-		{ subtest(TestInfo::defaultInfo(), TestFlags::defaultInherit(), testFunc); }
-
-		template<PARTEST_INVOCABLE_WITH(Func, TestContext&)>
-		void subtest(const TestFlags& flags, Func &&testFunc)
-		{ subtest(TestInfo::defaultInfo(), flags, testFunc); }
-
-		template<PARTEST_INVOCABLE_WITH(Func, TestContext&)>
-		void subtest(const TestInfo &testInfo, Func &&testFunc)
-		{ subtest(testInfo, TestFlags::defaultInherit(), testFunc); }
-
-		template<PARTEST_INVOCABLE_WITH(Func, TestContext&)>
-		void subtest(const TestInfo &testInfo, const TestFlags& flags, Func &&testFunc);
-
-		void commitAssertion(const AssertionResult &result);
-		void recordLog(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message);
-		void setTestFile(PARTEST_STRING_PARAM fileName);
-		void setTestLine(unsigned line);
-	};
 	/**
 	* Base class for all partest tests.
 	*/
@@ -326,66 +278,6 @@ namespace partest
 			return m_testTree->getTestSkippedCount(depth);
 		}
 	};
-
-	template<PARTEST_INVOCABLE_WITH_DEF(Func, TestContext&)>
-	void TestContext::subtest(const TestInfo &testInfo, const TestFlags& flags, Func &&testFunc)
-	{
-		assert(m_currentFrame != nullptr && "Parent test frame is null. Subtests must be added to a valid parent test frame.");
-		try
-		{
-			m_runTestFunc(m_currentFrame->addSubtest(flags, testInfo, testFunc));
-		}
-		catch(TestIntegrityFailure &)
-		{
-			// If the subtest cannot be added, log the error with the runner and rethrow the exception to indicate that this call was made after the test had finished running.
-			// This should only happen if the subtest was added from a different thread after the test has completed.
-			// TODO: Add call to runner's log function here.
-			// TODO: Remember that if this is run from a raw thread and the user doesn't catch it, it will terminate the program. This will only function from framework-mananged thread wrappers. See partest::thread once it exists.
-			throw;
-		}
-	}
-
-	inline void TestContext::commitAssertion(const AssertionResult &result)
-	{
-		try
-		{
-			m_currentFrame->commitAssertion(result);
-		}
-		catch(TestIntegrityFailure &)
-		{
-			// If the assertion cannot be recorded, log the error with the runner and rethrow the exception to indicate that this call was made after the test had finished running.
-			// This should only happen if the assertion was made from a different thread after the test has completed.
-			// TODO: Add call to runner's log function here.
-			// TODO: Remember that if this is run from a raw thread and the user doesn't catch it, it will terminate the program. This will only function from framework-mananged thread wrappers. See partest::thread once it exists.
-			throw;
-		}
-	}
-
-	inline void TestContext::recordLog(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message)
-	{
-		try
-		{
-			m_currentFrame->recordLog(level, type, message);
-		}
-		catch(TestIntegrityFailure &)
-		{
-			// If the log entry cannot be recorded, log the error with the runner and rethrow the exception to indicate that this call was made after the test had finished running.
-			// This should only happen if the log entry was made from a different thread after the test has completed.
-			// TODO: Add call to runner's log function here.
-			// TODO: Remember that if this is run from a raw thread and the user doesn't catch it, it will terminate the program. This will only function from framework-mananged thread wrappers. See partest::thread once it exists.
-			throw;
-		}
-	}
-
-	inline void TestContext::setTestFile(PARTEST_STRING_PARAM fileName)
-	{
-		m_currentFrame->setTestFile(fileName);
-	}
-
-	inline void TestContext::setTestLine(unsigned line)
-	{
-		m_currentFrame->setTestLine(line);
-	}
 } // namespace partest
 
 #endif // PARTEST_H
