@@ -6,6 +6,7 @@
 #include <mutex>
 #include <condition_variable>
 
+#include <partest/frameworkcontext.h>
 #include <partest/eventdispatcher.h>
 #include <partest/simplelogger.h>
 #include <partest/testframe.h>
@@ -21,6 +22,7 @@ namespace partest
 		std::vector<TestBase *> m_tests; // Vector of tests to run
 		std::vector<EventReporterInterface *> m_reporters;
 		EventDispatcherInterface *m_dispatcher;
+		EventEmitter m_globalEmitter;
 		ValidArgs m_args;
 
 		bool m_concurrent;
@@ -35,6 +37,10 @@ namespace partest
 			{
 				m_dispatcher = new SerialEventDispatcher();
 			}
+
+			m_globalEmitter = EventEmitter(m_dispatcher);
+			FrameworkContext::setGlobalEventEmitter(&m_globalEmitter);
+			FrameworkContext::isAlive() = true;
 		}
 
 		void runTestsInParallel()
@@ -148,56 +154,6 @@ namespace partest
 			return m_args.filtered() && !m_args.getTestNames().empty();
 		}
 
-		static std::mutex &aliveMutex()
-		{
-			// Use placement-new to create permanent mutex in static storage, which does not have its destructor called at program exit. This avoids potential issues with static destruction order.
-			alignas(std::mutex) static std::uint8_t mutexStorage[sizeof(std::mutex)];
-			static std::mutex *mutexPtr = new (mutexStorage) std::mutex();
-			return *mutexPtr;
-		}
-
-		static std::condition_variable &aliveCondition()
-		{
-			alignas(std::condition_variable) static std::uint8_t conditionStorage[sizeof(std::condition_variable)];
-			static std::condition_variable *conditionPtr = new (conditionStorage) std::condition_variable();
-			return *conditionPtr;
-		}
-
-		static bool &isAlive()
-		{
-			static bool alive = true;
-			return alive;
-		}
-
-		static unsigned &inUseCounter()
-		{
-			static unsigned counter = 0;
-			return counter;
-		}
-
-		bool requestAccessIfAlive()
-		{
-			std::lock_guard<std::mutex> lock(aliveMutex());
-			if(isAlive())
-			{
-				++inUseCounter();
-				return true;
-			}
-			return false;
-		}
-
-		void releaseAccess()
-		{
-			bool released = false;
-			{
-				std::lock_guard<std::mutex> lock(aliveMutex());
-				if(--inUseCounter() == 0)
-					released = true;
-			}
-			if(released)
-				aliveCondition().notify_all();
-		}
-
 	public:
 		// Delete copy and move constructors and assignment operators to enforce singleton pattern
 		TestRunner(const TestRunner &) = delete;
@@ -207,12 +163,12 @@ namespace partest
 
 		~TestRunner()
 		{
-			std::unique_lock<std::mutex> lock(aliveMutex());
-			isAlive() = false;
+			std::unique_lock<std::mutex> lock(FrameworkContext::aliveMutex());
+			FrameworkContext::isAlive() = false;
 
-			aliveCondition().wait(lock, []()
+			FrameworkContext::aliveCondition().wait(lock, []()
 			{
-				return inUseCounter() == 0;
+				return FrameworkContext::inUseCounter() == 0;
 			});
 
 			delete m_dispatcher;
@@ -279,7 +235,9 @@ namespace partest
 		*/
 		void addTest(std::unique_ptr<TestBase> test)
 		{
-			test->configureEventEmitter({m_dispatcher});
+			EmitterConfig config;
+			config.dispatcher = m_dispatcher;
+			test->configureEventEmitter(config);
 			m_tests.push_back(test.release());
 		}
 
@@ -414,10 +372,7 @@ namespace partest
 			}
 			return skipCount;
 		}
-
-		// For access to mutex and access counter
-		friend TestContext;
 	};
-};
+}
 
-#endif // PARTESTRUNNER_H
+#endif // PARTEST_RUNNER_H
