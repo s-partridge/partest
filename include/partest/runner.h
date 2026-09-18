@@ -313,7 +313,18 @@ namespace partest
 
 		bool recordLog(LogLevel level, PARTEST_STRING_PARAM logType, PARTEST_STRING_PARAM message)
 		{
-			return m_dispatcher->pushEvent(makeEventLog(TestFrameView::getNullTestFrameView(), LogEntry(level, logType, message), std::chrono::system_clock::now()));
+			try
+			{
+				FrameworkContext::writeGlobalLog(level, logType, message);
+			}
+			catch
+			(std::bad_alloc &)
+			{
+				// TODO: Figure out whether this should be FrameworkAllocationFailure.
+				// Current code paths from this function just come from the bootstrapper, which is essentially top-level code that's called from main.
+				std::cerr << "Error: Failed to record log entry due to memory allocation failure. Log entry: [" << maybeStringify(level) << "] [" << logType << "]: " << message << std::endl;
+				return false;
+			}
 		}
 
 		/**

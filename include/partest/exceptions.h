@@ -142,7 +142,8 @@ namespace partest
 
 		snprintf(messageBuffer, sizeof(messageBuffer), "Fatal error: Failed to allocate memory during %s for test '%s'. The test framework cannot continue and will abort.", sourceAsString, testName ? testName : "<unknown>");
 		fputs(messageBuffer, stderr);
-
+		// TODO: Maybe use _Exit(something) instead to control the return value?
+		// Is this worth switching to, and would I lose anything by doing so? Abort dumps core, however when this is invoked the stack has already been unwound and the test context is gone, so it may not be useful.
 		std::abort();
 	}
 

@@ -1,8 +1,11 @@
 #ifndef PARTEST_FRAMEWORK_CONTEXT_H
 #define PARTEST_FRAMEWORK_CONTEXT_H
 
+#include <iostream>
 #include <mutex>
+#include <condition_variable>
 
+#include <partest/common.h>
 #include <partest/eventemitter.h>
 
 namespace partest
@@ -37,7 +40,8 @@ namespace partest
 
 		static std::mutex &aliveMutex()
 		{
-			// Use placement-new to create permanent mutex in static storage, which does not have its destructor called at program exit. This avoids potential issues with static destruction order.
+			// Use placement-new to create permanent mutex in static storage, which does not have its destructor called at program exit.
+			// This avoids potential issues with static destruction order.
 			alignas(std::mutex) static std::uint8_t mutexStorage[sizeof(std::mutex)];
 			static std::mutex *mutexPtr = new (mutexStorage) std::mutex();
 			return *mutexPtr;
@@ -51,6 +55,26 @@ namespace partest
 		}
 
 	public:
+		class LifetimeGuard
+		{
+			bool m_alive;
+		public:
+			LifetimeGuard()
+			{
+				m_alive = FrameworkContext::requestAccessIfAlive();
+			}
+
+			~LifetimeGuard()
+			{
+				if(m_alive)
+					FrameworkContext::releaseAccess();
+			}
+
+			bool isAlive() const noexcept
+			{
+				return m_alive;
+			}
+		};
 
 		static bool requestAccessIfAlive()
 		{
@@ -73,6 +97,25 @@ namespace partest
 			}
 			if(released)
 				aliveCondition().notify_all();
+		}
+
+		static void writeGlobalLog(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message)
+		{
+			// Route to the global emitter if the framework is alive. If not, route to stderr instead.
+			LifetimeGuard guard;
+
+			if(guard.isAlive()  && globalEventEmitter() != nullptr)
+			{
+				// TODO: Shore up the fallback path, match it to the abort routing used elsewhere in the framework. Catche exceptions and return them. They also count as FrameworkALlocationFailures, which should bubble back up like anything else.
+				if(!globalEventEmitter()->emitLog(TestFrameView::getNullTestFrameView(), LogEntry(level, type, message), std::chrono::system_clock::now()))
+				{
+					std::cerr << "Failed to emit global log [" << maybeStringify(level) << "] [" << type << "]: " << message << std::endl;
+				}
+			}
+			else
+			{
+				std::cerr << "Global log [" << maybeStringify(level) << "] [" << type << "]: " << message << std::endl;
+			}
 		}
 
 		friend TestRunner;

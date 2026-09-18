@@ -6,32 +6,113 @@
 
 namespace partest
 {
-	class LifetimeGuard
-	{
-		bool m_alive;
-	public:
-		LifetimeGuard()
-		{
-			m_alive = FrameworkContext::requestAccessIfAlive();
-		}
-
-		~LifetimeGuard()
-		{
-			if(m_alive)
-				FrameworkContext::releaseAccess();
-		}
-
-		bool isAlive() const noexcept
-		{
-			return m_alive;
-		}
-	};
-
 	class TestContext
 	{
+		enum class FailureMode
+		{
+			PostTestTeardown,		// Failure occurred after the test frame had finished running, but before the runner itself shut down
+			PostFrameworkTeardown	// Failure occurred after the entire framework had finished running, and the runner itself was shutting down
+		};
+
 		TestFrame *m_currentFrame;
 		//Replace test suite ref with a function pointer for runTest, to avoid circular dependency. This will be a function pointer to TestBase::runTest
 		void (*m_runTestFunc)(TestFrame *test);
+
+		void recordSubtestFailure(PARTEST_STRING_PARAM testFrame, PARTEST_STRING_PARAM subtestFrame, FailureMode failureMode)
+		{
+			try
+			{
+				switch(failureMode)
+				{
+				case FailureMode::PostTestTeardown:
+					FrameworkContext::writeGlobalLog(LogLevel::Error, partest::LOG_TYPE_EXCEPTION, "Attempted to add subtest '"
+						+ PARTEST_STRING_PARAM_TO_STRING(subtestFrame) + "' after test '"
+						+ PARTEST_STRING_PARAM_TO_STRING(testFrame) + "' concluded. This indicates that a detached thread awoke post-teardown.");
+					break;
+				case FailureMode::PostFrameworkTeardown:
+					FrameworkContext::writeGlobalLog(LogLevel::Error, partest::LOG_TYPE_EXCEPTION, "Attempted to add subtest '"
+						+ PARTEST_STRING_PARAM_TO_STRING(subtestFrame) + "' after the test runner concluded. This indicates that a detached thread awoke post-teardown.");
+					break;
+				}
+			}
+			catch(std::bad_alloc &)
+			{
+				const TestFrame *currentFrame = (failureMode == FailureMode::PostTestTeardown) ? m_currentFrame : &TestFrame::getNullTestFrameInstance();
+				throw FrameworkAllocationFailure(BadAllocSource::TestCreation, TestStatus::TearingDown, currentFrame);
+			}
+		}
+
+		void recordAssertionFailure(PARTEST_STRING_PARAM testFrame, const AssertionResult &result, FailureMode failureMode)
+		{
+			try
+			{
+				switch(failureMode)
+				{
+				case FailureMode::PostTestTeardown:
+					FrameworkContext::writeGlobalLog(LogLevel::Error, partest::LOG_TYPE_EXCEPTION, "Attempted to process an assertion for test '"
+						+ PARTEST_STRING_PARAM_TO_STRING(testFrame) + "' after the test concluded. This indicates that a detached thread awoke post-teardown.\nAssertion of type "
+						+ result.assertType() + " originated from: " + maybeStringify(result.file) + ':' + maybeStringify(result.line));
+					break;
+				case FailureMode::PostFrameworkTeardown:
+					FrameworkContext::writeGlobalLog(LogLevel::Error, partest::LOG_TYPE_EXCEPTION, "Attempted to process an assertion after the runner concluded. This indicates that a detached thread awoke post-teardown.\nAssertion of type "
+						+ result.assertType() + " originated from: " + maybeStringify(result.file) + ':' + maybeStringify(result.line));
+					break;
+				}
+			}
+			catch(std::bad_alloc &)
+			{
+				const TestFrame *currentFrame = (failureMode == FailureMode::PostTestTeardown) ? m_currentFrame : &TestFrame::getNullTestFrameInstance();
+				throw FrameworkAllocationFailure(BadAllocSource::AssertionHandling, TestStatus::TearingDown, currentFrame);
+			}
+		}
+
+		void recordLogFailure(PARTEST_STRING_PARAM testFrame, LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message, FailureMode failureMode)
+		{
+			try
+			{
+				switch(failureMode)
+				{
+				case FailureMode::PostTestTeardown:
+					FrameworkContext::writeGlobalLog(LogLevel::Error, partest::LOG_TYPE_EXCEPTION, "Attempted to add log entry to test '"
+						+ PARTEST_STRING_PARAM_TO_STRING(testFrame) + "' after it concluded. This indicates that a detached thread awoke post-teardown.\n" + PARTEST_STRING_PARAM_TO_STRING(message));
+					break;
+				case FailureMode::PostFrameworkTeardown:
+					FrameworkContext::writeGlobalLog(LogLevel::Error, partest::LOG_TYPE_EXCEPTION, "Attempted to add log entry to test after the runner concluded. This indicates that a detached thread awoke post-teardown.\nLog message: " + PARTEST_STRING_PARAM_TO_STRING(message));
+					break;
+				}
+			}
+			catch(std::bad_alloc &)
+			{
+				const TestFrame *currentFrame = (failureMode == FailureMode::PostTestTeardown) ? m_currentFrame : &TestFrame::getNullTestFrameInstance();
+				throw FrameworkAllocationFailure(BadAllocSource::LogRecording, TestStatus::TearingDown, currentFrame);
+			}
+		}
+
+		void recordMetadataFailure(PARTEST_STRING_PARAM testFrame, PARTEST_STRING_PARAM metadataKey, PARTEST_STRING_PARAM metadataValue, FailureMode failureMode)
+		{
+			try
+			{
+				switch(failureMode)
+				{
+				case FailureMode::PostTestTeardown:
+					FrameworkContext::writeGlobalLog(LogLevel::Error, partest::LOG_TYPE_EXCEPTION, "Attempted to set '"
+						+ PARTEST_STRING_PARAM_TO_STRING(metadataKey) + "' to '"
+						+ PARTEST_STRING_PARAM_TO_STRING(metadataValue) + "' on test '"
+						+ PARTEST_STRING_PARAM_TO_STRING(testFrame) + "' after it concluded. This indicates that a detached thread awoke post-teardown.");
+					break;
+				case FailureMode::PostFrameworkTeardown:
+					FrameworkContext::writeGlobalLog(LogLevel::Error, partest::LOG_TYPE_EXCEPTION, "Attempted to set '"
+						+ PARTEST_STRING_PARAM_TO_STRING(metadataKey) + "' to '"
+						+ PARTEST_STRING_PARAM_TO_STRING(metadataValue) + "' after the test runner concluded. This indicates that a detached thread awoke post-teardown.");
+					break;
+				}
+			}
+			catch(std::bad_alloc &)
+			{
+				const TestFrame *currentFrame = (failureMode == FailureMode::PostTestTeardown) ? m_currentFrame : &TestFrame::getNullTestFrameInstance();
+				throw FrameworkAllocationFailure(BadAllocSource::TestInfoUpdating, TestStatus::TearingDown, currentFrame);
+			}
+		}
 
 	public:
 		TestContext(TestFrame *currentFrame, void (*runTestFunc)(TestFrame *test))
@@ -71,13 +152,13 @@ namespace partest
 			assert(m_currentFrame != nullptr && "Parent test frame is null. Subtests must be added to a valid parent test frame.");
 			TestFrame *newSubtest = nullptr;
 
-			LifetimeGuard guard;
+			FrameworkContext::LifetimeGuard guard;
 			if(!guard.isAlive())
 			{
 				// If the framework context is no longer alive, log the error with the runner and throw an exception to indicate that this call was made after the test had finished running.
 				// This should only happen if the subtest was added from a different thread after the test has completed.
-
-				return; // TODO: Add call to runner's log function here.
+				recordSubtestFailure("", testInfo.name, FailureMode::PostFrameworkTeardown);
+				throw TestIntegrityFailure("Attempted to add subtest '" + testInfo.name + "' after the test runner concluded.");
 			}
 
 			try
@@ -88,8 +169,8 @@ namespace partest
 			{
 				// If the subtest cannot be added, log the error with the runner and rethrow the exception to indicate that this call was made after the test had finished running.
 				// This should only happen if the subtest was added from a different thread after the test has completed.
-				// TODO: Add call to runner's log function here.
 				// TODO: Remember that if this is run from a raw thread and the user doesn't catch it, it will terminate the program. This will only function from framework-mananged thread wrappers. See partest::thread once it exists.
+				recordSubtestFailure(m_currentFrame->metadata.name, testInfo.name, FailureMode::PostTestTeardown);
 				throw;
 			}
 			m_runTestFunc(newSubtest);
@@ -97,13 +178,13 @@ namespace partest
 
 		void commitAssertion(const AssertionResult &result)
 		{
-			LifetimeGuard guard;
+			FrameworkContext::LifetimeGuard guard;
 			if(!guard.isAlive())
 			{
 				// If the framework context is no longer alive, log the error with the runner and throw an exception to indicate that this call was made after the test had finished running.
-				// This should only happen if the subtest was added from a different thread after the test has completed.
-
-				return; // TODO: Add call to runner's log function here.
+				// This should only happen if the subtest was added from a different thread after the test has completed.		
+				recordAssertionFailure("", result, FailureMode::PostFrameworkTeardown);
+				throw TestIntegrityFailure("Attempted to commit assertion after the test runner concluded.");
 			}
 
 			try
@@ -114,21 +195,24 @@ namespace partest
 			{
 				// If the assertion cannot be recorded, log the error with the runner and rethrow the exception to indicate that this call was made after the test had finished running.
 				// This should only happen if the assertion was made from a different thread after the test has completed.
-				// TODO: Add call to runner's log function here.
-				// TODO: Remember that if this is run from a raw thread and the user doesn't catch it, it will terminate the program. This will only function from framework-mananged thread wrappers. See partest::thread once it exists.
+				
+				// TODO: Remember that if this is run from a raw thread and the user doesn't catch it, it will terminate the program.
+				// This will only function from framework-mananged thread wrappers. See partest::thread once it exists.
+				recordAssertionFailure(m_currentFrame->metadata.name, result, FailureMode::PostTestTeardown);
 				throw;
 			}
 		}
 
 		void recordLog(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message)
 		{
-			LifetimeGuard guard;
+			FrameworkContext::LifetimeGuard guard;
 			if(!guard.isAlive())
 			{
 				// If the framework context is no longer alive, log the error with the runner and throw an exception to indicate that this call was made after the test had finished running.
 				// This should only happen if the subtest was added from a different thread after the test has completed.
-
-				return; // TODO: Add call to runner's log function here.
+				// Can't set the test name here because the frame may have been destroyed already, so just pass an empty string.
+				recordLogFailure("", level, type, message, FailureMode::PostFrameworkTeardown);
+				throw TestIntegrityFailure("Attempted to record log entry after the test runner concluded.");
 			}
 
 			try
@@ -139,34 +223,36 @@ namespace partest
 			{
 				// If the log entry cannot be recorded, log the error with the runner and rethrow the exception to indicate that this call was made after the test had finished running.
 				// This should only happen if the log entry was made from a different thread after the test has completed.
-				// TODO: Add call to runner's log function here.
-				// TODO: Remember that if this is run from a raw thread and the user doesn't catch it, it will terminate the program. This will only function from framework-mananged thread wrappers. See partest::thread once it exists.
+				// TODO: Remember that if this is run from a raw thread and the user doesn't catch it, it will terminate the program.
+				// This will only function from framework-mananged thread wrappers. See partest::thread once it exists.
+				recordLogFailure(m_currentFrame->metadata.name, level, type, message, FailureMode::PostTestTeardown);
 				throw;
 			}
 		}
 
 		void setTestFile(PARTEST_STRING_PARAM fileName)
 		{
-			LifetimeGuard guard;
+			FrameworkContext::LifetimeGuard guard;
 			if(!guard.isAlive())
 			{
 				// If the framework context is no longer alive, log the error with the runner and throw an exception to indicate that this call was made after the test had finished running.
 				// This should only happen if the subtest was added from a different thread after the test has completed.
-
-				return; // TODO: Add call to runner's log function here.
+				recordMetadataFailure("", "file", fileName, FailureMode::PostFrameworkTeardown);
+				throw TestIntegrityFailure("Attempted to set test file after the test runner concluded.");
 			}
 			m_currentFrame->setTestFile(fileName);
 		}
 
 		void setTestLine(unsigned line)
 		{
-			LifetimeGuard guard;
+			FrameworkContext::LifetimeGuard guard;
 			if(!guard.isAlive())
 			{
 				// If the framework context is no longer alive, log the error with the runner and throw an exception to indicate that this call was made after the test had finished running.
 				// This should only happen if the subtest was added from a different thread after the test has completed.
-
-				return; // TODO: Add call to runner's log function here.
+				// Can't pass the test name here because the frame may have been destroyed already, so just pass an empty string.
+				recordMetadataFailure("", "line", std::to_string(line), FailureMode::PostFrameworkTeardown);
+				throw TestIntegrityFailure("Attempted to set test line after the test runner concluded.");
 			}
 			m_currentFrame->setTestLine(line);
 		}
