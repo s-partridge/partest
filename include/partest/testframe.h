@@ -230,7 +230,7 @@ namespace partest
 			// Early return to avoid re-acquring locks for nothing.
 			if(currentStatus < TestStatus::TearingDown)
 				abortAndCancelSubtests();
-			throw FrameworkAllocationFailure(processingSource, currentStatus, this);
+			throwFrameworkAllocationFailure(processingSource, currentStatus, this);
 		}
 
 		/**

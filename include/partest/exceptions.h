@@ -105,6 +105,12 @@ namespace partest
 		const TestFrame *testFrame() const noexcept { return m_testFrame; }
 	};
 
+	// TODO: Expand this to handle cases where allocating this exception could fail.
+	[[noreturn]] inline void throwFrameworkAllocationFailure(BadAllocSource source, TestStatus testStatus, const TestFrame *testFrame)
+	{
+		throw FrameworkAllocationFailure(source, testStatus, testFrame);
+	}
+
 	// Kill the entire application if the framework fails to allocate memory.
 	// This is a last-resort measure to prevent undefined behavior from propagating through the test framework.
 	[[noreturn]] inline void abortOnFrameworkAllocationError(BadAllocSource source, const char *testName)

@@ -3,6 +3,7 @@
 
 #include <chrono>
 #include <thread>
+#include <atomic>
 #include <partest/log.h>
 #include <partest/types.h>
 #include <partest/testframe.h>

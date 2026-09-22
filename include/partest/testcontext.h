@@ -38,7 +38,7 @@ namespace partest
 			catch(std::bad_alloc &)
 			{
 				const TestFrame *currentFrame = (failureMode == FailureMode::PostTestTeardown) ? m_currentFrame : &TestFrame::getNullTestFrameInstance();
-				throw FrameworkAllocationFailure(BadAllocSource::TestCreation, TestStatus::TearingDown, currentFrame);
+				throwFrameworkAllocationFailure(BadAllocSource::TestCreation, TestStatus::TearingDown, currentFrame);
 			}
 		}
 
@@ -62,7 +62,7 @@ namespace partest
 			catch(std::bad_alloc &)
 			{
 				const TestFrame *currentFrame = (failureMode == FailureMode::PostTestTeardown) ? m_currentFrame : &TestFrame::getNullTestFrameInstance();
-				throw FrameworkAllocationFailure(BadAllocSource::AssertionHandling, TestStatus::TearingDown, currentFrame);
+				throwFrameworkAllocationFailure(BadAllocSource::AssertionHandling, TestStatus::TearingDown, currentFrame);
 			}
 		}
 
@@ -84,7 +84,7 @@ namespace partest
 			catch(std::bad_alloc &)
 			{
 				const TestFrame *currentFrame = (failureMode == FailureMode::PostTestTeardown) ? m_currentFrame : &TestFrame::getNullTestFrameInstance();
-				throw FrameworkAllocationFailure(BadAllocSource::LogRecording, TestStatus::TearingDown, currentFrame);
+				throwFrameworkAllocationFailure(BadAllocSource::LogRecording, TestStatus::TearingDown, currentFrame);
 			}
 		}
 
@@ -110,7 +110,7 @@ namespace partest
 			catch(std::bad_alloc &)
 			{
 				const TestFrame *currentFrame = (failureMode == FailureMode::PostTestTeardown) ? m_currentFrame : &TestFrame::getNullTestFrameInstance();
-				throw FrameworkAllocationFailure(BadAllocSource::TestInfoUpdating, TestStatus::TearingDown, currentFrame);
+				throwFrameworkAllocationFailure(BadAllocSource::TestInfoUpdating, TestStatus::TearingDown, currentFrame);
 			}
 		}
 
