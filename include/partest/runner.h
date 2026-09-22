@@ -21,119 +21,14 @@ namespace partest
 	private:
 		std::vector<TestBase *> m_tests; // Vector of tests to run
 		std::vector<EventReporterInterface *> m_reporters;
-		EventDispatcherInterface *m_dispatcher;
+		ConcurrentEventDispatcher m_dispatcher;
 		EventEmitter m_globalEmitter;
 		ValidArgs m_args;
 
-		bool m_concurrent;
-
-		TestRunner(bool concurrent = true) : m_concurrent(concurrent)
+		TestRunner() : m_dispatcher(true), m_globalEmitter(&m_dispatcher)
 		{
-			if(concurrent)
-			{
-				m_dispatcher = new ConcurrentEventDispatcher();
-			}
-			else
-			{
-				m_dispatcher = new SerialEventDispatcher();
-			}
-
-			m_globalEmitter = EventEmitter(m_dispatcher);
 			FrameworkContext::setGlobalEventEmitter(&m_globalEmitter);
 			FrameworkContext::isAlive() = true;
-		}
-
-		void runTestsInParallel()
-		{
-			unsigned int threadCount = std::thread::hardware_concurrency();
-			// Default if hardware_concurrency returns 0, which indicates that the number of threads could not be determined.
-			if(threadCount == 0)
-				threadCount = 4;
-
-			struct ThreadResult
-			{
-				bool crashed = false;
-				BadAllocSource crashSource = BadAllocSource::Unknown;
-				TestStatus statusBeforeCrash = TestStatus::Awaiting;
-				const TestFrame *crashedTest = nullptr;
-			};
-
-			std::vector<std::thread> workers;
-			std::vector<ThreadResult> threadResults(threadCount);
-
-			std::mutex testMutex;
-			std::atomic<unsigned> nextTestIndex(0);
-			std::atomic<bool> stopEarly(false);
-			std::atomic<bool> foundNamedTest(!shouldFilterTests());	// Always true if filtering is disabled.
-
-			for(unsigned int i = 0; i < threadCount; ++i)
-			{
-				ThreadResult &result = threadResults[i];
-				workers.emplace_back([this, &testMutex, &nextTestIndex, &stopEarly, &foundNamedTest, &result]()
-				{
-					unsigned localTestIndex = 0;
-					//lock and get next test pointer
-					while(true)
-					{
-						std::unique_lock<std::mutex> lock(testMutex);
-						if(stopEarly.load())
-						{
-							lock.unlock();
-							break;
-						}
-						localTestIndex = nextTestIndex.fetch_add(1);
-						lock.unlock();
-						
-						if(localTestIndex >= m_tests.size())
-							break;
-
-						try
-						{
-							if(!shouldFilterTests() || isNameInFilterList(m_tests[localTestIndex]->getName()))
-							{
-								m_tests[localTestIndex]->run();
-								foundNamedTest.store(true);
-							}
-						}
-						catch(FrameworkAllocationFailure &e)
-						{
-							result.crashed = true;
-							result.statusBeforeCrash = e.testStatus();
-							result.crashSource = e.source();
-							result.crashedTest = e.testFrame();
-							std::lock_guard<std::mutex> stopLock(testMutex);
-							stopEarly.store(true);
-						}
-						catch(...)
-						{
-							result.crashed = true;
-							result.statusBeforeCrash = TestStatus::Awaiting;
-							result.crashSource = BadAllocSource::Unknown;
-							result.crashedTest = nullptr;
-							std::lock_guard<std::mutex> stopLock(testMutex);
-							stopEarly.store(true);
-						}
-					}
-				});
-			}
-
-			for(std::thread &worker : workers)
-			{
-				if(worker.joinable())
-					worker.join();
-			}
-
-			for(ThreadResult &result : threadResults)
-			{
-				// If any thread crashed, prepare abort path.
-				// Should we return to the caller or handle everything here?
-				if(result.crashed)
-				{
-				}
-			}
-
-			if(!foundNamedTest)
-				recordLog(LogLevel::Error, LOG_TYPE_DEFAULT, "No tests found matching the provided names.\n");
 		}
 		
 		bool isNameInFilterList(PARTEST_STRING_PARAM name) const
@@ -170,8 +65,6 @@ namespace partest
 			{
 				return FrameworkContext::inUseCounter() == 0;
 			});
-
-			delete m_dispatcher;
 
 			for(EventReporterInterface *reporter: m_reporters)
 			{
@@ -224,7 +117,7 @@ namespace partest
 		*/
 		void addReporter(std::unique_ptr<EventReporterInterface> reporter)
 		{
-			m_dispatcher->registerReporter(reporter.get());
+			m_dispatcher.registerReporter(reporter.get());
 			m_reporters.push_back(reporter.release());
 		}
 
@@ -236,7 +129,7 @@ namespace partest
 		void addTest(std::unique_ptr<TestBase> test)
 		{
 			EmitterConfig config;
-			config.dispatcher = m_dispatcher;
+			config.dispatcher = &m_dispatcher;
 			test->configureEventEmitter(config);
 			m_tests.push_back(test.release());
 		}
@@ -247,38 +140,96 @@ namespace partest
 		void runAllTests()
 		{
 			std::thread dispatcherThread;
-			if(m_concurrent)
-				dispatcherThread = std::thread([this]() { this->m_dispatcher->dispatchEvents(); });
+			dispatcherThread = std::thread([this]() { this->m_dispatcher.dispatchEvents(); });
 
-			bool foundNamedTest = !shouldFilterTests();	// Always true if filtering is disabled.
-
-			// TODO: Refactor these names.
-			// the CL `concurrent` arg is not the same as `m_concurrent.
-			// This name is confusing, because concurrent *test* running is not the same as
-			// running the dispatcher itself in concurrent mode. The dispatcher is always running in its own thread if m_concurrent is true, but the tests themselves are still run sequentially.
+			unsigned int threadCount = 1;
+			// Use one thread if concurrency is disabled.
 			if(m_args.concurrent())
 			{
-				runTestsInParallel();
+				threadCount = std::thread::hardware_concurrency();
+				// Default if hardware_concurrency returns 0, which indicates that the number of threads could not be determined.
+				if(threadCount == 0)
+					threadCount = 4;
 			}
-			else
+
+			struct ThreadResult
 			{
-				for(TestBase *test: m_tests)
+				bool crashed = false;
+				BadAllocSource crashSource = BadAllocSource::Unknown;
+				TestStatus statusBeforeCrash = TestStatus::Awaiting;
+				const TestFrame *crashedTest = nullptr;
+			};
+
+			std::vector<std::thread> workers;
+			std::vector<ThreadResult> threadResults(threadCount);
+
+			std::atomic<unsigned> nextTestIndex(0);
+			std::atomic<bool> stopEarly(false);
+			std::atomic<bool> foundNamedTest(!shouldFilterTests());	// Always true if filtering is disabled.
+
+			for(unsigned int i = 0; i < threadCount; ++i)
+			{
+				ThreadResult &result = threadResults[i];
+				workers.emplace_back([this, &nextTestIndex, &stopEarly, &foundNamedTest, &result]()
 				{
-					if(!shouldFilterTests() || isNameInFilterList(test->getName()))
+					unsigned localTestIndex = 0;
+					//lock and get next test pointer
+					while(true)
 					{
-						test->run();
-						foundNamedTest = true;
+
+						localTestIndex = nextTestIndex.fetch_add(1, std::memory_order_relaxed);
+
+						if(localTestIndex >= m_tests.size() || stopEarly.load(std::memory_order_relaxed))
+							break;
+
+						try
+						{
+							if(!shouldFilterTests() || isNameInFilterList(m_tests[localTestIndex]->getName()))
+							{
+								m_tests[localTestIndex]->run();
+								foundNamedTest.store(true, std::memory_order_relaxed);
+							}
+						}
+						catch(FrameworkAllocationFailure &e)
+						{
+							stopEarly.store(true, std::memory_order_relaxed);
+							result.crashed = true;
+							result.statusBeforeCrash = e.testStatus();
+							result.crashSource = e.source();
+							result.crashedTest = e.testFrame();
+						}
+						catch(...)
+						{
+							stopEarly.store(true, std::memory_order_relaxed);
+							result.crashed = true;
+							result.statusBeforeCrash = TestStatus::Awaiting;
+							result.crashSource = BadAllocSource::Unknown;
+							result.crashedTest = nullptr;
+						}
 					}
+				});
+			}
+
+			for(std::thread &worker : workers)
+			{
+				if(worker.joinable())
+					worker.join();
+			}
+
+			for(ThreadResult &result : threadResults)
+			{
+				// If any thread crashed, prepare abort path.
+				// Should we return to the caller or handle everything here?
+				if(result.crashed)
+				{
 				}
 			}
 
 			if(!foundNamedTest)
 				recordLog(LogLevel::Error, LOG_TYPE_DEFAULT, "No tests found matching the provided names.\n");
 
-			m_dispatcher->killDispatcher();
-
-			if(m_concurrent)
-				dispatcherThread.join();
+			m_dispatcher.killDispatcher();
+			dispatcherThread.join();
 		}
 
 		/**
@@ -289,8 +240,7 @@ namespace partest
 		void runTestWithName(PARTEST_STRING_PARAM name)
 		{
 			std::thread dispatcherThread;
-			if(m_concurrent)
-				dispatcherThread = std::thread([this]() { this->m_dispatcher->dispatchEvents(); });
+			dispatcherThread = std::thread([this]() { this->m_dispatcher.dispatchEvents(); });
 
 			bool ran = false;
 			for(TestBase *test : m_tests)
@@ -305,10 +255,8 @@ namespace partest
 			if(!ran)
 				recordLog(LogLevel::Error, LOG_TYPE_DEFAULT, "Error: No test found with name '" + PARTEST_STRING_PARAM_TO_STRING(name) + "'.\n");
 
-			m_dispatcher->killDispatcher();
-
-			if(m_concurrent)
-				dispatcherThread.join();
+			m_dispatcher.killDispatcher();
+			dispatcherThread.join();
 		}
 
 		bool recordLog(LogLevel level, PARTEST_STRING_PARAM logType, PARTEST_STRING_PARAM message)
