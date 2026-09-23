@@ -47,6 +47,17 @@ namespace partest
 		UnexpectedPass
 	};
 
+	enum class FailureMode : uint8_t
+	{
+		None = 0,
+		AssertionFailure,
+		UserOOM,
+		FrameworkOOM,
+		Exception,
+		Timeout,
+		Unknown
+	};
+
 	/**
 	* Enum type representing the state of a flag.
 	* 
@@ -258,18 +269,19 @@ namespace partest
 	{
 		TestStatus m_status; // Status of the test
 		TestResult m_result; // Result of the test
+		FailureMode m_failureReason; // Reason for failure, if any
 		bool m_expectFailure;
 	public:
 		// Constructors
-		PARTEST_CONSTEXPR_11 TestState(bool expectFailure = false) noexcept : m_status(TestStatus::Awaiting), m_result(TestResult::NoResult), m_expectFailure(expectFailure) {}
-		PARTEST_CONSTEXPR_11 TestState(TestStatus status, bool expectFailure = false) noexcept : m_status(status), m_result(TestResult::NoResult), m_expectFailure(expectFailure) {}
-
+		PARTEST_CONSTEXPR_11 TestState(bool expectFailure = false) noexcept : m_status(TestStatus::Awaiting), m_result(TestResult::NoResult), m_failureReason(FailureMode::None), m_expectFailure(expectFailure) {}
+		PARTEST_CONSTEXPR_11 TestState(TestStatus status, bool expectFailure = false) noexcept : m_status(status), m_result(TestResult::NoResult), m_failureReason(FailureMode::None), m_expectFailure(expectFailure) {}
 		/**
 		* Get a TestResult instance with default values (Awaiting status and empty message)
 		*/
 		static PARTEST_CONSTEXPR_11 TestState defaultState() noexcept { return TestState(TestStatus::Awaiting); }
 
 		PARTEST_CONSTEXPR_11 TestStatus getStatus() const noexcept { return m_status; }
+		PARTEST_CONSTEXPR_11 FailureMode getFailureReason() const noexcept { return m_failureReason; }
 		PARTEST_CONSTEXPR_11 bool getExpectFailure() const noexcept { return m_expectFailure; }
 
 		/**
@@ -440,6 +452,11 @@ namespace partest
 			}
 		}
 
+		PARTEST_CONSTEXPR_14 void updateFailureReason(FailureMode reason) noexcept
+		{
+			m_failureReason = reason;
+		}
+
 		/**
 		* Update the test result based on a new assertion result.
 		* @param assertResult The result of the new assertion to incorporate into the test result.
@@ -495,6 +512,29 @@ namespace partest
 			return "UNEXPECTED_PASS";
 		default:
 			return "INVALID_RESULT_VALUE";
+		}
+	}
+
+	inline PARTEST_CONSTEXPR_14 const char* to_string(const FailureMode &mode)
+	{
+		switch(mode)
+		{
+		case FailureMode::None:
+			return "NONE";
+		case FailureMode::AssertionFailure:
+			return "ASSERTION_FAILURE";
+		case FailureMode::UserOOM:
+			return "USER_OOM";
+		case FailureMode::FrameworkOOM:
+			return "FRAMEWORK_OOM";
+		case FailureMode::Exception:
+			return "EXCEPTION";
+		case FailureMode::Timeout:
+			return "TIMEOUT";
+		case FailureMode::Unknown:
+			return "UNKNOWN";
+		default:
+			return "INVALID_FAILURE_MODE";
 		}
 	}
 
@@ -620,6 +660,68 @@ namespace partest
 		}
 		out << statusString;
 		return out;
+	}
+
+	/**
+	* Overloaded stream insertion operator for FailureMode enum.
+	*/
+	inline std::ostream &operator<<(std::ostream &out, const FailureMode &mode)
+	{
+		std::string modeString;
+		switch(mode)
+		{
+		case FailureMode::None:
+			modeString = "NONE";
+			break;
+		case FailureMode::AssertionFailure:
+			modeString = "ASSERTION_FAILURE";
+			break;
+		case FailureMode::UserOOM:
+			modeString = "USER_OOM";
+			break;
+		case FailureMode::FrameworkOOM:
+			modeString = "FRAMEWORK_OOM";
+			break;
+		case FailureMode::Exception:
+			modeString = "EXCEPTION";
+			break;
+		case FailureMode::Timeout:
+			modeString = "TIMEOUT";
+			break;
+		case FailureMode::Unknown:
+			modeString = "UNKNOWN";
+			break;
+		default:
+			modeString = "INVALID FAILURE MODE";
+		}
+		out << modeString;
+		return out;
+	}
+
+	/**
+	* Overloaded stream extraction operator for FailureMode enum.
+	*/
+	inline std::istream &operator>>(std::istream &in, FailureMode &mode)
+	{
+		std::string modeString;
+		in >> modeString;
+		if(modeString == "NONE")
+			mode = FailureMode::None;
+		else if(modeString == "ASSERTION_FAILURE")
+			mode = FailureMode::AssertionFailure;
+		else if(modeString == "USER_OOM")
+			mode = FailureMode::UserOOM;
+		else if(modeString == "FRAMEWORK_OOM")
+			mode = FailureMode::FrameworkOOM;
+		else if(modeString == "EXCEPTION")
+			mode = FailureMode::Exception;
+		else if(modeString == "TIMEOUT")
+			mode = FailureMode::Timeout;
+		else if(modeString == "UNKNOWN")
+			mode = FailureMode::Unknown;
+		else
+			mode = FailureMode::Unknown; // Default to Unknown for unknown strings
+		return in;
 	}
 
 	/**
