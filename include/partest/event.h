@@ -169,10 +169,11 @@ namespace partest
 			return partest::make_unique<Event>(*this);
 		}
 
-		inline unsigned getEventId() const noexcept { return m_eventId; }
+		unsigned getEventId() const noexcept { return m_eventId; }
 		EventType getEventType() const noexcept { return m_eventType; }
 		const EventPayload &getPayload() const noexcept { return *m_payload; }
-		inline std::chrono::system_clock::time_point getTimestamp() const noexcept { return m_timestamp; }
+		Timestamp getTimestamp() const noexcept { return m_timestamp; }
+		void setTimestamp(const Timestamp &timestamp) noexcept { m_timestamp = timestamp; }
 
 		bool operator==(const Event &rhs) const noexcept
 		{

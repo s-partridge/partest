@@ -39,8 +39,12 @@ namespace partest
 			m_dispatcher = emitterConfig.dispatcher;
 		}
 
-		// TODO: Add early returns for when m_dispatcher is null or not dispatching, to avoid unnecessary event creation and pushing.
+		// A test can end in a state where it is not safe to allocate memory. Preallocating the event allows the test to avoid allocation in this case.
+		virtual std::unique_ptr<Event> preallocEndTestEvent(TestFrameView testFrame) = 0;
+
+		// TODO: refactor early return to encapsulate makeEvent step, to avoid allocation if unnecessary.
 		virtual bool emitBeginTest(TestFrameView testFrame, Timestamp timestamp) = 0;
+		virtual bool emitEndTest(std::unique_ptr<Event> endTestEvent, Timestamp timestamp) = 0;
 		virtual bool emitEndTest(TestFrameView testFrame, Timestamp timestamp) = 0;
 		virtual bool emitAssertion(TestFrameView testFrame, const AssertionResult &assertionResult, Timestamp timestamp) = 0;
 		virtual bool emitLog(TestFrameView testFrame, const LogEntry &logEntry, Timestamp timestamp) = 0;

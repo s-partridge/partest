@@ -19,6 +19,7 @@ namespace partest
 	PARTEST_INLINE_VAR_17 constexpr unsigned NO_TEST_ID = 0;
 
 	class TestFrame;
+	class Event;
 
 	class TestFrameReaderInterface
 	{
@@ -79,6 +80,8 @@ namespace partest
 		Timestamp m_timeStarted;
 
 		EventEmitterInterface *m_eventEmitter;
+		std::unique_ptr<Event> m_endTestEvent; // Pre-created end test event to avoid allocation during teardown
+
 		TestFrameView m_testFrameView;
 		TestState state;
 
@@ -289,6 +292,11 @@ namespace partest
 			return false;
 		}
 
+		void preallocEndTestEvent()
+		{
+			if(!m_endTestEvent)
+				m_endTestEvent = m_eventEmitter->preallocEndTestEvent(m_testFrameView);
+		}
 		/**
 		* Add a subtest to the current test frame.
 		* 
@@ -309,7 +317,12 @@ namespace partest
 				m_subtests.push_back(subtestPtr);
 			}
 			subtestPtr->m_parent = this;
-			subtestPtr->m_eventEmitter = m_eventEmitter;
+
+			if(!subtestPtr->m_eventEmitter)
+				subtestPtr->m_eventEmitter = m_eventEmitter;
+
+			subtestPtr->preallocEndTestEvent();
+
 			subtest.release();
 
 			return subtestPtr;
@@ -380,7 +393,10 @@ namespace partest
 				const std::function<void(TestContext&)> &testTeardown = nullptr)
 			: m_eventEmitter(eventEmitter), flags(flags), metadata(metadata), state(flags.expectFailure == FlagState::Enabled),
 				m_testFunction(testFunction), m_testSetup(testSetup), m_testTeardown(testTeardown),
-				m_id(nextId()), m_testFrameView(*this) { }
+				m_id(nextId()), m_testFrameView(*this)
+		{
+			m_endTestEvent = m_eventEmitter->preallocEndTestEvent(m_testFrameView);
+		}
 
 		/**
 		* Create and add a subtest to the current test frame.
