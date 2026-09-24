@@ -145,7 +145,7 @@ namespace partest
 		*/
 		void emitLog(const LogEntry &entry)
 		{
-			m_eventEmitter->emitLog(m_testFrameView, entry, std::chrono::system_clock::now());
+			m_eventEmitter->emitLog(&m_testFrameView, entry, std::chrono::system_clock::now());
 		}
 
 		void abortAndCancelSubtests(FailureMode reason, BadAllocSource source = BadAllocSource::Unknown)
@@ -241,7 +241,7 @@ namespace partest
 		*/
 		void emitAssertion(const AssertionResult &result)
 		{
-			m_eventEmitter->emitAssertion(m_testFrameView, result, std::chrono::system_clock::now());
+			m_eventEmitter->emitAssertion(&m_testFrameView, result, std::chrono::system_clock::now());
 		}
 		
 		/**
@@ -271,7 +271,7 @@ namespace partest
 		void preallocEndTestEvent()
 		{
 			if(!m_endTestEvent)
-				m_endTestEvent = m_eventEmitter->preallocEndTestEvent(m_testFrameView);
+				m_endTestEvent = m_eventEmitter->preallocEndTestEvent(&m_testFrameView);
 		}
 
 		/**
@@ -372,7 +372,7 @@ namespace partest
 				m_testFunction(testFunction), m_testSetup(testSetup), m_testTeardown(testTeardown),
 				m_id(nextId()), m_testFrameView(*this)
 		{
-			m_endTestEvent = m_eventEmitter->preallocEndTestEvent(m_testFrameView);
+			m_endTestEvent = m_eventEmitter->preallocEndTestEvent(&m_testFrameView);
 		}
 
 		/**
@@ -731,7 +731,7 @@ namespace partest
 			{
 				// TODO: Is this right? The timestamp is different from the actual test's run time, which makes sense for *profiling, but it doesn't include setup time.
 				// Should I remove the timestamps from around run() and use a different mechanism for profiling time?
-				m_eventEmitter->emitBeginTest(TestFrameView(*this), std::chrono::system_clock::now());
+				m_eventEmitter->emitBeginTest(&m_testFrameView, std::chrono::system_clock::now());
 				// If effective flags indicate the test should be skipped, do nothing and return immediately
 				if(getEffectiveFlags().skip == FlagState::Enabled)
 				{

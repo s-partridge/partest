@@ -29,14 +29,16 @@ namespace partest
 	public:
 		explicit EventEmitter(EventDispatcherInterface *dispatcher = nullptr) : EventEmitterInterface(dispatcher) {}
 
-		std::unique_ptr<Event> preallocEndTestEvent(TestFrameView testFrame) override
+		std::unique_ptr<Event> preallocEndTestEvent(const TestFrameView *testFrame) override
 		{
-			return makeEventEndTest(testFrame, std::chrono::system_clock::now());
+			testFrame = testFrame ? testFrame : &TestFrameView::getNullTestFrameView();
+			return makeEventEndTest(*testFrame, std::chrono::system_clock::now());
 		}
 
-		bool emitBeginTest(TestFrameView testFrame, Timestamp timestamp) override
+		bool emitBeginTest(const TestFrameView *testFrame, Timestamp timestamp) override
 		{
-			return emitEvent(makeEventBeginTest(testFrame, timestamp));
+			testFrame = testFrame ? testFrame : &TestFrameView::getNullTestFrameView();
+			return emitEvent(makeEventBeginTest(*testFrame, timestamp));
 		}
 
 		/**
@@ -51,24 +53,28 @@ namespace partest
 			return emitEvent(std::move(endTestEvent));
 		}
 
-		bool emitEndTest(TestFrameView testFrame, Timestamp timestamp) override
+		bool emitEndTest(const TestFrameView *testFrame, Timestamp timestamp) override
 		{
-			return emitEvent(makeEventEndTest(testFrame, timestamp));
+			testFrame = testFrame ? testFrame : &TestFrameView::getNullTestFrameView();
+			return emitEvent(makeEventEndTest(*testFrame, timestamp));
 		}
 
-		bool emitAssertion(TestFrameView testFrame, const AssertionResult &assertionResult, Timestamp timestamp) override
+		bool emitAssertion(const TestFrameView *testFrame, const AssertionResult &assertionResult, Timestamp timestamp) override
 		{
-			return emitEvent(makeEventAssertion(testFrame, assertionResult, timestamp));
+			testFrame = testFrame ? testFrame : &TestFrameView::getNullTestFrameView();
+			return emitEvent(makeEventAssertion(*testFrame, assertionResult, timestamp));
 		}
 
-		bool emitLog(TestFrameView testFrame, const LogEntry &logEntry, Timestamp timestamp) override
+		bool emitLog(const TestFrameView *testFrame, const LogEntry &logEntry, Timestamp timestamp) override
 		{
-			return emitEvent(makeEventLog(testFrame, logEntry, timestamp));
+			testFrame = testFrame ? testFrame : &TestFrameView::getNullTestFrameView();
+			return emitEvent(makeEventLog(*testFrame, logEntry, timestamp));
 		}
 
-		bool emitPassthrough(TestFrameView testFrame, std::thread::id threadId, PARTEST_STRING_PARAM message, Timestamp timestamp) override
+		bool emitPassthrough(const TestFrameView *testFrame, std::thread::id threadId, PARTEST_STRING_PARAM message, Timestamp timestamp) override
 		{
-			return emitEvent(makeEventPassthrough(testFrame, threadId, message, timestamp));
+			testFrame = testFrame ? testFrame : &TestFrameView::getNullTestFrameView();
+			return emitEvent(makeEventPassthrough(*testFrame, threadId, message, timestamp));
 		}
 	};
 }

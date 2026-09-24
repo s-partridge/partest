@@ -254,7 +254,7 @@ namespace partest
 		{
 			try
 			{
-				FrameworkContext::writeGlobalLog(level, logType, message);
+				return FrameworkContext::writeGlobalLog(level, logType, message);
 			}
 			catch(std::bad_alloc &)
 			{
@@ -263,8 +263,6 @@ namespace partest
 				std::cerr << "Error: Failed to record log entry due to memory allocation failure. Log entry: [" << maybeStringify(level) << "] [" << logType << "]: " << message << std::endl;
 				return false;
 			}
-			
-			return true;
 		}
 
 		/**

@@ -107,7 +107,7 @@ namespace partest
 			if(guard.isAlive()  && globalEventEmitter() != nullptr)
 			{
 				// TODO: Shore up the fallback path, match it to the abort routing used elsewhere in the framework. Catch exceptions and return them. They also count as FrameworkAllocationFailures, which should bubble back up like anything else.
-				if(!globalEventEmitter()->emitLog(TestFrameView::getNullTestFrameView(), LogEntry(level, type, message), std::chrono::system_clock::now()))
+				if(!globalEventEmitter()->emitLog(nullptr, LogEntry(level, type, message), std::chrono::system_clock::now()))
 				{
 					std::cerr << "Failed to emit global log [" << maybeStringify(level) << "] [" << type << "]: " << message << std::endl;
 					return false;
