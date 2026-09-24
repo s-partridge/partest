@@ -39,6 +39,7 @@ namespace partest
 			catch(std::bad_alloc &)
 			{
 				badAllocOccurred = true;
+				FrameworkContext::badAllocCount().fetch_add(1, std::memory_order_relaxed);
 			}
 
 			// Use simple nonstandard exception to bubble up past user code that may catch std::bad_alloc.
@@ -69,6 +70,7 @@ namespace partest
 			catch(std::bad_alloc &)
 			{
 				badAllocOccurred = true;
+				FrameworkContext::badAllocCount().fetch_add(1, std::memory_order_relaxed);
 			}
 
 			// Use simple nonstandard exception to bubble up past user code that may catch std::bad_alloc.
@@ -96,6 +98,7 @@ namespace partest
 			catch(std::bad_alloc &)
 			{
 				badAllocOccurred = true;
+				FrameworkContext::badAllocCount().fetch_add(1, std::memory_order_relaxed);
 			}
 
 			// Use simple nonstandard exception to bubble up past user code that may catch std::bad_alloc.
@@ -127,6 +130,7 @@ namespace partest
 			catch(std::bad_alloc &)
 			{
 				badAllocOccurred = true;
+				FrameworkContext::badAllocCount().fetch_add(1, std::memory_order_relaxed);
 			}
 
 			// Use simple nonstandard exception to bubble up past user code that may catch std::bad_alloc.

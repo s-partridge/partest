@@ -22,6 +22,7 @@
 #include <partest/fileops.h>
 #include <partest/testframe.h>
 #include <partest/testcontext.h>
+#include <partest/frameworkcontext.h>
 #include <partest/exceptions.h>
 #include <partest/eventemitter.h>
 
@@ -70,6 +71,12 @@ namespace partest
 			assert(test != nullptr && "Test was run with a null TestFrame pointer.");
 
 			TestContext ctx(test, runTest);
+
+			if(FrameworkContext::hasExceededBadAllocThreshold())
+			{
+				test->abortAndCancelSubtests(FailureMode::KilledByParent);
+				return;
+			}
 
 			try
 			{

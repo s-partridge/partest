@@ -292,11 +292,10 @@ namespace partest
 		FailureMode m_failureMode; // Mode of failure, if any
 		BadAllocSource m_badAllocSource; // Source of bad allocation, if any
 		bool m_expectFailure;
-		bool m_setupSucceeded; // Whether the test setup was run
 	public:
 		// Constructors
-		PARTEST_CONSTEXPR_11 TestState(bool expectFailure = false) noexcept : m_status(TestStatus::Awaiting), m_result(TestResult::NoResult), m_failureMode(FailureMode::None), m_badAllocSource(BadAllocSource::Unknown), m_expectFailure(expectFailure), m_setupSucceeded(false) {}
-		PARTEST_CONSTEXPR_11 TestState(TestStatus status, bool expectFailure = false) noexcept : m_status(status), m_result(TestResult::NoResult), m_failureMode(FailureMode::None), m_badAllocSource(BadAllocSource::Unknown), m_expectFailure(expectFailure), m_setupSucceeded(false) {}
+		PARTEST_CONSTEXPR_11 TestState(bool expectFailure = false) noexcept : m_status(TestStatus::Awaiting), m_result(TestResult::NoResult), m_failureMode(FailureMode::None), m_badAllocSource(BadAllocSource::Unknown), m_expectFailure(expectFailure) {}
+		PARTEST_CONSTEXPR_11 TestState(TestStatus status, bool expectFailure = false) noexcept : m_status(status), m_result(TestResult::NoResult), m_failureMode(FailureMode::None), m_badAllocSource(BadAllocSource::Unknown), m_expectFailure(expectFailure) {}
 		/**
 		* Get a TestResult instance with default values (Awaiting status and empty message)
 		*/
@@ -306,7 +305,6 @@ namespace partest
 		PARTEST_CONSTEXPR_11 FailureMode getFailureMode() const noexcept { return m_failureMode; }
 		PARTEST_CONSTEXPR_11 BadAllocSource getBadAllocSource() const noexcept { return m_badAllocSource; }
 		PARTEST_CONSTEXPR_11 bool getExpectFailure() const noexcept { return m_expectFailure; }
-		PARTEST_CONSTEXPR_11 bool getSetupSucceeded() const noexcept { return m_setupSucceeded; }
 
 		/**
 		* Get the effective result of the test, considering whether expectFailure is set.
@@ -480,11 +478,6 @@ namespace partest
 		{
 			m_failureMode = mode;
 			m_badAllocSource = source;
-		}
-
-		PARTEST_CONSTEXPR_14 void updateSetupSucceeded(bool succeeded) noexcept
-		{
-			m_setupSucceeded = succeeded;
 		}
 
 		/**

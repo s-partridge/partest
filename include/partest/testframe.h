@@ -11,8 +11,9 @@
 #include <partest/common.h>
 #include <partest/types.h>
 #include <partest/log.h>
-#include <partest/eventemitterinterface.h>
 #include <partest/assert.h>
+#include <partest/eventemitterinterface.h>
+#include <partest/frameworkcontext.h>
 
 namespace partest
 {
@@ -148,35 +149,12 @@ namespace partest
 			m_eventEmitter->emitLog(&m_testFrameView, entry, std::chrono::system_clock::now());
 		}
 
-		void abortAndCancelSubtests(FailureMode reason, BadAllocSource source = BadAllocSource::Unknown)
-		{
-			std::unique_lock<std::mutex> statusLock(m_statusMutex, std::defer_lock);
-			std::unique_lock<std::mutex> resultLock(m_resultMutex, std::defer_lock);
-			std::lock(statusLock, resultLock);
-			// Using the flag in addition to the status for skipped, since an awaiting test that's not configured to run doesn't matter,
-			// But wouldn't be caught by the status check alone.
-			if(state.getStatus() >= TestStatus::TearingDown || getEffectiveFlags().skip == FlagState::Enabled)
-				return;
-			state.updateResult(TestResult::Failed);
-			if(state.getStatus() != TestStatus::Awaiting)
-				state.updateStatus(TestStatus::Aborting);
-			else
-				state.updateStatus(TestStatus::Aborted);
-			state.updateFailureMode(reason, source);
-			resultLock.unlock();
-			statusLock.unlock();
-
-			std::lock_guard<std::mutex> subtestsLock(m_subtestsMutex);
-			for(TestFrame *subtest : m_subtests)
-			{
-				// Don't attribute bad alloc to the subtests. That would result in confusing reports.
-				subtest->abortAndCancelSubtests(FailureMode::KilledByParent);
-			}
-		}
-
-		void handleBadAlloc(BadAllocSource source, bool userCode, bool rethrow)
+		void handleBadAlloc(BadAllocSource source, bool userCode, bool rethrow, bool isNewFailure)
 		{
 			abortAndCancelSubtests(userCode ? FailureMode::UserOutOfMemory : FailureMode::FrameworkOutOfMemory, source);
+
+			if(isNewFailure)
+				FrameworkContext::badAllocCount().store(0, std::memory_order_relaxed);
 
 			if(rethrow)
 				throw;
@@ -208,7 +186,7 @@ namespace partest
 			}
 			catch(std::bad_alloc &)
 			{
-				handleBadAlloc(BadAllocSource::TestExecution, false, true);
+				handleBadAlloc(BadAllocSource::TestExecution, false, true, true);
 			}
 		}
 
@@ -263,7 +241,7 @@ namespace partest
 			}
 			catch(std::bad_alloc &)
 			{
-				handleBadAlloc(BadAllocSource::AssertionHandling, false, true);
+				handleBadAlloc(BadAllocSource::AssertionHandling, false, true, true);
 			}
 			return false;
 		}
@@ -401,7 +379,7 @@ namespace partest
 			}
 			catch(std::bad_alloc &)
 			{
-				handleBadAlloc(BadAllocSource::TestCreation, false, true);
+				handleBadAlloc(BadAllocSource::TestCreation, false, true, true);
 			}
 			return nullptr; // This line will never be reached, but is here to satisfy the compiler.
 		}
@@ -434,7 +412,7 @@ namespace partest
 			}
 			catch(std::bad_alloc &)
 			{
-				handleBadAlloc(BadAllocSource::TestCreation, false, true);
+				handleBadAlloc(BadAllocSource::TestCreation, false, true, true);
 			}
 			return nullptr; // This line will never be reached, but is here to satisfy the compiler.
 		}
@@ -491,7 +469,7 @@ namespace partest
 			}
 			catch(std::bad_alloc &)
 			{
-				handleBadAlloc(BadAllocSource::TestInfoUpdating, false, true);
+				handleBadAlloc(BadAllocSource::TestInfoUpdating, false, true, true);
 			}
 		}
 
@@ -741,7 +719,7 @@ namespace partest
 			}
 			catch(std::bad_alloc &)
 			{
-				handleBadAlloc(BadAllocSource::TestPreInitialization, false, false);
+				handleBadAlloc(BadAllocSource::TestPreInitialization, false, false, true);
 				return false;
 			}
 
@@ -752,7 +730,6 @@ namespace partest
 				{
 					m_testSetup(ctx);
 				}
-				state.updateSetupSucceeded(true);
 				return true;
 			}
 			catch(const TestIntegrityFailure &)
@@ -762,7 +739,7 @@ namespace partest
 			catch(const FrameworkAllocationFailure &)
 			{
 				// These are exceptions originating from deep in the framework, and from points where the failure can't be recorded in the test state.
-				handleBadAlloc(BadAllocSource::TestInitialization, false, false);
+				handleBadAlloc(BadAllocSource::TestInitialization, false, false, false);
 			}
 			catch(std::bad_alloc)
 			{
@@ -773,7 +750,7 @@ namespace partest
 				// Otherwise, it is a user code error. We'll mark it aborted and allow the teardown to clean up.
 				if(state.getFailureMode() != FailureMode::FrameworkOutOfMemory)
 				{
-					handleBadAlloc(BadAllocSource::TestInitialization, true, false);
+					handleBadAlloc(BadAllocSource::TestInitialization, true, false, true);
 				}
 			}
 			catch(...)
@@ -846,7 +823,7 @@ namespace partest
 
 				if(state.getFailureMode() != FailureMode::FrameworkOutOfMemory)
 				{
-					handleBadAlloc(BadAllocSource::TestExecution, true, false);
+					handleBadAlloc(BadAllocSource::TestExecution, true, false, true);
 				}
 			}
 			catch(const TestIntegrityFailure &)
@@ -857,7 +834,7 @@ namespace partest
 			}
 			catch(const FrameworkAllocationFailure &)
 			{
-				handleBadAlloc(BadAllocSource::TestExecution, false, false);
+				handleBadAlloc(BadAllocSource::TestExecution, false, false, false);
 			}
 			// Unexpected exceptions will generally indicate errors within the user's test code and must be reported
 			catch(...)
@@ -898,7 +875,7 @@ namespace partest
 					{
 						// This should be impossible to reach now, unless something went wrong during the emitEndTest or maybeRaiseOnAssertion calls.
 						// Regardless, I think this still counts as an allocation failure in finalize, so it needs to be handled the same as elsewhere in this function.
-						frame->handleBadAlloc(BadAllocSource::TestFinalization, false, false);
+						frame->handleBadAlloc(BadAllocSource::TestFinalization, false, false, true);
 					}
 					// Under normal conditions this should propagate, but other possible exceptions result in aborted/failed tests.
 					// Since maybeRaiseOnReturn only forwards AssertionFailure, it would be semantically the same as any other exception caught at this point.
@@ -917,13 +894,18 @@ namespace partest
 				guard.exceptionInFlight = false;
 				return;
 			}
+			// Test was cancelled before setup ran. Don't do anything else, but let the guard run to emit the end test event and raise any exceptions.
+			else if(getStatus() == TestStatus::Aborted)
+			{
+				guard.exceptionInFlight = false;
+				return;
+			}
 
 			// Flag state/run status invariant. Test should not be marked as skipped if the skip flag is not set.
 			assert(!wasSkipped() && "Invalid test state. Test should not have been skipped without skip flag set.");
 			// Run status invariant. A test should only be finalized if it is in the process of tearing down or has been aborted.
 			assert(isDeconstructing() && "Test frame is not in a valid state to finalize. Test should be tearing down or aborted.");
 
-			bool loggingAllocationFailed = false;
 			try
 			{
 				std::unique_lock<std::mutex> subtestsLock(m_subtestsMutex);
@@ -958,7 +940,7 @@ namespace partest
 			catch(std::bad_alloc &)
 			{
 				// Even here, we still need to attempt to allow teardown to run.
-				handleBadAlloc(BadAllocSource::TestFinalization, false, false);
+				handleBadAlloc(BadAllocSource::TestFinalization, false, false, true);
 			}
 
 			try
@@ -994,7 +976,7 @@ namespace partest
 			{
 				// These are exceptions originating from deep in the framework, and from points where the failure can't be recorded in the test state.
 				// This *should* only be possible from a detached thread.
-				handleBadAlloc(BadAllocSource::DesyncedTestState, false, false);
+				handleBadAlloc(BadAllocSource::DesyncedTestState, false, false, false);
 				updateStatus(TestStatus::Aborted);
 			}
 			catch(std::bad_alloc &)
@@ -1005,7 +987,11 @@ namespace partest
 
 				// Otherwise, it is a user code error. We'll mark it aborted.
 				// Teardown cannot be completed, but we'll ensure subtests are marked as well, if necessary.
-				handleBadAlloc(BadAllocSource::TestFinalization, true, false);
+				if(state.getFailureMode() != FailureMode::FrameworkOutOfMemory)
+				{
+					handleBadAlloc(BadAllocSource::TestExecution, true, false, true);
+				}
+
 				// The handler updates status to aborting, so it needs to be updated to aborted here. Otherwise, the test will be left in an invalid state.
 				updateStatus(TestStatus::Aborted);
 			}
@@ -1017,6 +1003,36 @@ namespace partest
 			}
 
 			guard.exceptionInFlight = false;
+		}
+
+		void abortAndCancelSubtests(FailureMode reason, BadAllocSource source = BadAllocSource::Unknown)
+		{
+			std::unique_lock<std::mutex> statusLock(m_statusMutex, std::defer_lock);
+			std::unique_lock<std::mutex> resultLock(m_resultMutex, std::defer_lock);
+			std::lock(statusLock, resultLock);
+			// Using the flag in addition to the status for skipped, since an awaiting test that's not configured to run doesn't matter,
+			// But wouldn't be caught by the status check alone.
+			if(state.getStatus() >= TestStatus::TearingDown || getEffectiveFlags().skip == FlagState::Enabled)
+				return;
+			// We're already inside the lock, so we have to call the component functions directly.
+
+			// Skip teardown if setup never happened.
+			if(state.getStatus() >= TestStatus::SettingUp)
+				state.updateStatus(TestStatus::Aborting);
+			else
+				state.updateStatus(TestStatus::Aborted);
+
+			state.updateResult(TestResult::Failed);
+			state.updateFailureMode(reason, source);
+			resultLock.unlock();
+			statusLock.unlock();
+
+			std::lock_guard<std::mutex> subtestsLock(m_subtestsMutex);
+			for(TestFrame *subtest : m_subtests)
+			{
+				// Don't attribute bad alloc to the subtests. That would result in confusing reports.
+				subtest->abortAndCancelSubtests(FailureMode::KilledByParent);
+			}
 		}
 
 		/**
@@ -1104,7 +1120,7 @@ namespace partest
 			}
 			catch(std::bad_alloc &)
 			{
-				handleBadAlloc(BadAllocSource::LogRecording, false, true);
+				handleBadAlloc(BadAllocSource::LogRecording, false, true, true);
 			}
 			return false;
 		}
