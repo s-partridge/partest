@@ -154,7 +154,7 @@ namespace partest
 			abortAndCancelSubtests(userCode ? FailureMode::UserOutOfMemory : FailureMode::FrameworkOutOfMemory, source);
 
 			if(isNewFailure)
-				FrameworkContext::badAllocCount().store(0, std::memory_order_relaxed);
+				FrameworkContext::badAllocCount().fetch_add(1, std::memory_order_relaxed);
 
 			if(rethrow)
 				throw;
@@ -186,7 +186,7 @@ namespace partest
 			}
 			catch(std::bad_alloc &)
 			{
-				handleBadAlloc(BadAllocSource::TestExecution, false, true, true);
+				handleBadAlloc(BadAllocSource::TestExecution, false, false, true);
 			}
 		}
 
@@ -271,14 +271,13 @@ namespace partest
 					throw TestIntegrityFailure("Cannot add subtest to a test frame that is deconstructing or has finished running.");
 				m_subtests.push_back(subtestPtr);
 			}
+			subtest.release();
+
 			subtestPtr->m_parent = this;
 
 			if(!subtestPtr->m_eventEmitter)
 				subtestPtr->m_eventEmitter = m_eventEmitter;
-
 			subtestPtr->preallocEndTestEvent();
-
-			subtest.release();
 
 			return subtestPtr;
 		}
@@ -583,6 +582,12 @@ namespace partest
 			return state.getExpectFailure();
 		}
 
+		FailureMode getFailureMode() const
+		{
+			std::lock_guard<std::mutex> statusLock(m_statusMutex);
+			return state.getFailureMode();
+		}
+
 		void updateResult(const TestResult &result)
 		{
 			std::lock_guard<std::mutex> resultLock(m_resultMutex);
@@ -748,7 +753,7 @@ namespace partest
 				// In this case the test has already been aborted and the failure mode set, so we don't need to do anything further.
 				//
 				// Otherwise, it is a user code error. We'll mark it aborted and allow the teardown to clean up.
-				if(state.getFailureMode() != FailureMode::FrameworkOutOfMemory)
+				if(getFailureMode() != FailureMode::FrameworkOutOfMemory)
 				{
 					handleBadAlloc(BadAllocSource::TestInitialization, true, false, true);
 				}
@@ -771,32 +776,32 @@ namespace partest
 			// Framework invariant: A test should not be run if it was skipped. This is enforced by the test framework, and should never be violated.
 			assert(!wasSkipped() && "Invalid test state. Test should not be run if it was skipped.");
 
+			// This precedes the run guard because the guard itself would temporarily override status.
+			// Correct status transitions from SettingUp to Aborting on the failed path, skipping TearingDown entirely.
+			if(m_testFunction == nullptr)
+			{
+				abortAndCancelSubtests(FailureMode::NoTestFunction);
+				return;
+			}
+
+			struct RunGuard
+			{
+				TestFrame *frame;
+				// updateStatus could theoretically raise std::system_error if the mutex is already locked.
+				// It shouldn't, but by contract that makes the destructor not noexcept.
+				~RunGuard() noexcept(false)
+				{
+					frame->m_endTime = std::chrono::steady_clock::now();
+
+					std::lock_guard<std::mutex> statusLock(frame->m_statusMutex);
+					// Only update the status to TearingDown if the test is still running. If the test was aborted, the status should remain Aborting.
+					if(frame->state.isRunning())
+						frame->state.updateStatus(TestStatus::TearingDown);
+				}
+			} guard{this};
+			
 			try
 			{
-				// This precedes the run guard because the guard itself would temporarily override status.
-				// Correct status transitions from SettingUp to Aborting on the failed path, skipping TearingDown entirely.
-				if(m_testFunction == nullptr)
-				{
-					abortAndCancelSubtests(FailureMode::NoTestFunction);
-					return;
-				}
-
-				struct RunGuard
-				{
-					TestFrame *frame;
-					// updateStatus could theoretically raise std::system_error if the mutex is already locked.
-					// It shouldn't, but by contract that makes the destructor not noexcept.
-					~RunGuard() noexcept(false)
-					{
-						frame->m_endTime = std::chrono::steady_clock::now();
-
-						std::lock_guard<std::mutex> statusLock(frame->m_statusMutex);
-						// Only update the status to TearingDown if the test is still running. If the test was aborted, the status should remain Aborting.
-						if(frame->state.isRunning())
-							frame->state.updateStatus(TestStatus::TearingDown);
-					}
-				} guard{this};
-
 				updateStatus(TestStatus::Running);
 				m_startTime = std::chrono::steady_clock::now();
 
@@ -821,7 +826,7 @@ namespace partest
 				// In this case the test has already been aborted and the failure mode set, so we don't need to do anything further.
 				// Otherwise, it is a user code error. We'll mark it aborted and allow the teardown to clean up.
 
-				if(state.getFailureMode() != FailureMode::FrameworkOutOfMemory)
+				if(getFailureMode() != FailureMode::FrameworkOutOfMemory)
 				{
 					handleBadAlloc(BadAllocSource::TestExecution, true, false, true);
 				}
@@ -908,6 +913,7 @@ namespace partest
 
 			try
 			{
+				bool subtestsFinished = true;
 				std::unique_lock<std::mutex> subtestsLock(m_subtestsMutex);
 				for(TestFrame *subtest : m_subtests)
 				{
@@ -916,18 +922,27 @@ namespace partest
 						updateResultFromSubtest(subtest->state);
 					}
 					// Log still running subtests if the current test is not aborting. No subtests should be in progress under normal circumstances.
+					// TODO: Should the current test be flagged as aborting if a subtest is still running? Probably.
 					else if(!isAborting())
 					{
-						LogEntry log = LogEntry(LogLevel::Error, LOG_TYPE_TEST, "Subtest \"" + subtest->fullTestName() + "\" has not completed.");
-						if(pushLogEntry(log))
-							emitLog(log);
+						updateResultFromAssertion(false);
+						subtestsFinished = false;
+						break;
 					}
 				}
 				subtestsLock.unlock();
 
+				if(!subtestsFinished)
+				{
+					abortAndCancelSubtests(FailureMode::DanglingThread);
+					LogEntry log = LogEntry(LogLevel::Error, LOG_TYPE_TEST, "Test \"" + fullTestName() + "\" has not completed all subtests.");
+					if(pushLogEntry(log))
+						emitLog(log);
+				}
+
 				// Don't even bother trying to log anything if the test is aborting due to an out-of-memory condition.
 				// The log allocation will likely fail and throw again, plus the memory error is more important than an empty test.
-				if(getEffectiveResult() == TestResult::NoResult && state.getFailureMode() != FailureMode::UserOutOfMemory)
+				if(getEffectiveResult() == TestResult::NoResult && getFailureMode() != FailureMode::UserOutOfMemory)
 				{
 					LogEntry log = LogEntry(LogLevel::Warning, LOG_TYPE_TEST, "Test \"" + fullTestName() + "\" completed without any assertions. Defaulting to PASSED.");
 					if(pushLogEntry(log))
@@ -987,9 +1002,9 @@ namespace partest
 
 				// Otherwise, it is a user code error. We'll mark it aborted.
 				// Teardown cannot be completed, but we'll ensure subtests are marked as well, if necessary.
-				if(state.getFailureMode() != FailureMode::FrameworkOutOfMemory)
+				if(getFailureMode() != FailureMode::FrameworkOutOfMemory)
 				{
-					handleBadAlloc(BadAllocSource::TestExecution, true, false, true);
+					handleBadAlloc(BadAllocSource::TestFinalization, true, false, true);
 				}
 
 				// The handler updates status to aborting, so it needs to be updated to aborted here. Otherwise, the test will be left in an invalid state.
@@ -998,6 +1013,7 @@ namespace partest
 			catch(...)
 			{
 				handleUnknownExceptions();
+				updateStatus(TestStatus::Aborted);
 				guard.exceptionInFlight = false;
 				return;
 			}
@@ -1010,19 +1026,35 @@ namespace partest
 			std::unique_lock<std::mutex> statusLock(m_statusMutex, std::defer_lock);
 			std::unique_lock<std::mutex> resultLock(m_resultMutex, std::defer_lock);
 			std::lock(statusLock, resultLock);
+
+			// We're already inside the lock, so we have to call the component functions directly.
+			TestStatus status = state.getStatus();
 			// Using the flag in addition to the status for skipped, since an awaiting test that's not configured to run doesn't matter,
 			// But wouldn't be caught by the status check alone.
-			if(state.getStatus() >= TestStatus::TearingDown || getEffectiveFlags().skip == FlagState::Enabled)
+			if(state.hasFinishedRunning()
+				|| getEffectiveFlags().skip == FlagState::Enabled
+				|| state.getFailureMode() == reason)
 				return;
-			// We're already inside the lock, so we have to call the component functions directly.
 
+			if(status == TestStatus::Aborting)
+			{
+				// Do nothing unless the existing failure mode is specifically KilledByParent.
+				// If it is, then we want to update the failure mode to the new reason, since the new reason is more specific than KilledByParent.
+				if(state.getFailureMode() != FailureMode::KilledByParent)
+					return;
+
+				state.updateFailureMode(reason, source);
+				return;
+			}
+
+			state.updateResult(TestResult::Failed);
+			
 			// Skip teardown if setup never happened.
-			if(state.getStatus() >= TestStatus::SettingUp)
+			if(status >= TestStatus::SettingUp)
 				state.updateStatus(TestStatus::Aborting);
 			else
 				state.updateStatus(TestStatus::Aborted);
 
-			state.updateResult(TestResult::Failed);
 			state.updateFailureMode(reason, source);
 			resultLock.unlock();
 			statusLock.unlock();

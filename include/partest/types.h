@@ -54,6 +54,7 @@ namespace partest
 		FrameworkOutOfMemory,
 		UserOutOfMemory,
 		NoTestFunction,
+		DanglingThread,
 		Exception,
 		Timeout,
 		KilledByParent
@@ -465,13 +466,15 @@ namespace partest
 				else if(result == TestResult::Mixed)
 					m_result = m_expectFailure ? TestResult::Passed : TestResult::Mixed;
 				else if(result == TestResult::Failed)
-					m_result = m_expectFailure ? TestResult::Passed : TestResult::Mixed;
+					m_result = m_expectFailure ? TestResult::Passed : TestResult::Failed;
 				// NoResult does nothing here
 				break;
 			// This state should never be reached
 			default:
 				break;
 			}
+
+			assert(!m_expectFailure || (m_expectFailure && m_result != TestResult::Mixed) && "TestResult cannot be mixed while expectFailure is enabled");
 		}
 
 		PARTEST_CONSTEXPR_14 void updateFailureMode(FailureMode mode, BadAllocSource source = BadAllocSource::Unknown) noexcept
@@ -558,6 +561,8 @@ namespace partest
 			return "TIMEOUT";
 		case FailureMode::KilledByParent:
 			return "KILLED_BY_PARENT";
+		case FailureMode::DanglingThread:
+			return "DANGLING_THREAD";
 		default:
 			return "INVALID_FAILURE_MODE";
 		}
@@ -719,6 +724,9 @@ namespace partest
 		case FailureMode::KilledByParent:
 			modeString = "KILLED_BY_PARENT";
 			break;
+		case FailureMode::DanglingThread:
+			modeString = "DANGLING_THREAD";
+			break;
 		default:
 			modeString = "INVALID FAILURE MODE";
 		}
@@ -749,6 +757,8 @@ namespace partest
 			mode = FailureMode::Timeout;
 		else if(modeString == "KILLED_BY_PARENT")
 			mode = FailureMode::KilledByParent;
+		else if(modeString == "DANGLING_THREAD")
+			mode = FailureMode::DanglingThread;
 		else
 			mode = FailureMode::None; // Default to None for unknown strings
 		return in;

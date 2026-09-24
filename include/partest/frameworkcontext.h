@@ -80,7 +80,7 @@ namespace partest
 
 		static std::atomic<unsigned> &badAllocCount() noexcept
 		{
-			static std::atomic<unsigned> count = 0;
+			static std::atomic<unsigned> count(0);
 			return count;
 		}
 
