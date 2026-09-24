@@ -51,11 +51,31 @@ namespace partest
 	{
 		None = 0,
 		AssertionFailure,
-		UserOOM,
-		FrameworkOOM,
+		FrameworkOutOfMemory,
+		UserOutOfMemory,
+		NoTestFunction,
 		Exception,
 		Timeout,
-		Unknown
+		KilledByParent
+	};
+
+	
+	/**
+	* Enum class representing the source of a failed memory allocation, used in concert with FailureMode::OutOfMemory
+	*/
+	enum class BadAllocSource : uint8_t
+	{
+		Unknown = 0,
+		TestCreation = 1,
+		TestPreInitialization = 2,
+		TestInitialization = 3,
+		TestExecution = 4,
+		TestFinalization = 5,
+		AssertionHandling = 6,
+		LogRecording = 7,
+		UserMessageForwarding = 8,
+		TestInfoUpdating = 9,
+		DesyncedTestState = 10
 	};
 
 	/**
@@ -269,20 +289,24 @@ namespace partest
 	{
 		TestStatus m_status; // Status of the test
 		TestResult m_result; // Result of the test
-		FailureMode m_failureReason; // Reason for failure, if any
+		FailureMode m_failureMode; // Mode of failure, if any
+		BadAllocSource m_badAllocSource; // Source of bad allocation, if any
 		bool m_expectFailure;
+		bool m_setupSucceeded; // Whether the test setup was run
 	public:
 		// Constructors
-		PARTEST_CONSTEXPR_11 TestState(bool expectFailure = false) noexcept : m_status(TestStatus::Awaiting), m_result(TestResult::NoResult), m_failureReason(FailureMode::None), m_expectFailure(expectFailure) {}
-		PARTEST_CONSTEXPR_11 TestState(TestStatus status, bool expectFailure = false) noexcept : m_status(status), m_result(TestResult::NoResult), m_failureReason(FailureMode::None), m_expectFailure(expectFailure) {}
+		PARTEST_CONSTEXPR_11 TestState(bool expectFailure = false) noexcept : m_status(TestStatus::Awaiting), m_result(TestResult::NoResult), m_failureMode(FailureMode::None), m_badAllocSource(BadAllocSource::Unknown), m_expectFailure(expectFailure), m_setupSucceeded(false) {}
+		PARTEST_CONSTEXPR_11 TestState(TestStatus status, bool expectFailure = false) noexcept : m_status(status), m_result(TestResult::NoResult), m_failureMode(FailureMode::None), m_badAllocSource(BadAllocSource::Unknown), m_expectFailure(expectFailure), m_setupSucceeded(false) {}
 		/**
 		* Get a TestResult instance with default values (Awaiting status and empty message)
 		*/
-		static PARTEST_CONSTEXPR_11 TestState defaultState() noexcept { return TestState(TestStatus::Awaiting); }
+		static PARTEST_CONSTEXPR_11 TestState defaultState(bool expectFailure = false) noexcept { return TestState(TestStatus::Awaiting, expectFailure); }
 
 		PARTEST_CONSTEXPR_11 TestStatus getStatus() const noexcept { return m_status; }
-		PARTEST_CONSTEXPR_11 FailureMode getFailureReason() const noexcept { return m_failureReason; }
+		PARTEST_CONSTEXPR_11 FailureMode getFailureMode() const noexcept { return m_failureMode; }
+		PARTEST_CONSTEXPR_11 BadAllocSource getBadAllocSource() const noexcept { return m_badAllocSource; }
 		PARTEST_CONSTEXPR_11 bool getExpectFailure() const noexcept { return m_expectFailure; }
+		PARTEST_CONSTEXPR_11 bool getSetupSucceeded() const noexcept { return m_setupSucceeded; }
 
 		/**
 		* Get the effective result of the test, considering whether expectFailure is set.
@@ -452,9 +476,15 @@ namespace partest
 			}
 		}
 
-		PARTEST_CONSTEXPR_14 void updateFailureReason(FailureMode reason) noexcept
+		PARTEST_CONSTEXPR_14 void updateFailureMode(FailureMode mode, BadAllocSource source = BadAllocSource::Unknown) noexcept
 		{
-			m_failureReason = reason;
+			m_failureMode = mode;
+			m_badAllocSource = source;
+		}
+
+		PARTEST_CONSTEXPR_14 void updateSetupSucceeded(bool succeeded) noexcept
+		{
+			m_setupSucceeded = succeeded;
 		}
 
 		/**
@@ -523,16 +553,18 @@ namespace partest
 			return "NONE";
 		case FailureMode::AssertionFailure:
 			return "ASSERTION_FAILURE";
-		case FailureMode::UserOOM:
-			return "USER_OOM";
-		case FailureMode::FrameworkOOM:
-			return "FRAMEWORK_OOM";
+		case FailureMode::NoTestFunction:
+			return "NO_TEST_FUNCTION";
+		case FailureMode::FrameworkOutOfMemory:
+			return "FRAMEWORK_OUT_OF_MEMORY";
+		case FailureMode::UserOutOfMemory:
+			return "USER_OUT_OF_MEMORY";
 		case FailureMode::Exception:
 			return "EXCEPTION";
 		case FailureMode::Timeout:
 			return "TIMEOUT";
-		case FailureMode::Unknown:
-			return "UNKNOWN";
+		case FailureMode::KilledByParent:
+			return "KILLED_BY_PARENT";
 		default:
 			return "INVALID_FAILURE_MODE";
 		}
@@ -676,11 +708,14 @@ namespace partest
 		case FailureMode::AssertionFailure:
 			modeString = "ASSERTION_FAILURE";
 			break;
-		case FailureMode::UserOOM:
-			modeString = "USER_OOM";
+		case FailureMode::NoTestFunction:
+			modeString = "NO_TEST_FUNCTION";
 			break;
-		case FailureMode::FrameworkOOM:
-			modeString = "FRAMEWORK_OOM";
+		case FailureMode::FrameworkOutOfMemory:
+			modeString = "FRAMEWORK_OUT_OF_MEMORY";
+			break;
+		case FailureMode::UserOutOfMemory:
+			modeString = "USER_OUT_OF_MEMORY";
 			break;
 		case FailureMode::Exception:
 			modeString = "EXCEPTION";
@@ -688,8 +723,8 @@ namespace partest
 		case FailureMode::Timeout:
 			modeString = "TIMEOUT";
 			break;
-		case FailureMode::Unknown:
-			modeString = "UNKNOWN";
+		case FailureMode::KilledByParent:
+			modeString = "KILLED_BY_PARENT";
 			break;
 		default:
 			modeString = "INVALID FAILURE MODE";
@@ -709,18 +744,20 @@ namespace partest
 			mode = FailureMode::None;
 		else if(modeString == "ASSERTION_FAILURE")
 			mode = FailureMode::AssertionFailure;
-		else if(modeString == "USER_OOM")
-			mode = FailureMode::UserOOM;
-		else if(modeString == "FRAMEWORK_OOM")
-			mode = FailureMode::FrameworkOOM;
+		else if(modeString == "NO_TEST_FUNCTION")
+			mode = FailureMode::NoTestFunction;
+		else if(modeString == "FRAMEWORK_OUT_OF_MEMORY")
+			mode = FailureMode::FrameworkOutOfMemory;
+		else if(modeString == "USER_OUT_OF_MEMORY")
+			mode = FailureMode::UserOutOfMemory;
 		else if(modeString == "EXCEPTION")
 			mode = FailureMode::Exception;
 		else if(modeString == "TIMEOUT")
 			mode = FailureMode::Timeout;
-		else if(modeString == "UNKNOWN")
-			mode = FailureMode::Unknown;
+		else if(modeString == "KILLED_BY_PARENT")
+			mode = FailureMode::KilledByParent;
 		else
-			mode = FailureMode::Unknown; // Default to Unknown for unknown strings
+			mode = FailureMode::None; // Default to None for unknown strings
 		return in;
 	}
 
