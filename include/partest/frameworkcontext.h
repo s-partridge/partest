@@ -6,7 +6,7 @@
 #include <condition_variable>
 
 #include <partest/common.h>
-#include <partest/eventemitter.h>
+#include <partest/eventemitterinterface.h>
 
 namespace partest
 {
@@ -14,6 +14,8 @@ namespace partest
 
 	class FrameworkContext
 	{
+		static constexpr unsigned badAllocThreshold = 10;
+
 		//static accessor function for an event emitter supplied by the runner at initialization time
 		static EventEmitterInterface *&globalEventEmitter() noexcept
 		{
@@ -75,6 +77,17 @@ namespace partest
 				return m_alive;
 			}
 		};
+
+		static std::atomic<unsigned> &badAllocCount() noexcept
+		{
+			static std::atomic<unsigned> count = 0;
+			return count;
+		}
+
+		static bool hasExceededBadAllocThreshold() noexcept
+		{
+			return badAllocCount().load(std::memory_order_relaxed) >= badAllocThreshold;
+		}
 
 		static bool requestAccessIfAlive()
 		{
