@@ -99,23 +99,26 @@ namespace partest
 				aliveCondition().notify_all();
 		}
 
-		static void writeGlobalLog(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message)
+		static bool writeGlobalLog(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message)
 		{
 			// Route to the global emitter if the framework is alive. If not, route to stderr instead.
 			LifetimeGuard guard;
 
 			if(guard.isAlive()  && globalEventEmitter() != nullptr)
 			{
-				// TODO: Shore up the fallback path, match it to the abort routing used elsewhere in the framework. Catche exceptions and return them. They also count as FrameworkALlocationFailures, which should bubble back up like anything else.
+				// TODO: Shore up the fallback path, match it to the abort routing used elsewhere in the framework. Catch exceptions and return them. They also count as FrameworkAllocationFailures, which should bubble back up like anything else.
 				if(!globalEventEmitter()->emitLog(TestFrameView::getNullTestFrameView(), LogEntry(level, type, message), std::chrono::system_clock::now()))
 				{
 					std::cerr << "Failed to emit global log [" << maybeStringify(level) << "] [" << type << "]: " << message << std::endl;
+					return false;
 				}
+				return true;
 			}
 			else
 			{
-				std::cerr << "Global log [" << maybeStringify(level) << "] [" << type << "]: " << message << std::endl;
+				std::cerr << "Failed to emit global log [" << maybeStringify(level) << "] [" << type << "]: " << message << std::endl;
 			}
+			return false;
 		}
 
 		friend TestRunner;

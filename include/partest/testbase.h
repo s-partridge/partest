@@ -80,7 +80,7 @@ namespace partest
 			}
 			// If an exception is thrown during initialization or execution, cleanup still needs to happen.
 			// However, the first exception seen is given higher priority, and any exceptions thrown during cleanup are logged but not propagated.
-			// Currently the only exceptions that can escape to this point are TestIntegrityFailure, std::system_error (from locks, threads), and FrameworkAllocationFailure.
+			// Currently the only exceptions that can escape to this point are TestIntegrityFailure and std::system_error (from locks, threads)
 			// All other exceptions are caught and logged by the test frame itself.
 			catch(...)
 			{
