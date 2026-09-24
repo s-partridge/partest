@@ -20,6 +20,7 @@ namespace partest
 
 		void recordSubtestFailure(PARTEST_STRING_PARAM testFrame, PARTEST_STRING_PARAM subtestFrame, FailureMode failureMode)
 		{
+			bool badAllocOccurred = false;
 			try
 			{
 				switch(failureMode)
@@ -37,13 +38,19 @@ namespace partest
 			}
 			catch(std::bad_alloc &)
 			{
-				const TestFrame *currentFrame = (failureMode == FailureMode::PostTestTeardown) ? m_currentFrame : &TestFrame::getNullTestFrameInstance();
-				throwFrameworkAllocationFailure(BadAllocSource::TestCreation, TestStatus::TearingDown, currentFrame);
+				badAllocOccurred = true;
 			}
+
+			// Use simple nonstandard exception to bubble up past user code that may catch std::bad_alloc.
+			// The separation from the throw block is to ensure that in concurrent contexts, where multiple threads may be trying to log failures, we don't take up an extra emergency exception slot in the stack. By using a flag here, the original bad_alloc is freed first. We still run the risk of termination if too many threads hit this at once, but this pattern allows us to use a custom type without taking up the extra slot.
+			// This is a last-resort measure to ensure that the framework can report the failure, even if the user code has a catch-all for std::bad_alloc.
+			if(badAllocOccurred)
+				throw FrameworkAllocationFailure();
 		}
 
 		void recordAssertionFailure(PARTEST_STRING_PARAM testFrame, const AssertionResult &result, FailureMode failureMode)
 		{
+			bool badAllocOccurred = false;
 			try
 			{
 				switch(failureMode)
@@ -61,13 +68,18 @@ namespace partest
 			}
 			catch(std::bad_alloc &)
 			{
-				const TestFrame *currentFrame = (failureMode == FailureMode::PostTestTeardown) ? m_currentFrame : &TestFrame::getNullTestFrameInstance();
-				throwFrameworkAllocationFailure(BadAllocSource::AssertionHandling, TestStatus::TearingDown, currentFrame);
+				badAllocOccurred = true;
 			}
+
+			// Use simple nonstandard exception to bubble up past user code that may catch std::bad_alloc.
+			// This is a last-resort measure to ensure that the framework can report the failure, even if the user code has a catch-all for std::bad_alloc.
+			if(badAllocOccurred)
+				throw FrameworkAllocationFailure();
 		}
 
 		void recordLogFailure(PARTEST_STRING_PARAM testFrame, LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message, FailureMode failureMode)
 		{
+			bool badAllocOccurred = false;
 			try
 			{
 				switch(failureMode)
@@ -83,13 +95,18 @@ namespace partest
 			}
 			catch(std::bad_alloc &)
 			{
-				const TestFrame *currentFrame = (failureMode == FailureMode::PostTestTeardown) ? m_currentFrame : &TestFrame::getNullTestFrameInstance();
-				throwFrameworkAllocationFailure(BadAllocSource::LogRecording, TestStatus::TearingDown, currentFrame);
+				badAllocOccurred = true;
 			}
+
+			// Use simple nonstandard exception to bubble up past user code that may catch std::bad_alloc.
+			// This is a last-resort measure to ensure that the framework can report the failure, even if the user code has a catch-all for std::bad_alloc.
+			if(badAllocOccurred)
+				throw FrameworkAllocationFailure();
 		}
 
 		void recordMetadataFailure(PARTEST_STRING_PARAM testFrame, PARTEST_STRING_PARAM metadataKey, PARTEST_STRING_PARAM metadataValue, FailureMode failureMode)
 		{
+			bool badAllocOccurred = false;
 			try
 			{
 				switch(failureMode)
@@ -109,9 +126,13 @@ namespace partest
 			}
 			catch(std::bad_alloc &)
 			{
-				const TestFrame *currentFrame = (failureMode == FailureMode::PostTestTeardown) ? m_currentFrame : &TestFrame::getNullTestFrameInstance();
-				throwFrameworkAllocationFailure(BadAllocSource::TestInfoUpdating, TestStatus::TearingDown, currentFrame);
+				badAllocOccurred = true;
 			}
+
+			// Use simple nonstandard exception to bubble up past user code that may catch std::bad_alloc.
+			// This is a last-resort measure to ensure that the framework can report the failure, even if the user code has a catch-all for std::bad_alloc.
+			if(badAllocOccurred)
+				throw FrameworkAllocationFailure();
 		}
 
 	public:
