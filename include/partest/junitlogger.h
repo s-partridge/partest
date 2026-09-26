@@ -16,7 +16,7 @@ namespace partest
 	{
 		static bool shouldCreateLocalTestCaseNode(const TestFrame *test)
 		{
-			return (test->assertionCount() > 0 || test->subtestCount() == 0 || test->getStatus() == TestStatus::Aborted);
+			return (test->assertionCount() > 0 || test->subtestCount() == 0 || test->hasBeenAborted());
 		}
 
 		static bool shouldCreateExpectedFailureNode(const TestFrame *test)
@@ -26,7 +26,7 @@ namespace partest
 
 		static bool shouldCreateAbortNode(const TestFrame *testFrame)
 		{
-			return testFrame->getStatus() == TestStatus::Aborted;
+			return testFrame->hasBeenAborted();
 		}
 
 		static bool shouldCreateFailureNode(const TestFrame *testFrame)

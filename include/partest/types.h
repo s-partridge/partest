@@ -23,9 +23,7 @@ namespace partest
 		SettingUp,
 		Running,
 		TearingDown,
-		Aborting,
 		Completed,
-		Aborted,
 		Skipped
 	};
 
@@ -47,10 +45,12 @@ namespace partest
 		UnexpectedPass
 	};
 
+	/**
+	* Enum type representing the mode of failure for a test, if there is one.
+	*/
 	enum class FailureMode : uint8_t
 	{
 		None = 0,
-		AssertionFailure,
 		FrameworkOutOfMemory,
 		UserOutOfMemory,
 		NoTestFunction,
@@ -361,22 +361,35 @@ namespace partest
 		* 
 		* @return true if the test is in progress, false otherwise.
 		*/
-		PARTEST_CONSTEXPR_11 bool isInProgress() const noexcept { return m_status == TestStatus::SettingUp || m_status == TestStatus::Running || m_status == TestStatus::TearingDown || m_status == TestStatus::Aborting; }
+		PARTEST_CONSTEXPR_11 bool isInProgress() const noexcept { return m_status == TestStatus::SettingUp || m_status == TestStatus::Running || m_status == TestStatus::TearingDown; }
 
 		/**
-		* Check whether the test is in the process of deconstructing, which includes both aborting and tearing down.
-		* This is useful for determining if the test is in a state where it is cleaning up after itself, regardless of whether it completed successfully or was aborted.
+		* Check whether the test is in the process of deconstructing.
 		*
-		* @return true if the test status is Aborting or TearingDown, false otherwise.
+		* @return true if the test status is TearingDown, false otherwise.
 		*/
-		PARTEST_CONSTEXPR_11 bool isDeconstructing() const noexcept { return m_status == TestStatus::Aborting || m_status == TestStatus::TearingDown; }
+		PARTEST_CONSTEXPR_11 bool isDeconstructing() const noexcept { return m_status == TestStatus::TearingDown; }
+
+		/**
+		* Check whether the test is in the process of aborting due to a failure mode.
+		*
+		* @return true of the test status is TearingDown and the failure mode is not None, false otherwise.
+		*/
+		PARTEST_CONSTEXPR_11 bool isAborting() const noexcept { return m_status == TestStatus::TearingDown && m_failureMode != FailureMode::None; }
 
 		/**
 		* Check whether the test has completed.
 		* 
 		* @return true if the test has completed, false otherwise.
 		*/
-		PARTEST_CONSTEXPR_11 bool hasFinishedRunning() const noexcept { return m_status == TestStatus::Completed || m_status == TestStatus::Aborted; }
+		PARTEST_CONSTEXPR_11 bool hasFinishedRunning() const noexcept { return m_status == TestStatus::Completed; }
+
+		/**
+		* Check whether the test has been aborted.
+		*
+		* @return true if the test status is Completed and the failure mode is not None, false otherwise.
+		*/
+		PARTEST_CONSTEXPR_11 bool hasBeenAborted() const noexcept { return m_status == TestStatus::Completed && m_failureMode != FailureMode::None; }
 
 		/**
 		* Check whether the test has passed.
@@ -387,10 +400,11 @@ namespace partest
 
 		/**
 		* Check whether the test has failed or has mixed results (some assertions passed, some failed).
+		* This will also return true if the test was aborted due to a failure mode (e.g., out of memory, exception, etc.).
 		* 
-		* @return true if the test has failed or has mixed results, false otherwise.
+		* @return true if the test has failed or has mixed results, or was aborted, false otherwise.
 		*/
-		PARTEST_CONSTEXPR_11 bool hasFailures() const noexcept { return m_result == TestResult::Failed || m_result == TestResult::Mixed; }
+		PARTEST_CONSTEXPR_11 bool hasFailures() const noexcept { return m_result == TestResult::Failed || m_result == TestResult::Mixed || m_failureMode != FailureMode::None; }
 
 		/**
 		* Check whether the test passed when expectFailure was set
@@ -408,9 +422,20 @@ namespace partest
 
 		/**
 		* Update the test status.
+		* Will not update the status if the test is currently aborting or has been aborted, unless the new status is TearingDown or Completed.
+		* 
 		* @param status The new status to set for the test.
+		* @return true if the status was updated, false otherwise.
 		*/
-		PARTEST_CONSTEXPR_14 void updateStatus(const TestStatus &status) noexcept { m_status = status; }
+		PARTEST_CONSTEXPR_14 bool updateStatus(const TestStatus &status) noexcept
+		{
+			if(status >= TestStatus::TearingDown || (!isAborting() && !hasBeenAborted()))
+			{
+				m_status = status;
+				return true;
+			}
+			return false;
+		}
 
 		PARTEST_CONSTEXPR_14 void updateResultFromAssertion(bool passed) noexcept
 		{
@@ -509,10 +534,6 @@ namespace partest
 			return "TEARING_DOWN";
 		case TestStatus::Completed:
 			return "COMPLETED";
-		case TestStatus::Aborting:
-			return "ABORTING";
-		case TestStatus::Aborted:
-			return "ABORTED";
 		case TestStatus::Skipped:
 			return "SKIPPED";
 		default:
@@ -547,8 +568,6 @@ namespace partest
 		{
 		case FailureMode::None:
 			return "NONE";
-		case FailureMode::AssertionFailure:
-			return "ASSERTION_FAILURE";
 		case FailureMode::NoTestFunction:
 			return "NO_TEST_FUNCTION";
 		case FailureMode::FrameworkOutOfMemory:
@@ -585,10 +604,6 @@ namespace partest
 			status = TestStatus::TearingDown;
 		else if(statusString == "COMPLETED")
 			status = TestStatus::Completed;
-		else if(statusString == "ABORTING")
-			status = TestStatus::Aborting;
-		else if(statusString == "ABORTED")
-			status = TestStatus::Aborted;
 		else if(statusString == "SKIPPED")
 			status = TestStatus::Skipped;
 		else
@@ -618,12 +633,6 @@ namespace partest
 			break;
 		case TestStatus::Completed:
 			statusString = "COMPLETED";
-			break;
-		case TestStatus::Aborting:
-			statusString = "ABORTING";
-			break;
-		case TestStatus::Aborted:
-			statusString = "ABORTED";
 			break;
 		case TestStatus::Skipped:
 			statusString = "SKIPPED";
@@ -703,9 +712,6 @@ namespace partest
 		case FailureMode::None:
 			modeString = "NONE";
 			break;
-		case FailureMode::AssertionFailure:
-			modeString = "ASSERTION_FAILURE";
-			break;
 		case FailureMode::NoTestFunction:
 			modeString = "NO_TEST_FUNCTION";
 			break;
@@ -743,8 +749,6 @@ namespace partest
 		in >> modeString;
 		if(modeString == "NONE")
 			mode = FailureMode::None;
-		else if(modeString == "ASSERTION_FAILURE")
-			mode = FailureMode::AssertionFailure;
 		else if(modeString == "NO_TEST_FUNCTION")
 			mode = FailureMode::NoTestFunction;
 		else if(modeString == "FRAMEWORK_OUT_OF_MEMORY")

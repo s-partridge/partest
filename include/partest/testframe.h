@@ -206,6 +206,7 @@ namespace partest
 
 			if(state.hasFinishedRunning())
 				return false;
+
 			m_assertions.push_back(result);
 			state.updateResultFromAssertion(result.passed());
 			return true;
@@ -546,12 +547,6 @@ namespace partest
 			return state.isRunning();
 		}
 
-		bool isAborting() const
-		{
-			std::lock_guard<std::mutex> statusLock(m_statusMutex);
-			return state.getStatus() == TestStatus::Aborting;
-		}
-
 		bool isDeconstructing() const
 		{
 			std::lock_guard<std::mutex> statusLock(m_statusMutex);
@@ -582,6 +577,18 @@ namespace partest
 			return state.getExpectFailure();
 		}
 
+		bool isAborting() const
+		{
+			std::lock_guard<std::mutex> statusLock(m_statusMutex);
+			return state.isAborting();
+		}
+
+		bool hasBeenAborted() const
+		{
+			std::lock_guard<std::mutex> statusLock(m_statusMutex);
+			return state.hasBeenAborted();
+		}
+
 		FailureMode getFailureMode() const
 		{
 			std::lock_guard<std::mutex> statusLock(m_statusMutex);
@@ -606,10 +613,10 @@ namespace partest
 			state.updateResultFromSubtest(subtestState);
 		}
 
-		void updateStatus(TestStatus status)
+		bool updateStatus(TestStatus status)
 		{
 			std::lock_guard<std::mutex> statusLock(m_statusMutex);
-			state.updateStatus(status);
+			return state.updateStatus(status);
 		}
 
 		void updateState(TestResult result, TestStatus status, FailureMode failureMode = FailureMode::None)
@@ -708,8 +715,6 @@ namespace partest
 		*/
 		bool initializeTest(TestContext& ctx)
 		{
-			assert(getStatus() == TestStatus::Awaiting && "Test frame is already initialized or has already run.");
-
 			try
 			{
 				// TODO: Is this right? The timestamp is different from the actual test's run time, which makes sense for *profiling, but it doesn't include setup time.
@@ -728,9 +733,16 @@ namespace partest
 				return false;
 			}
 
+			// If the test was aborted before it was initialized, we should not run the setup function.
+			// This is unrelated to the catch above; another thread could have aborted the test before
+			// it was initialized regardless of bad_alloc here.
+			if(!updateStatus(TestStatus::SettingUp))
+			{
+				return false;
+			}
+
 			try
 			{
-				updateStatus(TestStatus::SettingUp);
 				if(m_testSetup != nullptr)
 				{
 					m_testSetup(ctx);
@@ -746,7 +758,7 @@ namespace partest
 				// These are exceptions originating from deep in the framework, and from points where the failure can't be recorded in the test state.
 				handleBadAlloc(BadAllocSource::TestInitialization, false, false, false);
 			}
-			catch(std::bad_alloc)
+			catch(std::bad_alloc  &)
 			{
 				// Check whether the allocation failure is already marked. If it is, then it was a framework failure,
 				// likely caused by a log or assertion (probably incorrectly) invoked from the setup function.
@@ -792,22 +804,23 @@ namespace partest
 				~RunGuard() noexcept(false)
 				{
 					frame->m_endTime = std::chrono::steady_clock::now();
-
-					std::lock_guard<std::mutex> statusLock(frame->m_statusMutex);
-					// Only update the status to TearingDown if the test is still running. If the test was aborted, the status should remain Aborting.
-					if(frame->state.isRunning())
-						frame->state.updateStatus(TestStatus::TearingDown);
+					frame->updateStatus(TestStatus::TearingDown);
 				}
 			} guard{this};
 			
 			try
 			{
-				updateStatus(TestStatus::Running);
+				if(!updateStatus(TestStatus::Running))
+				{
+					m_startTime = std::chrono::steady_clock::now();
+					return;
+				}
+				// Setting start time after locking the status mutex to minimize overhead of the test execution time measurement.
 				m_startTime = std::chrono::steady_clock::now();
 
 				// TODO: What happens if a user catches (...) and swallows an exception?
 				// If StopOnFail is enabled and the result is "failed", then I can check that here. It means an assertion should have bubbled up and did not.
-				// I should consider logging a test integrity error if thhat happens. It's an indication that the user misused a catch block.
+				// I should consider logging a test integrity error if that happens. It's an indication that the user misused a catch block.
 				// Maybe I should provide a PARTEST_RETHROW macro that simply rethrows my exception types, which can be placed between the user code and his catch block.
 				m_testFunction(ctx);
 			}
@@ -819,13 +832,12 @@ namespace partest
 			{ }
 			// FrameworkAllocationFailure is a fatal error that should not be recoverable. It should be handled by the framework and not by the test code.
 			// Rethrow to propagate the error to the framework.
-			catch(std::bad_alloc)
+			catch(std::bad_alloc &)
 			{
 				// Check whether the allocation failure is already marked. If it is, then it was a framework failure,
 				// likely from a log, assertion, or subtest creation that failed during test execution.
 				// In this case the test has already been aborted and the failure mode set, so we don't need to do anything further.
 				// Otherwise, it is a user code error. We'll mark it aborted and allow the teardown to clean up.
-
 				if(getFailureMode() != FailureMode::FrameworkOutOfMemory)
 				{
 					handleBadAlloc(BadAllocSource::TestExecution, true, false, true);
@@ -900,7 +912,7 @@ namespace partest
 				return;
 			}
 			// Test was cancelled before setup ran. Don't do anything else, but let the guard run to emit the end test event and raise any exceptions.
-			else if(getStatus() == TestStatus::Aborted)
+			else if(hasBeenAborted())
 			{
 				guard.exceptionInFlight = false;
 				return;
@@ -964,35 +976,16 @@ namespace partest
 				{
 					m_testTeardown(ctx);
 				}
-
-				if(getStatus() != TestStatus::Aborting)
-				{
-					updateStatus(TestStatus::Completed);
-				}
-				else
-				{
-					updateStatus(TestStatus::Aborted);
-				}
 			}
 			// Catching this here doesn't mean the test failed, only that something was called out of sequence during teardown.
 			catch(const TestIntegrityFailure &)
-			{
-				if(getStatus() != TestStatus::Aborting)
-				{
-					updateStatus(TestStatus::Completed);
-				}
-				else
-				{
-					updateStatus(TestStatus::Aborted);
-				}
-			}
+			{ }
 			// Unique error type propagated by TestContext when a failure emerged out-of-sequence with the test frame
 			catch(const FrameworkAllocationFailure &)
 			{
 				// These are exceptions originating from deep in the framework, and from points where the failure can't be recorded in the test state.
 				// This *should* only be possible from a detached thread.
 				handleBadAlloc(BadAllocSource::DesyncedTestState, false, false, false);
-				updateStatus(TestStatus::Aborted);
 			}
 			catch(std::bad_alloc &)
 			{
@@ -1006,18 +999,13 @@ namespace partest
 				{
 					handleBadAlloc(BadAllocSource::TestFinalization, true, false, true);
 				}
-
-				// The handler updates status to aborting, so it needs to be updated to aborted here. Otherwise, the test will be left in an invalid state.
-				updateStatus(TestStatus::Aborted);
 			}
 			catch(...)
 			{
 				handleUnknownExceptions();
-				updateStatus(TestStatus::Aborted);
-				guard.exceptionInFlight = false;
-				return;
 			}
 
+			updateStatus(TestStatus::Completed);
 			guard.exceptionInFlight = false;
 		}
 
@@ -1029,14 +1017,20 @@ namespace partest
 
 			// We're already inside the lock, so we have to call the component functions directly.
 			TestStatus status = state.getStatus();
-			// Using the flag in addition to the status for skipped, since an awaiting test that's not configured to run doesn't matter,
-			// But wouldn't be caught by the status check alone.
-			if(state.hasFinishedRunning()
-				|| getEffectiveFlags().skip == FlagState::Enabled
-				|| state.getFailureMode() == reason)
+
+			// We only need to abort if the test is still running. If it has finished, then there's nothing to do.
+			if(state.hasFinishedRunning() || getEffectiveFlags().skip == FlagState::Enabled)
 				return;
 
-			if(status == TestStatus::Aborting)
+			// A second abort request with the same reason is redundant, so we can ignore it.
+			if(state.getFailureMode() == reason)
+				return;
+
+
+			// Check if the test is already aborting. If it is, we don't want to override the existing failure mode unless it's KilledByParent.
+			// The reason for  this exception is that if a new failure happens after the parent has already killed the test,
+			// the new failure reason is more specific. For every other case, we don't want to override the existing failure mode.
+			if(state.isAborting())
 			{
 				// Do nothing unless the existing failure mode is specifically KilledByParent.
 				// If it is, then we want to update the failure mode to the new reason, since the new reason is more specific than KilledByParent.
@@ -1051,9 +1045,9 @@ namespace partest
 			
 			// Skip teardown if setup never happened.
 			if(status >= TestStatus::SettingUp)
-				state.updateStatus(TestStatus::Aborting);
+				state.updateStatus(TestStatus::TearingDown);
 			else
-				state.updateStatus(TestStatus::Aborted);
+				state.updateStatus(TestStatus::Completed);
 
 			state.updateFailureMode(reason, source);
 			resultLock.unlock();
