@@ -103,8 +103,7 @@ namespace partest
 		mutable std::mutex m_subtestsMutex; // Mutex for synchronizing access to subtests
 		mutable std::mutex m_logsMutex; // Mutex for synchronizing access to logs
 		mutable std::mutex m_assertionsMutex; // Mutex for synchronizing access to assertions
-		mutable std::mutex m_statusMutex; // Mutex for synchronizing access to test status and state
-		mutable std::mutex m_resultMutex; // Mutex for synchronizing access to test result
+		mutable std::mutex m_stateMutex; // Mutex for synchronizing access to test state
 
 		
 		/**
@@ -127,8 +126,8 @@ namespace partest
 		bool pushLogEntry(const LogEntry &entry)
 		{
 			std::unique_lock<std::mutex> logLock(m_logsMutex, std::defer_lock);
-			std::unique_lock<std::mutex> statusLock(m_statusMutex, std::defer_lock);
-			std::lock(logLock, statusLock);
+			std::unique_lock<std::mutex> stateLock(m_stateMutex, std::defer_lock);
+			std::lock(logLock, stateLock);
 
 			if(state.hasFinishedRunning())
 				return false;
@@ -200,9 +199,8 @@ namespace partest
 		bool pushAssertion(const AssertionResult &result)
 		{
 			std::unique_lock<std::mutex> assertionLock(m_assertionsMutex, std::defer_lock);
-			std::unique_lock<std::mutex> resultLock(m_resultMutex, std::defer_lock);
-			std::unique_lock<std::mutex> statusLock(m_statusMutex, std::defer_lock);
-			std::lock(assertionLock, resultLock, statusLock);
+			std::unique_lock<std::mutex> stateLock(m_stateMutex, std::defer_lock);
+			std::lock(assertionLock, stateLock);
 
 			if(state.hasFinishedRunning())
 				return false;
@@ -266,8 +264,8 @@ namespace partest
 			TestFrame *subtestPtr = subtest.get();
 			{
 				std::unique_lock<std::mutex> subtestsLock(m_subtestsMutex, std::defer_lock);
-				std::unique_lock<std::mutex> statusLock(m_statusMutex, std::defer_lock);
-				std::lock(subtestsLock, statusLock);
+				std::unique_lock<std::mutex> stateLock(m_stateMutex, std::defer_lock);
+				std::lock(subtestsLock, stateLock);
 				if(state.isDeconstructing() || state.hasFinishedRunning())
 					throw TestIntegrityFailure("Cannot add subtest to a test frame that is deconstructing or has finished running.");
 				m_subtests.push_back(subtestPtr);
@@ -510,10 +508,7 @@ namespace partest
 
 		void resetState() 
 		{ 
-			std::unique_lock<std::mutex> statusLock(m_statusMutex, std::defer_lock);
-			std::unique_lock<std::mutex> resultLock(m_resultMutex, std::defer_lock);
-			std::lock(statusLock, resultLock);
-
+			std::lock_guard<std::mutex> stateLock(m_stateMutex);
 			state = TestState::defaultState(flags.expectFailure == FlagState::Enabled);
 		}
 
@@ -532,98 +527,96 @@ namespace partest
 		// Add locks around accessors and mutators to status and result.
 		TestStatus getStatus() const
 		{
-			std::lock_guard<std::mutex> statusLock(m_statusMutex);
+			std::lock_guard<std::mutex> stateLock(m_stateMutex);
 			return state.getStatus();
 		}
 		TestOutcome getEffectiveResult() const
 		{
-			std::lock_guard<std::mutex> resultLock(m_resultMutex);
+			std::lock_guard<std::mutex> stateLock(m_stateMutex);
 			return state.getEffectiveResult();
 		}
 
 		bool isRunning() const
 		{
-			std::lock_guard<std::mutex> statusLock(m_statusMutex);
+			std::lock_guard<std::mutex> stateLock(m_stateMutex);
 			return state.isRunning();
 		}
 
 		bool isDeconstructing() const
 		{
-			std::lock_guard<std::mutex> statusLock(m_statusMutex);
+			std::lock_guard<std::mutex> stateLock(m_stateMutex);
 			return state.isDeconstructing();
 		}
 
 		bool hasFinishedRunning() const
 		{
-			std::lock_guard<std::mutex> statusLock(m_statusMutex);
+			std::lock_guard<std::mutex> stateLock(m_stateMutex);
 			return state.hasFinishedRunning();
 		}
 
 		bool hasFailures() const
 		{
-			std::lock_guard<std::mutex> resultLock(m_resultMutex);
+			std::lock_guard<std::mutex> stateLock(m_stateMutex);
 			return state.hasFailures();
 		}
 
 		bool wasSkipped() const
 		{
-			std::lock_guard<std::mutex> statusLock(m_statusMutex);
+			std::lock_guard<std::mutex> stateLock(m_stateMutex);
 			return state.wasSkipped();
 		}
 
 		bool getExpectFailure() const
 		{
-			std::lock_guard<std::mutex> statusLock(m_statusMutex);
+			std::lock_guard<std::mutex> stateLock(m_stateMutex);
 			return state.getExpectFailure();
 		}
 
 		bool isAborting() const
 		{
-			std::lock_guard<std::mutex> statusLock(m_statusMutex);
+			std::lock_guard<std::mutex> stateLock(m_stateMutex);
 			return state.isAborting();
 		}
 
 		bool hasBeenAborted() const
 		{
-			std::lock_guard<std::mutex> statusLock(m_statusMutex);
+			std::lock_guard<std::mutex> stateLock(m_stateMutex);
 			return state.hasBeenAborted();
 		}
 
 		FailureMode getFailureMode() const
 		{
-			std::lock_guard<std::mutex> statusLock(m_statusMutex);
+			std::lock_guard<std::mutex> stateLock(m_stateMutex);
 			return state.getFailureMode();
 		}
 
 		void updateResult(const TestResult &result)
 		{
-			std::lock_guard<std::mutex> resultLock(m_resultMutex);
+			std::lock_guard<std::mutex> stateLock(m_stateMutex);
 			state.updateResult(result);
 		}
 
 		void updateResultFromAssertion(bool passed)
 		{
-			std::lock_guard<std::mutex> resultLock(m_resultMutex);
+			std::lock_guard<std::mutex> stateLock(m_stateMutex);
 			state.updateResultFromAssertion(passed);
 		}
 
 		void updateFromSubtestState(const TestState &subtestState)
 		{
-			std::lock_guard<std::mutex> resultLock(m_resultMutex);
+			std::lock_guard<std::mutex> stateLock(m_stateMutex);
 			state.updateFromSubtestState(subtestState);
 		}
 
 		bool updateStatus(TestStatus status)
 		{
-			std::lock_guard<std::mutex> statusLock(m_statusMutex);
+			std::lock_guard<std::mutex> stateLock(m_stateMutex);
 			return state.updateStatus(status);
 		}
 
 		void updateState(TestResult result, TestStatus status, FailureMode failureMode = FailureMode::None)
 		{
-			std::unique_lock<std::mutex> statusLock(m_statusMutex, std::defer_lock);
-			std::unique_lock<std::mutex> resultLock(m_resultMutex, std::defer_lock);
-			std::lock(statusLock, resultLock);
+			std::lock_guard<std::mutex> stateLock(m_stateMutex);
 			state.updateResult(result);
 			state.updateStatus(status);
 			state.updateFailureMode(failureMode);
@@ -1012,9 +1005,7 @@ namespace partest
 
 		void abortAndCancelSubtests(FailureMode reason, BadAllocSource source = BadAllocSource::Unknown)
 		{
-			std::unique_lock<std::mutex> statusLock(m_statusMutex, std::defer_lock);
-			std::unique_lock<std::mutex> resultLock(m_resultMutex, std::defer_lock);
-			std::lock(statusLock, resultLock);
+			std::unique_lock<std::mutex> stateLock(m_stateMutex);
 
 			// We're already inside the lock, so we have to call the component functions directly.
 			TestStatus status = state.getStatus();
@@ -1051,8 +1042,7 @@ namespace partest
 				state.updateStatus(TestStatus::Completed);
 
 			state.updateFailureMode(reason, source);
-			resultLock.unlock();
-			statusLock.unlock();
+			stateLock.unlock();
 
 			std::lock_guard<std::mutex> subtestsLock(m_subtestsMutex);
 			for(TestFrame *subtest : m_subtests)
@@ -1267,9 +1257,7 @@ namespace partest
 		*/
 		TestState getCurrentState() const
 		{
-			std::unique_lock<std::mutex> statusLock(m_statusMutex, std::defer_lock);
-			std::unique_lock<std::mutex> resultLock(m_resultMutex, std::defer_lock);
-			std::lock(statusLock, resultLock);
+			std::lock_guard<std::mutex> stateLock(m_stateMutex);
 			return state;
 		}
 
