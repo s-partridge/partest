@@ -40,10 +40,28 @@ namespace partest
 		NoResult = 0,
 		Failed,
 		Passed,
+		Mixed
+	};
+
+	enum class TestOutcome : uint8_t
+	{
+		NoResult = 0,
+		Failed,
+		Passed,
 		Mixed,
 		ExpectedFailure,
-		UnexpectedPass
+		UnexpectedPass,
+		Aborted,
+		Skipped
 	};
+
+	// TestOutcome and TestResult are semantically related but carry different information.
+	// TestOutcome represents the presentation of the test result to the user, while TestResult represents the actual result of the test.
+	// For simplicity of implementation, the ordering of the enum values is the same, so that a simple cast can be used to convert between them.
+	static_assert(static_cast<uint8_t>(TestOutcome::NoResult) == static_cast<uint8_t>(TestResult::NoResult), "TestOutcome and TestResult enum values must match");
+	static_assert(static_cast<uint8_t>(TestOutcome::Mixed) == static_cast<uint8_t>(TestResult::Mixed), "TestOutcome and TestResult enum values must match");
+	static_assert(static_cast<uint8_t>(TestOutcome::Failed) == static_cast<uint8_t>(TestResult::Failed), "TestOutcome and TestResult enum values must match");
+	static_assert(static_cast<uint8_t>(TestOutcome::Passed) == static_cast<uint8_t>(TestResult::Passed), "TestOutcome and TestResult enum values must match");
 
 	/**
 	* Enum type representing the mode of failure for a test, if there is one.
@@ -173,7 +191,7 @@ namespace partest
 		/**
 		* Get a copy of the flag set with expectFailure set
 		* 
-		* @pararm enabled The new value for stopOnFail. Defaults to `Enabled`
+		* @pararm enabled The new value for expectFailure. Defaults to `Enabled`
 		* @returns a copy of the current set of flags, with expectFailure explicitly set
 		*/
 		PARTEST_CONSTEXPR_14 TestFlags withExpectFailure(FlagState enabled = FlagState::Enabled) const noexcept
@@ -312,34 +330,32 @@ namespace partest
 		* 
 		* If expectFailure is set, expected values include ExpectedFailure and UnexpectedPass. If expectFailure is not set, returns Passed, Failed, Mixed, or NoResult.
 		* 
-		* @return The effective TestResult
+		* @return The effective TestOutcome
 		*/
-		PARTEST_CONSTEXPR_14 TestResult getEffectiveResult() const noexcept
+		PARTEST_CONSTEXPR_14 TestOutcome getEffectiveResult() const noexcept
 		{
-			// While expectFailure is set, a "passed" test means the test failed as expected,
-			//  and a "failed" test means the test passed unexpectedly.
-			//  "mixed" is not a valid state while expectFailure is set,
-			//  but logically, it would mean the test failed as expected, because at least one assertion or subtest failed.
+			if(wasSkipped())
+				return TestOutcome::Skipped;
+
+			if(isAborting() || hasBeenAborted())
+				return TestOutcome::Aborted;
+
 			if(m_expectFailure)
 			{
 				switch(m_result)
 				{
 				case TestResult::NoResult:
-					return TestResult::NoResult;
-				case TestResult::Passed:
-					return TestResult::ExpectedFailure;
+					return TestOutcome::NoResult;
 				case TestResult::Failed:
-					return TestResult::UnexpectedPass;
+					return TestOutcome::ExpectedFailure;
+				case TestResult::Passed:
+					return TestOutcome::UnexpectedPass;
 				case TestResult::Mixed:
-					return TestResult::ExpectedFailure; // Mixed results, but at least one failure means it failed as expected
-				default:
-					return m_result;
+					return TestOutcome::ExpectedFailure;
 				}
 			}
-			else
-			{
-				return m_result;
-			}
+
+			return static_cast<TestOutcome>(m_result);
 		}
 		
 		/**
@@ -396,7 +412,12 @@ namespace partest
 		* 
 		* @return true if the test has passed, false otherwise.
 		*/
-		PARTEST_CONSTEXPR_11 bool passed() const noexcept { return m_result == TestResult::Passed; }
+		PARTEST_CONSTEXPR_14 bool passed() const noexcept
+		{
+			TestOutcome effectiveResult = getEffectiveResult();
+			return effectiveResult == TestOutcome::Passed
+				|| effectiveResult == TestOutcome::ExpectedFailure;
+		}
 
 		/**
 		* Check whether the test has failed or has mixed results (some assertions passed, some failed).
@@ -404,14 +425,22 @@ namespace partest
 		* 
 		* @return true if the test has failed or has mixed results, or was aborted, false otherwise.
 		*/
-		PARTEST_CONSTEXPR_11 bool hasFailures() const noexcept { return m_result == TestResult::Failed || m_result == TestResult::Mixed || m_failureMode != FailureMode::None; }
+		PARTEST_CONSTEXPR_14 bool hasFailures() const noexcept
+		{
+			TestOutcome effectiveResult = getEffectiveResult();
+
+			return effectiveResult == TestOutcome::Failed
+				|| effectiveResult == TestOutcome::Mixed
+				|| effectiveResult == TestOutcome::UnexpectedPass
+				|| effectiveResult == TestOutcome::Aborted;
+		}
 
 		/**
 		* Check whether the test passed when expectFailure was set
 		* 
 		* @returns true if the test passed unexpectedly, false otherwise
 		*/
-		PARTEST_CONSTEXPR_14 bool didPassUnexpectedly() const noexcept { return getEffectiveResult() == TestResult::UnexpectedPass; }
+		PARTEST_CONSTEXPR_14 bool didPassUnexpectedly() const noexcept { return getEffectiveResult() == TestOutcome::UnexpectedPass; }
 
 		/**
 		* Check whether the test was skipped.
@@ -442,20 +471,13 @@ namespace partest
 			switch(m_result)
 			{
 			case TestResult::NoResult:
-				if(!m_expectFailure)
-					m_result = passed ? TestResult::Passed : TestResult::Failed;
-				else
-					m_result = passed ? TestResult::Failed : TestResult::Passed;
+				m_result = passed ? TestResult::Passed : TestResult::Failed;
 				break;
 			case TestResult::Failed:
-				if(!m_expectFailure)
-					m_result = passed ? TestResult::Mixed : TestResult::Failed;
-				else
-					m_result = passed ? TestResult::Failed : TestResult::Passed;
+				m_result = passed ? TestResult::Mixed : TestResult::Failed;
 				break;
 			case TestResult::Passed:
-				if(!m_expectFailure)
-					m_result = passed ? TestResult::Passed : TestResult::Mixed;
+				m_result = passed ? TestResult::Passed : TestResult::Mixed;
 				break;
 			case TestResult::Mixed:
 				break;
@@ -463,7 +485,6 @@ namespace partest
 			default:
 				break;
 			}
-			assert(!m_expectFailure || (m_expectFailure && m_result != TestResult::Mixed) && "TestResult cannot be mixed while expectFailure is enabled");
 		}
 
 		PARTEST_CONSTEXPR_14 void updateResult(const TestResult &result) noexcept
@@ -472,34 +493,30 @@ namespace partest
 			{
 			case TestResult::NoResult:
 				if(result == TestResult::Passed)
-					m_result = m_expectFailure ? TestResult::Failed : TestResult::Passed;
+					m_result = TestResult::Passed;
 				else if(result == TestResult::Failed || result == TestResult::Mixed)
-					m_result = m_expectFailure ? TestResult::Passed : result;
+					m_result = result;
 				// NoResult does nothing here
 				break;
 			case TestResult::Passed:
 				if(result == TestResult::Failed || result == TestResult::Mixed)
-					m_result = m_expectFailure ? TestResult::Passed : TestResult::Mixed;
+					m_result = TestResult::Mixed;
 				// Passed and NoResult do nothing here
 				break;
 			case TestResult::Mixed:
 				// No future result further alters a mixed state
 				break;
 			case TestResult::Failed:
-				if(result == TestResult::Passed)
-					m_result = m_expectFailure ? TestResult::Failed : TestResult::Mixed;
-				else if(result == TestResult::Mixed)
-					m_result = m_expectFailure ? TestResult::Passed : TestResult::Mixed;
+				if(result == TestResult::Passed || result == TestResult::Mixed)
+					m_result = TestResult::Mixed;
 				else if(result == TestResult::Failed)
-					m_result = m_expectFailure ? TestResult::Passed : TestResult::Failed;
+					m_result = TestResult::Failed;
 				// NoResult does nothing here
 				break;
 			// This state should never be reached
 			default:
 				break;
 			}
-
-			assert(!m_expectFailure || (m_expectFailure && m_result != TestResult::Mixed) && "TestResult cannot be mixed while expectFailure is enabled");
 		}
 
 		PARTEST_CONSTEXPR_14 void updateFailureMode(FailureMode mode, BadAllocSource source = BadAllocSource::Unknown) noexcept
@@ -512,9 +529,37 @@ namespace partest
 		* Update the test result based on a new assertion result.
 		* @param assertResult The result of the new assertion to incorporate into the test result.
 		*/
-		PARTEST_CONSTEXPR_14 void updateResultFromSubtest(const TestState &subtestState) noexcept
+		PARTEST_CONSTEXPR_14 void updateFromSubtestState(const TestState &subtestState) noexcept
 		{
-			updateResult(subtestState.m_result);
+			if(subtestState.wasSkipped())
+				return;
+
+			else if(subtestState.isAborting() || subtestState.hasBeenAborted())
+			{
+				updateResult(TestResult::Failed);
+			}
+			else if(subtestState.m_expectFailure)
+			{
+				switch(subtestState.m_result)
+				{
+				case TestResult::NoResult:
+					break;
+				case TestResult::Failed:
+					updateResult(TestResult::Passed);
+					break;
+				case TestResult::Passed:
+					updateResult(TestResult::Failed);
+					break;
+				case TestResult::Mixed:
+					// Mixed results in a test with expectFailure set indicate that it failed as expected, so we treat it as a pass for the parent test
+					updateResult(TestResult::Passed);
+					break;
+				}
+			}
+			else
+			{
+				updateResult(subtestState.m_result);
+			}
 		}
 
 		friend std::ostream &operator<<(std::ostream &out, const TestState &state);
@@ -553,10 +598,6 @@ namespace partest
 			return "FAILED";
 		case TestResult::Mixed:
 			return "MIXED";
-		case TestResult::ExpectedFailure:
-			return "EXPECTED_FAILURE";
-		case TestResult::UnexpectedPass:
-			return "UNEXPECTED_PASS";
 		default:
 			return "INVALID_RESULT_VALUE";
 		}
@@ -659,10 +700,6 @@ namespace partest
 			result = TestResult::Failed;
 		else if(statusString == "MIXED")
 			result = TestResult::Mixed;
-		else if(statusString == "EXPECTED_FAILURE")
-			result = TestResult::ExpectedFailure;
-		else if(statusString == "UNEXPECTED_PASS")
-			result = TestResult::UnexpectedPass;
 		else
 			result = TestResult::NoResult; // Default to NoResult for unknown strings
 		return in;
@@ -687,12 +724,6 @@ namespace partest
 			break;
 		case TestResult::Mixed:
 			statusString = "MIXED";
-			break;
-		case TestResult::ExpectedFailure:
-			statusString = "EXPECTED_FAILURE";
-			break;
-		case TestResult::UnexpectedPass:
-			statusString = "UNEXPECTED_PASS";
 			break;
 		default:
 			statusString = "INVALID RESULT VALUE";

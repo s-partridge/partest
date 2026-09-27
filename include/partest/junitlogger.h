@@ -21,7 +21,7 @@ namespace partest
 
 		static bool shouldCreateExpectedFailureNode(const TestFrame *test)
 		{
-			return test->getEffectiveResult() == TestResult::ExpectedFailure;
+			return test->getEffectiveResult() == TestOutcome::ExpectedFailure;
 		}
 
 		static bool shouldCreateAbortNode(const TestFrame *testFrame)
@@ -41,7 +41,7 @@ namespace partest
 
 		static bool didPassUnexpectedly(const TestFrame *testFrame)
 		{
-			return testFrame->getEffectiveResult() == TestResult::UnexpectedPass;
+			return testFrame->getEffectiveResult() == TestOutcome::UnexpectedPass;
 		}
 
 		std::unique_ptr<xml::TestSuitesNode> m_root;
@@ -165,7 +165,7 @@ namespace partest
 			}
 
 			// Determine failure mode. Did the test pass unexpectedly?
-			if(testFrame->getEffectiveResult() == TestResult::UnexpectedPass)
+			if(testFrame->getEffectiveResult() == TestOutcome::UnexpectedPass)
 			{
 				node->message = "Test passed unexpectedly";
 				node->type = "UnexpectedPass";

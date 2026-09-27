@@ -60,7 +60,7 @@ namespace partest
 		std::string testNameToDepth(size_t depth) const;
 
 		TestStatus getStatus() const;
-		TestResult getEffectiveResult() const;
+		TestOutcome getEffectiveResult() const;
 		bool getExpectFailure() const;
 
 		std::chrono::steady_clock::duration duration() const noexcept { return endTime() - startTime(); }
@@ -535,7 +535,7 @@ namespace partest
 			std::lock_guard<std::mutex> statusLock(m_statusMutex);
 			return state.getStatus();
 		}
-		TestResult getEffectiveResult() const
+		TestOutcome getEffectiveResult() const
 		{
 			std::lock_guard<std::mutex> resultLock(m_resultMutex);
 			return state.getEffectiveResult();
@@ -607,10 +607,10 @@ namespace partest
 			state.updateResultFromAssertion(passed);
 		}
 
-		void updateResultFromSubtest(const TestState &subtestState)
+		void updateFromSubtestState(const TestState &subtestState)
 		{
 			std::lock_guard<std::mutex> resultLock(m_resultMutex);
-			state.updateResultFromSubtest(subtestState);
+			state.updateFromSubtestState(subtestState);
 		}
 
 		bool updateStatus(TestStatus status)
@@ -931,7 +931,7 @@ namespace partest
 				{
 					if(subtest->hasFinishedRunning() || subtest->wasSkipped())
 					{
-						updateResultFromSubtest(subtest->state);
+						updateFromSubtestState(subtest->state);
 					}
 					// Log still running subtests if the current test is not aborting. No subtests should be in progress under normal circumstances.
 					// TODO: Should the current test be flagged as aborting if a subtest is still running? Probably.
@@ -954,7 +954,8 @@ namespace partest
 
 				// Don't even bother trying to log anything if the test is aborting due to an out-of-memory condition.
 				// The log allocation will likely fail and throw again, plus the memory error is more important than an empty test.
-				if(getEffectiveResult() == TestResult::NoResult && getFailureMode() != FailureMode::UserOutOfMemory)
+				// It would also be incorrect to mark the test as passing on an abort.
+				if(getEffectiveResult() == TestOutcome::NoResult && getFailureMode() != FailureMode::UserOutOfMemory)
 				{
 					LogEntry log = LogEntry(LogLevel::Warning, LOG_TYPE_TEST, "Test \"" + fullTestName() + "\" completed without any assertions. Defaulting to PASSED.");
 					if(pushLogEntry(log))
@@ -1319,7 +1320,7 @@ namespace partest
 	inline std::string TestFrameView::testNameToDepth(size_t depth) const { return m_testFrame->testNameToDepth(depth); }
 
 	inline TestStatus TestFrameView::getStatus() const { return m_testFrame->getStatus(); }
-	inline TestResult TestFrameView::getEffectiveResult() const { return m_testFrame->getEffectiveResult(); }
+	inline TestOutcome TestFrameView::getEffectiveResult() const { return m_testFrame->getEffectiveResult(); }
 	inline bool TestFrameView::getExpectFailure() const { return m_testFrame->getExpectFailure(); }
 
 	inline std::chrono::steady_clock::time_point TestFrameView::startTime() const noexcept { return m_testFrame->startTime(); }

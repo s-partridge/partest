@@ -33,16 +33,15 @@ namespace partest
 		// Called when a test ends
 		void onTestEnd(const Event &event, const EndTestPayload &payload) override
 		{
-			TestResult result = payload.testFrame.getEffectiveResult();
+			TestOutcome result = payload.testFrame.getEffectiveResult();
 			
 			if(m_verbosity >= LogLevel::Info)
 			{
-				payload.testFrame.getExpectFailure();
 				std::string resultString = maybeStringify(result);
 			
 				m_out << "Ended test \"" << payload.testFrame.fullTestName() << "\" with " << resultString << std::endl;
 			}
-			else if(payload.testFrame.getEffectiveResult() == TestResult::UnexpectedPass)
+			else if(payload.testFrame.getEffectiveResult() == TestOutcome::UnexpectedPass)
 			{
 				m_out << "Test \"" << payload.testFrame.fullTestName() << "\" was set to fail, but passed unexpectedly." << std::endl;
 			}
