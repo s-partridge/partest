@@ -526,14 +526,18 @@ namespace partest
 		}
 
 		/**
-		* Update the test result based on a new assertion result.
+		* Update the test result based on a new assertion result. Skipped tests have no results and are ignored.
+		* Aborted tests are always considered failed, regardless of whether ExpectFailure is set.
+		* Where ExpectFailure is set, the result of an aborted test has no meaning.
+		* 
 		* @param assertResult The result of the new assertion to incorporate into the test result.
 		*/
 		PARTEST_CONSTEXPR_14 void updateFromSubtestState(const TestState &subtestState) noexcept
 		{
 			if(subtestState.wasSkipped())
+			{
 				return;
-
+			}
 			else if(subtestState.isAborting() || subtestState.hasBeenAborted())
 			{
 				updateResult(TestResult::Failed);
