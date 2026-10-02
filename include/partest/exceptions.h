@@ -10,49 +10,9 @@
 namespace partest
 {
 	/**
-	* Exception class for assertion failures. Includes file and line information for easier debugging.
-	* Used internally by ASSERT macros.
+	* Exception class for assertion failures.
 	*/
-	class AssertionFailure
-	{
-		const std::string m_what;
-		const std::string m_file;
-		const int m_line;
-	public:
-		/**
-		* Constructor for AssertionFailure.
-		* 
-		* @param file The file where the assertion failed. Typically provided by the __FILE__ macro.
-		* @param line The line number where the assertion failed. Typically provided by the __LINE__ macro.
-		* @param message A message describing the assertion failure.
-		*/
-	#if PARTEST_CPP_VERSION >= 17
-		AssertionFailure(PARTEST_STRING_PARAM file, int line, std::string_view message) : m_what(message), m_file(file), m_line(line) {}
-	#endif
-
-		AssertionFailure(PARTEST_STRING_PARAM file, int line, const std::string &message) : m_what(message), m_file(file), m_line(line) {}
-
-		AssertionFailure(PARTEST_STRING_PARAM file, int line, const char *message) : m_what(message), m_file(file), m_line(line) {}
-
-		/**
-		* Get the message for the assertion
-		*/
-		const char *what() const noexcept { return m_what.c_str(); }
-
-		/**
-		* Get the file where the assertion failed.
-		* 
-		* @return The file name as a C-style string.
-		*/
-		const char *file() const noexcept { return m_file.c_str(); }
-		
-		/**
-		* Get the line number where the assertion failed.
-		* 
-		* @return The line number as an integer.
-		*/
-		int line() const noexcept { return m_line; }
-	};
+	class AssertionFailure {};
 
 	/**
 	* Exception class for test integrity failures. Indicates a serious issue with the test itself.
@@ -131,7 +91,7 @@ namespace partest
 		}
 		catch(const AssertionFailure &e)
 		{
-			return e.what();
+			return "AssertionFailure";
 		}
 		catch(const FrameworkAllocationFailure &)
 		{
@@ -167,7 +127,11 @@ namespace partest
 		}
 		catch(const AssertionFailure &e)
 		{
-			return e.what();
+			return "AssertionFailure";
+		}
+		catch(const FrameworkAllocationFailure &)
+		{
+			return "FrameworkAllocationFailure";
 		}
 		catch(const std::exception &e)
 		{

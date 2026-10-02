@@ -782,7 +782,6 @@ namespace partest
 			assert(!wasSkipped() && "Invalid test state. Test should not be run if it was skipped.");
 
 			// This precedes the run guard because the guard itself would temporarily override status.
-			// Correct status transitions from SettingUp to Aborting on the failed path, skipping TearingDown entirely.
 			if(m_testFunction == nullptr)
 			{
 				abortAndCancelSubtests(FailureMode::NoTestFunction);
@@ -877,8 +876,6 @@ namespace partest
 					{
 						// TODO: Ensure that emitEvent actually can't allocate memory.
 						frame->m_eventEmitter->emitEndTest(std::move(frame->m_endTestEvent), std::chrono::system_clock::now());
-						// TODO: Maybe find a way to avoid memory allocation in maybeRaiseOnReturn.
-						// Currently constructs a string in place, which could throw std::bad_alloc.
 						frame->maybeRaiseOnReturn();
 					}
 					catch(std::bad_alloc &)
@@ -1054,40 +1051,33 @@ namespace partest
 
 		/**
 		* Check whether the current test should raise an assertion failure based on its status and flags. Used in ASSERT macros.
+		* This will raise on failure regardless of whether ExpectFailure is set.
 		* 
-		* @param file The file where the assertion is being checked. Typically provided by the __FILE__ macro.
-		* @param line The line number where the assertion is being checked. Typically provided by the __LINE__ macro.
-		* @param condition The condition being asserted, as a string. Typically provided by the condition expression itself.
 		* @throws AssertionFailure if the current test has failed and stopOnFail is enabled.
 		*/
-		void maybeRaiseOnAssertion(const char *file, int line, PARTEST_STRING_PARAM condition)
+		void maybeRaiseOnAssertion()
 		{
-			if(getEffectiveFlags().stopOnFail == FlagState::Enabled && (hasFailures()))
+			TestResult result = getRawResult();
+			if(getEffectiveFlags().stopOnFail == FlagState::Enabled && (result == TestResult::Failed || result == TestResult::Mixed))
 			{
-				throw AssertionFailure(file, line, condition);
+				throw AssertionFailure();
 			}
 		}
 
 		/**
-		* Check whether the current test should raise an assertion failure based on its status and flags.
+		* Check whether the current test should raise an assertion failure. Called after the test has already finished running,
+		* to propagate the failure up to the parent test frame if stopOnFail is enabled.
 		* 
-		* @throws AssertionFailure if the current test has failed and stopOnFail is enabled, but NOT on the root test frame. Since this is called from finalize, raising an exception on the root would be meaningless.
+		* @throws AssertionFailure if the current test has failed and the parent has stopOnFail enabled. Since this is called from finalize, after the current test has already stopped, this only relies on the parent test frame's stopOnFail flag.
 		*/
 		void maybeRaiseOnReturn()
 		{
-			if(m_parent != nullptr && getEffectiveFlags().stopOnFail == FlagState::Enabled && getTestFailureCount())
+			// Raise if the parent is configured to stop on failure.
+			if(m_parent != nullptr && m_parent->shouldStopOnFail() && hasFailures())
 			{
-				throw AssertionFailure("", 0, "Stopped on failure in " + metadata.name);
+				throw AssertionFailure();
 			}
 		}
-
-		/**
-		* Check if the current test should raise an assertion failure based on its status and flags. Used in ASSERT macros.
-		* 
-		* @param result Object containing the evaluated result of an assertion
-		* @throws AssertionFailure if the current test has failed and stopOnFail is enabled.
-		*/
-		void maybeRaiseOnAssertion(const AssertionResult &result, TestFrame *test) { maybeRaiseOnAssertion(result.file.c_str(), result.line, result.getCondition()); }
 
 		/**
 		* Process an evaluated assertion. Log it and raise an exception if necessary.
@@ -1105,7 +1095,7 @@ namespace partest
 
 			// On failure, allow an exception to be raised if the current test frame is configured to do so.
 			if(!result.passed())
-				maybeRaiseOnAssertion(result.file.c_str(), result.line, result.getCondition());
+				maybeRaiseOnAssertion();
 
 			return true;
 		}

@@ -13,9 +13,10 @@ namespace partest
 	* Enum type representing the state of a test.
 	*
 	* Awaiting - The test has not yet started.
+	* SettingUp - The test is running its setup function, if any, and has not yet advanced to the test function.
 	* Running - The test is currently running.
-	* Completed - The test has completed successfully.
-	* Aborted - The test was aborted due to an error or failure.
+	* TearingDown - The test has completed its test function, or was aborted, and is running its teardown function, if any.
+	* Completed - The test has completed successfully, or was aborted.
 	*/
 	enum class TestStatus : uint8_t
 	{
@@ -43,6 +44,18 @@ namespace partest
 		Mixed
 	};
 
+	/**
+	* Enum type representing the outcome of a test, as opposed to only the raw result.
+	*
+	* NoResult - The test has not yet finished, or was skipped.
+	* Failed - The test failed.
+	* Passed - The test passed.
+	* Mixed - The test had mixed results (some assertions passed, some failed).
+	* ExpectedFailure - The test was set to ExpectFailure and at least one exception or subtest failed.
+	* UnexpectedPass - The test was set to ExpectFailure, and no exceptions or subtests failed.
+	* Aborted - Something unexpected outside the realm of the test caused it to abort (e.g., an unhandled exception, or a bad allocation).
+	* Skipped - The test was skipped due to the skip flag being set.
+	*/
 	enum class TestOutcome : uint8_t
 	{
 		NoResult = 0,
