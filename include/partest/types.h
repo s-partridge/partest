@@ -730,9 +730,76 @@ namespace partest
 			statusString = "MIXED";
 			break;
 		default:
-			statusString = "INVALID RESULT VALUE";
+			statusString = "INVALID_RESULT_VALUE";
 		}
 		out << statusString;
+		return out;
+	}
+
+	/**
+	* Overloaded stream extraction operator for TestOutcome enum.
+	*/
+	inline std::istream &operator>>(std::istream &in, TestOutcome &outcome)
+	{
+		std::string outcomeString;
+		in >> outcomeString;
+		if(outcomeString == "NO_RESULT")
+			outcome = TestOutcome::NoResult;
+		else if(outcomeString == "FAILED")
+			outcome = TestOutcome::Failed;
+		else if(outcomeString == "PASSED")
+			outcome = TestOutcome::Passed;
+		else if(outcomeString == "MIXED")
+			outcome = TestOutcome::Mixed;
+		else if(outcomeString == "EXPECTED_FAILURE")
+			outcome = TestOutcome::ExpectedFailure;
+		else if(outcomeString == "UNEXPECTED_PASS")
+			outcome = TestOutcome::UnexpectedPass;
+		else if(outcomeString == "ABORTED")
+			outcome = TestOutcome::Aborted;
+		else if(outcomeString == "SKIPPED")
+			outcome = TestOutcome::Skipped;
+		else
+			outcome = TestOutcome::NoResult; // Default to NoResult for unknown strings
+		return in;
+	}
+
+	/**
+	* Overloaded stream insertion operator for TestOutcome enum.
+	*/
+	inline std::ostream &operator<<(std::ostream &out, const TestOutcome &outcome)
+	{
+		std::string outcomeString;
+		switch(outcome)
+		{
+		case TestOutcome::NoResult:
+			outcomeString = "NO_RESULT";
+			break;
+		case TestOutcome::Failed:
+			outcomeString = "FAILED";
+			break;
+		case TestOutcome::Passed:
+			outcomeString = "PASSED";
+			break;
+		case TestOutcome::Mixed:
+			outcomeString = "MIXED";
+			break;
+		case TestOutcome::ExpectedFailure:
+			outcomeString = "EXPECTED_FAILURE";
+			break;
+		case TestOutcome::UnexpectedPass:
+			outcomeString = "UNEXPECTED_PASS";
+			break;
+		case TestOutcome::Aborted:
+			outcomeString = "ABORTED";
+			break;
+		case TestOutcome::Skipped:
+			outcomeString = "SKIPPED";
+			break;
+		default:
+			outcomeString = "INVALID_OUTCOME_VALUE";
+		}
+		out << outcomeString;
 		return out;
 	}
 
@@ -769,7 +836,7 @@ namespace partest
 			modeString = "DANGLING_THREAD";
 			break;
 		default:
-			modeString = "INVALID FAILURE MODE";
+			modeString = "INVALID_FAILURE_MODE";
 		}
 		out << modeString;
 		return out;
@@ -867,7 +934,11 @@ namespace partest
 	*/
 	inline std::ostream &operator<<(std::ostream &out, const TestState &state)
 	{
-		out << "Status: " << state.m_status << " - Result: " << state.m_result;
+		out << "Status: " << state.m_status << " - Result: " << state.getEffectiveResult();
+		if(state.m_failureMode != FailureMode::None)
+		{
+			out << " - Failure Mode: " << state.m_failureMode;
+		}
 		return out;
 	}
 

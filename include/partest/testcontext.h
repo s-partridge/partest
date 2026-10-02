@@ -140,7 +140,7 @@ namespace partest
 		}
 
 	public:
-		TestContext(TestFrame *currentFrame, void (*runTestFunc)(TestFrame *test))
+		TestContext(TestFrame *currentFrame, void (*runTestFunc)(TestFrame *test)) noexcept
 			: m_currentFrame(currentFrame), m_runTestFunc(runTestFunc) { }
 
 		template<PARTEST_INVOCABLE_WITH(Func, TestContext&)>
