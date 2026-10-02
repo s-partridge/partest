@@ -554,6 +554,17 @@ namespace partest
 			return state.hasFinishedRunning();
 		}
 
+		bool shouldStopOnFail() const
+		{
+			return getEffectiveFlags().stopOnFail == FlagState::Enabled;
+		}
+
+		TestResult getRawResult() const
+		{
+			std::lock_guard<std::mutex> stateLock(m_stateMutex);
+			return state.getRawResult();
+		}
+
 		bool hasFailures() const
 		{
 			std::lock_guard<std::mutex> stateLock(m_stateMutex);

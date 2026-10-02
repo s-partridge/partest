@@ -334,6 +334,7 @@ namespace partest
 		static PARTEST_CONSTEXPR_11 TestState defaultState(bool expectFailure = false) noexcept { return TestState(TestStatus::Awaiting, expectFailure); }
 
 		PARTEST_CONSTEXPR_11 TestStatus getStatus() const noexcept { return m_status; }
+		PARTEST_CONSTEXPR_11 TestResult getRawResult() const noexcept { return m_result; }
 		PARTEST_CONSTEXPR_11 FailureMode getFailureMode() const noexcept { return m_failureMode; }
 		PARTEST_CONSTEXPR_11 BadAllocSource getBadAllocSource() const noexcept { return m_badAllocSource; }
 		PARTEST_CONSTEXPR_11 bool getExpectFailure() const noexcept { return m_expectFailure; }
@@ -539,11 +540,11 @@ namespace partest
 		}
 
 		/**
-		* Update the test result based on a new assertion result. Skipped tests have no results and are ignored.
+		* Update the test result based on the state of a subtest. This is used to propagate the results of subtests up to the parent test.
 		* Aborted tests are always considered failed, regardless of whether ExpectFailure is set.
-		* Where ExpectFailure is set, the result of an aborted test has no meaning.
+		* Skipped tests do not contribute to the parent test result.
 		* 
-		* @param assertResult The result of the new assertion to incorporate into the test result.
+		* @param subtestState The state of the subtest to incorporate into the parent test result.
 		*/
 		PARTEST_CONSTEXPR_14 void updateFromSubtestState(const TestState &subtestState) noexcept
 		{
@@ -568,7 +569,7 @@ namespace partest
 					updateResult(TestResult::Failed);
 					break;
 				case TestResult::Mixed:
-					// Mixed results in a test with expectFailure set indicate that it failed as expected, so we treat it as a pass for the parent test
+					// Mixed results in a subtest with expectFailure set indicate an expected failure, which is a passing condition for the parent test.
 					updateResult(TestResult::Passed);
 					break;
 				}
