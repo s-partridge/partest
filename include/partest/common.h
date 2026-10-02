@@ -79,6 +79,21 @@ namespace partest
 	using enable_if_t = typename std::enable_if<B, T>::type;
 #endif
 
+#if PARTEST_CPP_VERSION >= 17
+	using std::void_t;
+#else
+	
+	template<class...>
+	struct make_void
+	{
+		typedef void type;
+	};
+
+	// This construction is necessary because of a defect in C++11 and C++14 that allows SFINAE to silently fail in certain contexts.
+	template<class... T>
+	using void_t = typename make_void<T...>::type;
+#endif
+
 	namespace traits
 	{
 		// Traits for raw character types
