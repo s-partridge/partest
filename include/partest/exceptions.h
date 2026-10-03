@@ -42,10 +42,14 @@ namespace partest
 		TestIntegrityFailure(const char *message) : std::runtime_error(message) {}
 	};
 
-	class TestFrame;
-	enum class TestStatus : uint8_t;
-
-	class FrameworkAllocationFailure {};
+	class ThreadException : public std::runtime_error
+	{
+		std::thread::id m_threadId;
+	public:
+		ThreadException(const std::string &message, std::thread::id threadId) : std::runtime_error(message), m_threadId(threadId) {}
+		ThreadException(const char *message, std::thread::id threadId) : std::runtime_error(message), m_threadId(threadId) {}
+		std::thread::id threadId() const noexcept { return m_threadId; }
+	};
 
 	// Kill the entire application if the framework fails to allocate memory.
 	// This is a last-resort measure to prevent undefined behavior from propagating through the test framework.
@@ -99,7 +103,7 @@ namespace partest
 		{
 			throw;
 		}
-		catch(const AssertionFailure &e)
+		catch(const AssertionFailure &)
 		{
 			return "AssertionFailure";
 		}
