@@ -143,26 +143,45 @@ namespace partest
 				throw FrameworkAllocationFailure();
 		}
 
+		/**
+		* bad_alloc guarded factory function for TestInfo.
+		* This ensures that if a bad_alloc occurs during the construction of a TestInfo object, it is handled gracefully and reported to the framework.
+		*/
+		TestInfo makeTestInfo(PARTEST_STRING_PARAM name, PARTEST_STRING_PARAM description = "", PARTEST_STRING_PARAM file = "", unsigned int line = 0)
+		{
+			FrameworkContext::LifetimeGuard guard;
+			try
+			{
+				return TestInfo(name, description, file, line);
+			}
+			catch(const std::bad_alloc &)
+			{
+				if(guard.isAlive())
+					m_currentFrame->handleBadAlloc(BadAllocSource::TestCreation, false, true);
+				else
+					FrameworkContext::badAllocCount().fetch_add(1, std::memory_order_relaxed);
+			}
+			throw TestAllocationFailure();
+		}
+
 	public:
-		TestContext(TestFrame *currentFrame, void (*runTestFunc)(TestFrame *test)) noexcept
-			: m_currentFrame(currentFrame), m_runTestFunc(runTestFunc) { }
+		TestContext(TestFrame *currentFrame, void (*runTestFunc)(TestFrame *test), bool inTeardown) noexcept
+			: m_currentFrame(currentFrame), m_runTestFunc(runTestFunc), m_inTeardown(inTeardown) { }
 
 		template<PARTEST_INVOCABLE_WITH(Func, TestContext&)>
 		void subtest(PARTEST_STRING_PARAM name, Func &&testFunc)
-		{ subtest(TestInfo(name), TestFlags::defaultInherit(), testFunc); }
+		{ subtest(makeTestInfo(name), TestFlags::defaultInherit(), testFunc); }
 
 		template<PARTEST_INVOCABLE_WITH(Func, TestContext&)>
 		void subtest(PARTEST_STRING_PARAM name, PARTEST_STRING_PARAM description, Func &&testFunc)
-		{ subtest(TestInfo(name, description), TestFlags::defaultInherit(), testFunc); }
-
+		{ subtest(makeTestInfo(name, description), TestFlags::defaultInherit(), testFunc); }
 		template<PARTEST_INVOCABLE_WITH(Func, TestContext&)>
 		void subtest(PARTEST_STRING_PARAM name, const TestFlags& flags, Func &&testFunc)
-		{ subtest(TestInfo(name), flags, testFunc); }
+		{ subtest(makeTestInfo(name), flags, testFunc); }
 
 		template<PARTEST_INVOCABLE_WITH(Func, TestContext&)>
 		void subtest(PARTEST_STRING_PARAM name, PARTEST_STRING_PARAM description, const TestFlags& flags, Func &&testFunc)
-		{ subtest(TestInfo(name, description), flags, testFunc); }
-
+		{ subtest(makeTestInfo(name, description), flags, testFunc); }
 		template<PARTEST_INVOCABLE_WITH(Func, TestContext&)>
 		void subtest(Func &&testFunc)
 		{ subtest(TestInfo::defaultInfo(), TestFlags::defaultInherit(), testFunc); }
@@ -190,6 +209,7 @@ namespace partest
 				throw TestIntegrityFailure("Attempted to add subtest '" + testInfo.name + "' after the test runner concluded.");
 			}
 
+			bool testAllocFailed = false;
 			try
 			{
 				// During teardown, only a context invoked through the teardown function is valid.
@@ -205,9 +225,20 @@ namespace partest
 				// If the subtest cannot be added, log the error with the runner and rethrow the exception to indicate that this call was made after the test had finished running.
 				// This should only happen if the subtest was added from a different thread after the test has completed.
 				// TODO: Remember that if this is run from a raw thread and the user doesn't catch it, it will terminate the program. This will only function from framework-mananged thread wrappers. See partest::thread once it exists.
-				recordSubtestFailure(m_currentFrame->metadata.name, testInfo.name, FailureMode::PostTestTeardown);
+				recordSubtestFailure(m_currentFrame->metadata.name, testInfo.name, FailureMode::PostTestRunPhase);
 				throw;
 			}
+			// Because testFunc is a template type, it may require conversion to a std::function, which may allocate memory.
+			// If this allocation fails, we need to catch it and handle it gracefully.
+			catch(std::bad_alloc &)
+			{
+				m_currentFrame->handleBadAlloc(BadAllocSource::TestCreation, false, true);
+				testAllocFailed = true;
+			}
+			
+			if(testAllocFailed)
+				throw TestAllocationFailure();
+
 			m_runTestFunc(newSubtest);
 		}
 
@@ -239,7 +270,7 @@ namespace partest
 				
 				// TODO: Remember that if this is run from a raw thread and the user doesn't catch it, it will terminate the program.
 				// This will only function from framework-mananged thread wrappers. See partest::thread once it exists.
-				recordAssertionFailure(m_currentFrame->metadata.name, result, FailureMode::PostTestTeardown);
+				recordAssertionFailure(m_currentFrame->metadata.name, result, FailureMode::PostTestRunPhase);
 				throw;
 			}
 		}
