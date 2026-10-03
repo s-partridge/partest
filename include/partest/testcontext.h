@@ -10,13 +10,17 @@ namespace partest
 	{
 		enum class FailureMode
 		{
-			PostTestTeardown,		// Failure occurred after the test frame had finished running, but before the runner itself shut down
+			PostTestRunPhase,			// Failure occurred after the test frame had finished running, but before the runner itself shut down
 			PostFrameworkTeardown	// Failure occurred after the entire framework had finished running, and the runner itself was shutting down
 		};
 
 		TestFrame *m_currentFrame;
 		//Replace test suite ref with a function pointer for runTest, to avoid circular dependency. This will be a function pointer to TestBase::runTest
 		void (*m_runTestFunc)(TestFrame *test);
+
+		// If true, this context is operating during test teardown. Otherwise it is assumed to be during setup or execution.
+		// This only matters in threaded execution contexts, where a thread may call back into a test frame at unexpected times.
+		bool m_inTeardown;
 
 		void recordSubtestFailure(PARTEST_STRING_PARAM testFrame, PARTEST_STRING_PARAM subtestFrame, FailureMode failureMode)
 		{
@@ -25,10 +29,10 @@ namespace partest
 			{
 				switch(failureMode)
 				{
-				case FailureMode::PostTestTeardown:
+				case FailureMode::PostTestRunPhase:
 					FrameworkContext::writeGlobalLog(LogLevel::Error, partest::LOG_TYPE_EXCEPTION, "Attempted to add subtest '"
 						+ PARTEST_STRING_PARAM_TO_STRING(subtestFrame) + "' after test '"
-						+ PARTEST_STRING_PARAM_TO_STRING(testFrame) + "' concluded. This indicates that a detached thread awoke post-teardown.");
+						+ PARTEST_STRING_PARAM_TO_STRING(testFrame) + "' completed its run phase.");
 					break;
 				case FailureMode::PostFrameworkTeardown:
 					FrameworkContext::writeGlobalLog(LogLevel::Error, partest::LOG_TYPE_EXCEPTION, "Attempted to add subtest '"
@@ -56,9 +60,9 @@ namespace partest
 			{
 				switch(failureMode)
 				{
-				case FailureMode::PostTestTeardown:
+				case FailureMode::PostTestRunPhase:
 					FrameworkContext::writeGlobalLog(LogLevel::Error, partest::LOG_TYPE_EXCEPTION, "Attempted to process an assertion for test '"
-						+ PARTEST_STRING_PARAM_TO_STRING(testFrame) + "' after the test concluded. This indicates that a detached thread awoke post-teardown.\nAssertion of type "
+						+ PARTEST_STRING_PARAM_TO_STRING(testFrame) + "' after it completed its run phase.\nAssertion of type "
 						+ result.assertType() + " originated from: " + maybeStringify(result.file) + ':' + maybeStringify(result.line));
 					break;
 				case FailureMode::PostFrameworkTeardown:
@@ -86,9 +90,9 @@ namespace partest
 			{
 				switch(failureMode)
 				{
-				case FailureMode::PostTestTeardown:
+				case FailureMode::PostTestRunPhase:
 					FrameworkContext::writeGlobalLog(LogLevel::Error, partest::LOG_TYPE_EXCEPTION, "Attempted to add log entry to test '"
-						+ PARTEST_STRING_PARAM_TO_STRING(testFrame) + "' after it concluded. This indicates that a detached thread awoke post-teardown.\n" + PARTEST_STRING_PARAM_TO_STRING(message));
+						+ PARTEST_STRING_PARAM_TO_STRING(testFrame) + "' after it completed its run phase.\n" + PARTEST_STRING_PARAM_TO_STRING(message));
 					break;
 				case FailureMode::PostFrameworkTeardown:
 					FrameworkContext::writeGlobalLog(LogLevel::Error, partest::LOG_TYPE_EXCEPTION, "Attempted to add log entry to test after the runner concluded. This indicates that a detached thread awoke post-teardown.\nLog message: " + PARTEST_STRING_PARAM_TO_STRING(message));
@@ -114,7 +118,7 @@ namespace partest
 			{
 				switch(failureMode)
 				{
-				case FailureMode::PostTestTeardown:
+				case FailureMode::PostTestRunPhase:
 					FrameworkContext::writeGlobalLog(LogLevel::Error, partest::LOG_TYPE_EXCEPTION, "Attempted to set '"
 						+ PARTEST_STRING_PARAM_TO_STRING(metadataKey) + "' to '"
 						+ PARTEST_STRING_PARAM_TO_STRING(metadataValue) + "' on test '"
@@ -188,6 +192,12 @@ namespace partest
 
 			try
 			{
+				// During teardown, only a context invoked through the teardown function is valid.
+				// If the context is *not* in teardown, this indicates it was invoked via a thread spawned during the test.
+				// Any use of a non-teardown context is a trigger to kill the thread.
+				if(!m_inTeardown && m_currentFrame->hasStartedTeardown())
+					throw TestIntegrityFailure("Caught test worker thread running during teardown.");
+
 				newSubtest = m_currentFrame->addSubtest(flags, testInfo, testFunc);
 			}
 			catch(TestIntegrityFailure &)
@@ -214,6 +224,12 @@ namespace partest
 
 			try
 			{
+				// During teardown, only a context invoked through the teardown function is valid.
+				// If the context is *not* in teardown, this indicates it was invoked via a thread spawned during the test.
+				// Any use of a non-teardown context is a trigger to kill the thread.
+				if(!m_inTeardown && m_currentFrame->hasStartedTeardown())
+					throw TestIntegrityFailure("Caught test worker thread running during teardown.");
+
 				m_currentFrame->commitAssertion(result);
 			}
 			catch(TestIntegrityFailure &)
@@ -242,6 +258,12 @@ namespace partest
 
 			try
 			{
+				// During teardown, only a context invoked through the teardown function is valid.
+				// If the context is *not* in teardown, this indicates it was invoked via a thread spawned during the test.
+				// Any use of a non-teardown context is a trigger to kill the thread.
+				if(!m_inTeardown && m_currentFrame->hasStartedTeardown())
+					throw TestIntegrityFailure("Caught test worker thread running during teardown.");
+
 				m_currentFrame->recordLog(level, type, message);
 			}
 			catch(TestIntegrityFailure &)
@@ -250,7 +272,7 @@ namespace partest
 				// This should only happen if the log entry was made from a different thread after the test has completed.
 				// TODO: Remember that if this is run from a raw thread and the user doesn't catch it, it will terminate the program.
 				// This will only function from framework-mananged thread wrappers. See partest::thread once it exists.
-				recordLogFailure(m_currentFrame->metadata.name, level, type, message, FailureMode::PostTestTeardown);
+				recordLogFailure(m_currentFrame->metadata.name, level, type, message, FailureMode::PostTestRunPhase);
 				throw;
 			}
 		}

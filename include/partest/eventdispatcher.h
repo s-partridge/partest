@@ -74,6 +74,8 @@ namespace partest
 			m_reporters.push_back(reporter);
 		}
 
+		// TODO: Adding elements to a queue allocates memory. It's possible to use a linked list instead, which is the eventual goal.
+		// For now, this is the last hole that can cause a std::bad_alloc to be thrown in the framework.
 		bool pushEvent(std::unique_ptr<Event> event) override
 		{
 			if(!isDispatching())
@@ -131,6 +133,8 @@ namespace partest
 			m_reporters.push_back(reporter);
 		}
 
+		// TODO: Adding elements to a queue allocates memory. It's possible to use a linked list instead, which is the eventual goal.
+		// For now, this is the last hole that can cause a std::bad_alloc to be thrown in the framework.
 		bool pushEvent(std::unique_ptr<Event> event) override
 		{
 			std::lock_guard<std::mutex> lock(m_queueMutex);

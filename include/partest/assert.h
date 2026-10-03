@@ -414,7 +414,7 @@ namespace partest
 			actual = exceptExpr;
 		}
 		// Just rethrow.
-		catch(const FrameworkAllocationFailure &)
+		catch(const AssertionFailure &)
 		{
 			throw;
 		}
@@ -424,7 +424,12 @@ namespace partest
 			throw;
 		}
 		// Just rethrow.
-		catch(const AssertionFailure &)
+		catch(const TestAllocationFailure &)
+		{
+			throw;
+		}
+		// Just rethrow.
+		catch(const FrameworkAllocationFailure &)
 		{
 			throw;
 		}
@@ -466,11 +471,15 @@ namespace partest
 			passed = true;
 			actual = exceptExpr;
 		}
-		catch(const FrameworkAllocationFailure &)
+		catch(const TestIntegrityFailure &)
+		{
+			throw;
+		}		
+		catch(const TestAllocationFailure &)
 		{
 			throw;
 		}
-		catch(const TestIntegrityFailure &)
+		catch(const FrameworkAllocationFailure &)
 		{
 			throw;
 		}
@@ -503,7 +512,8 @@ namespace partest
 		{
 			codeWrapper();
 		}
-		catch(const FrameworkAllocationFailure &)
+		// Assertions are framework events and don't count as throwing for this assertion
+		catch(const AssertionFailure &)
 		{
 			throw;
 		}
@@ -511,8 +521,11 @@ namespace partest
 		{
 			throw;
 		}
-		// Assertions are framework events and don't count as throwing for this assertion
-		catch(const AssertionFailure &)
+		catch(const TestAllocationFailure &)
+		{
+			throw;
+		}
+		catch(const FrameworkAllocationFailure &)
 		{
 			throw;
 		}

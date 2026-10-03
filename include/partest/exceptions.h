@@ -10,12 +10,22 @@
 namespace partest
 {
 	/**
-	* Exception class for assertion failures.
+	* Exception raised when an assertion or test fails with stopOnFail enabled.
 	*/
 	class AssertionFailure {};
 
 	/**
-	* Exception class for test integrity failures. Indicates a serious issue with the test itself.
+	* Exception raised when a test frame fails to allocate memory, to differentiate OOM sources between the test frame, user code, and general framework code.
+	*/
+	class TestAllocationFailure {};
+
+	/**
+	* Exception raised when the framework fails to allocate memory, but the source cannot be reliably attributed to a specific test frame.
+	*/
+	class FrameworkAllocationFailure {};
+
+	/**
+	* Exception raised for test integrity failures. Indicates a serious issue with the test itself.
 	* These will be raised by the framework when an invalid state is detected within the test hierarchy.
 	*/
 	class TestIntegrityFailure : public std::runtime_error
@@ -93,6 +103,10 @@ namespace partest
 		{
 			return "AssertionFailure";
 		}
+		catch(const TestAllocationFailure &)
+		{
+			return "TestAllocationFailure";
+		}
 		catch(const FrameworkAllocationFailure &)
 		{
 			return "FrameworkAllocationFailure";
@@ -128,6 +142,10 @@ namespace partest
 		catch(const AssertionFailure &e)
 		{
 			return "AssertionFailure";
+		}
+		catch(const TestAllocationFailure &)
+		{
+			return "TestAllocationFailure";
 		}
 		catch(const FrameworkAllocationFailure &)
 		{

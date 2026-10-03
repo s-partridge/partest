@@ -148,15 +148,12 @@ namespace partest
 			m_eventEmitter->emitLog(&m_testFrameView, entry, std::chrono::system_clock::now());
 		}
 
-		void handleBadAlloc(BadAllocSource source, bool userCode, bool rethrow, bool isNewFailure)
+		void handleBadAlloc(BadAllocSource source, bool userCode, bool isNewFailure)
 		{
 			abortAndCancelSubtests(userCode ? FailureMode::UserOutOfMemory : FailureMode::FrameworkOutOfMemory, source);
 
 			if(isNewFailure)
 				FrameworkContext::badAllocCount().fetch_add(1, std::memory_order_relaxed);
-
-			if(rethrow)
-				throw;
 		}
 
 		/**
@@ -185,7 +182,7 @@ namespace partest
 			}
 			catch(std::bad_alloc &)
 			{
-				handleBadAlloc(BadAllocSource::TestExecution, false, false, true);
+				handleBadAlloc(BadAllocSource::TestExecution, false, true);
 			}
 		}
 
@@ -226,10 +223,11 @@ namespace partest
 		*
 		* @param result The assertion result to be processed
 		* @return true if the assertion result was processed successfully, false if the test has already finished running
-		* @throws std::bad_alloc if memory allocation fails while processing the assertion result
+		* @throws TestAllocationFailure if memory allocation fails while processing the assertion result
 		*/
 		bool processAssertion(const AssertionResult &result)
 		{
+			bool testAllocFailed = false;
 			try
 			{
 				if(pushAssertion(result))
@@ -240,8 +238,14 @@ namespace partest
 			}
 			catch(std::bad_alloc &)
 			{
-				handleBadAlloc(BadAllocSource::AssertionHandling, false, true, true);
+				handleBadAlloc(BadAllocSource::AssertionHandling, false, true);
+				testAllocFailed = true;
 			}
+			// The flag pattern here prevents an extra emergency exception slot from being consumed on systems that use these.
+			// It makes no difference on MSVC.
+			if(testAllocFailed)
+				throw TestAllocationFailure();
+
 			return false;
 		}
 
@@ -300,6 +304,8 @@ namespace partest
 		using TestFrameConstIter = std::vector<TestFrame *>::const_iterator;	// Const iterator type for iterating over subtests
 		using LogEntryConstIter = std::deque<LogEntry>::const_iterator;			// Const iterator type for iterating over log entries
 		using AssertionConstIter = std::deque<AssertionResult>::const_iterator; // Const iterator type for iterating over assertion results
+
+		friend class TestContext;
 
 		/**
 		* Constructor for TestFrame.
@@ -360,7 +366,7 @@ namespace partest
 		* @param testSetup The function the subtest will invoke for pre-run setup. Defaults to nullptr.
 		* @param testTeardown The function the subtest will invoke for post-run teardown. Defaults to nullptr.
 		* @return A pointer to the created subtest
-		* @throws FrameworkAllocationFailure if memory allocation fails while creating the subtest
+		* @throws TestAllocationFailure if memory allocation fails while creating the subtest
 		* @throws TestIntegrityFailure if invoked while the current test frame is deconstructing or has finished running
 		* @note testFunction *must* be set before the subtest is run. Attempting to run a subtest with a null testFunction will result in a TestIntegrityFailure exception being thrown.
 		*/
@@ -371,14 +377,19 @@ namespace partest
 			const std::function<void(TestContext&)> &testSetup = nullptr,
 			const std::function<void(TestContext&)> &testTeardown = nullptr)
 		{
+			bool testAllocFailed = false;
 			try
 			{
 				return addSubtest(partest::make_unique<TestFrame>(m_eventEmitter, flags, metadata, testFunction, testSetup, testTeardown));
 			}
 			catch(std::bad_alloc &)
 			{
-				handleBadAlloc(BadAllocSource::TestCreation, false, true, true);
+				handleBadAlloc(BadAllocSource::TestCreation, false, true);
+				testAllocFailed = true;
 			}
+			if(testAllocFailed)
+				throw TestAllocationFailure();
+
 			return nullptr; // This line will never be reached, but is here to satisfy the compiler.
 		}
 
@@ -392,7 +403,7 @@ namespace partest
 		* @param testSetup The function the subtest will invoke for pre-run setup. Defaults to nullptr.
 		* @param testTeardown The function the subtest will invoke for post-run teardown. Defaults to nullptr.
 		* @return A pointer to the created subtest
-		* @throws FrameworkAllocationFailure if memory allocation fails while creating the subtest
+		* @throws TestAllocationFailure if memory allocation fails while creating the subtest
 		* @throws TestIntegrityFailure if invoked while the current test frame is deconstructing or has finished running
 		* @note testFunction *must* be set before the subtest is run. Attempting to run a subtest with a null testFunction will result in a TestIntegrityFailure exception being thrown.
 		*/
@@ -404,14 +415,19 @@ namespace partest
 			const std::function<void(TestContext&)> &testSetup = nullptr,
 			const std::function<void(TestContext&)> &testTeardown = nullptr)
 		{
+			bool testAllocFailed = false;
 			try
 			{
 				return addSubtest(partest::make_unique<TestFrame>(eventEmitter, flags, metadata, testFunction, testSetup, testTeardown));
 			}
 			catch(std::bad_alloc &)
 			{
-				handleBadAlloc(BadAllocSource::TestCreation, false, true, true);
+				handleBadAlloc(BadAllocSource::TestCreation, false, true);
+				testAllocFailed = true;
 			}
+			if(testAllocFailed)
+				throw TestAllocationFailure();
+
 			return nullptr; // This line will never be reached, but is here to satisfy the compiler.
 		}
 
@@ -459,16 +475,28 @@ namespace partest
 		Timestamp timestamp() const noexcept { return m_timeStarted; }
 
 		PARTEST_STRING_PARAM testFile() const noexcept { return metadata.file; }
+
+		/**
+		* Sets the name of the file where this test is written.
+		*
+		* @param fileName The name of the file to set
+		* @throws TestAllocationFailure if memory allocation fails while setting the file name
+		*/
 		void setTestFile(PARTEST_STRING_PARAM fileName)
 		{
+			bool testAllocFailed = false;
 			try
 			{
 				metadata.file = fileName;
 			}
 			catch(std::bad_alloc &)
 			{
-				handleBadAlloc(BadAllocSource::TestInfoUpdating, false, true, true);
+				handleBadAlloc(BadAllocSource::TestInfoUpdating, false, true);
+
+				testAllocFailed = true;
 			}
+			if(testAllocFailed)
+				throw TestAllocationFailure();
 		}
 
 		unsigned testLine() const noexcept { return metadata.line; }
@@ -552,6 +580,12 @@ namespace partest
 		{
 			std::lock_guard<std::mutex> stateLock(m_stateMutex);
 			return state.hasFinishedRunning();
+		}
+
+		bool hasStartedTeardown() const
+		{
+			std::lock_guard<std::mutex> stateLock(m_stateMutex);
+			return state.isDeconstructing() || state.hasFinishedRunning();
 		}
 
 		bool shouldStopOnFail() const
@@ -731,9 +765,9 @@ namespace partest
 					return false;
 				}
 			}
-			catch(std::bad_alloc &)
+			catch(const std::bad_alloc &)
 			{
-				handleBadAlloc(BadAllocSource::TestPreInitialization, false, false, true);
+				handleBadAlloc(BadAllocSource::TestPreInitialization, false, true);
 				return false;
 			}
 
@@ -753,26 +787,26 @@ namespace partest
 				}
 				return true;
 			}
-			catch(const TestIntegrityFailure &)
+			catch(const AssertionFailure &)
 			{
-				// Don't do anything. These exceptions are only raised when the test is already in an invalid state.
+				// TODO: Is this right? I think it is. A failed assertion in setup with stopOnFail enabled should prevent the test from running.
+				updateStatus(TestStatus::TearingDown);
 			}
+			// Don't do anything. These exceptions are only raised when the test is already in an invalid state.
+			catch(const TestIntegrityFailure &)
+			{ }
+			// These are exceptions bubbled up from the current test frame, so they've already been handled.
+			catch(const TestAllocationFailure &)
+			{ }
+			// These are exceptions originating from deep in the framework, and from points where the failure can't be recorded in the test state.
 			catch(const FrameworkAllocationFailure &)
 			{
-				// These are exceptions originating from deep in the framework, and from points where the failure can't be recorded in the test state.
-				handleBadAlloc(BadAllocSource::TestInitialization, false, false, false);
+				handleBadAlloc(BadAllocSource::TestInitialization, false, false);
 			}
-			catch(std::bad_alloc  &)
+			// These are exceptions originating from user code.
+			catch(const std::bad_alloc &)
 			{
-				// Check whether the allocation failure is already marked. If it is, then it was a framework failure,
-				// likely caused by a log or assertion (probably incorrectly) invoked from the setup function.
-				// In this case the test has already been aborted and the failure mode set, so we don't need to do anything further.
-				//
-				// Otherwise, it is a user code error. We'll mark it aborted and allow the teardown to clean up.
-				if(getFailureMode() != FailureMode::FrameworkOutOfMemory)
-				{
-					handleBadAlloc(BadAllocSource::TestInitialization, true, false, true);
-				}
+				handleBadAlloc(BadAllocSource::TestInitialization, true, true);
 			}
 			catch(...)
 			{
@@ -831,30 +865,25 @@ namespace partest
 			// Nothing special to do here, but this is necessary to prevent the exception from propagating further.
 			
 			// Assertion failures indicate that the test has already been marked as Failed, so no additional action is needed here 
-			catch(const partest::AssertionFailure &)
+			catch(const AssertionFailure &)
 			{ }
-			// FrameworkAllocationFailure is a fatal error that should not be recoverable. It should be handled by the framework and not by the test code.
-			// Rethrow to propagate the error to the framework.
-			catch(std::bad_alloc &)
-			{
-				// Check whether the allocation failure is already marked. If it is, then it was a framework failure,
-				// likely from a log, assertion, or subtest creation that failed during test execution.
-				// In this case the test has already been aborted and the failure mode set, so we don't need to do anything further.
-				// Otherwise, it is a user code error. We'll mark it aborted and allow the teardown to clean up.
-				if(getFailureMode() != FailureMode::FrameworkOutOfMemory)
-				{
-					handleBadAlloc(BadAllocSource::TestExecution, true, false, true);
-				}
-			}
 			catch(const TestIntegrityFailure &)
 			{
 				// Test integrity failures indicate that the test has already been marked as Failed, so no additional action is needed here
 				// TODO: Re-evaluate this. Is this correct? Currently these errors indicate that a test has been misused, and they are reported directly to the global logger, so there's nothing to be done here. They're primarily controls to stop a rogue thread post-mortem, and if they reach this point that goal has been accomplished.
 				// Since every test kills its subtests on teardown, even if this test's parent does something strange, further out of sync access at that level will just log another failure, which is probably fine?
 			}
+			// Test allocation failures orignate from this frame, so they have already been handled. This simply differentiates them from user bad_alloc
+			catch(const TestAllocationFailure &)
+			{ }
 			catch(const FrameworkAllocationFailure &)
 			{
-				handleBadAlloc(BadAllocSource::TestExecution, false, false, false);
+				handleBadAlloc(BadAllocSource::TestExecution, false, false);
+			}
+			// These are exceptions originating from user code.
+			catch(const std::bad_alloc &)
+			{
+				handleBadAlloc(BadAllocSource::TestInitialization, true, true);
 			}
 			// Unexpected exceptions will generally indicate errors within the user's test code and must be reported
 			catch(...)
@@ -893,7 +922,7 @@ namespace partest
 					{
 						// This should be impossible to reach now, unless something went wrong during the emitEndTest or maybeRaiseOnAssertion calls.
 						// Regardless, I think this still counts as an allocation failure in finalize, so it needs to be handled the same as elsewhere in this function.
-						frame->handleBadAlloc(BadAllocSource::TestFinalization, false, false, true);
+						frame->handleBadAlloc(BadAllocSource::TestFinalization, false, true);
 					}
 					// Under normal conditions this should propagate, but other possible exceptions result in aborted/failed tests.
 					// Since maybeRaiseOnReturn only forwards AssertionFailure, it would be semantically the same as any other exception caught at this point.
@@ -935,7 +964,6 @@ namespace partest
 						updateFromSubtestState(subtest->state);
 					}
 					// Log still running subtests if the current test is not aborting. No subtests should be in progress under normal circumstances.
-					// TODO: Should the current test be flagged as aborting if a subtest is still running? Probably.
 					else if(!isAborting())
 					{
 						updateResultFromAssertion(false);
@@ -969,7 +997,7 @@ namespace partest
 			catch(std::bad_alloc &)
 			{
 				// Even here, we still need to attempt to allow teardown to run.
-				handleBadAlloc(BadAllocSource::TestFinalization, false, false, true);
+				handleBadAlloc(BadAllocSource::TestFinalization, false, true);
 			}
 
 			try
@@ -979,28 +1007,26 @@ namespace partest
 					m_testTeardown(ctx);
 				}
 			}
+			// Nothing special to do here, but this is necessary to prevent the exception from propagating further.
+			catch(const AssertionFailure &)
+			{ }
 			// Catching this here doesn't mean the test failed, only that something was called out of sequence during teardown.
 			catch(const TestIntegrityFailure &)
+			{ }
+			// These are exceptions bubbled up from the current test frame, so they've already been handled.
+			catch(const TestAllocationFailure &)
 			{ }
 			// Unique error type propagated by TestContext when a failure emerged out-of-sequence with the test frame
 			catch(const FrameworkAllocationFailure &)
 			{
 				// These are exceptions originating from deep in the framework, and from points where the failure can't be recorded in the test state.
 				// This *should* only be possible from a detached thread.
-				handleBadAlloc(BadAllocSource::DesyncedTestState, false, false, false);
+				handleBadAlloc(BadAllocSource::DesyncedTestState, false, false);
 			}
-			catch(std::bad_alloc &)
+			// These are exceptions originating from user code.
+			catch(const std::bad_alloc &)
 			{
-				// Check whether the allocation failure is already marked. If it is, then it was a framework failure,
-				// likely from a log or assertion invoked (probably incorrectly) from the teardown function.
-				// In this case the test has already been aborted and the failure mode set, so we don't need to do anything further.
-
-				// Otherwise, it is a user code error. We'll mark it aborted.
-				// Teardown cannot be completed, but we'll ensure subtests are marked as well, if necessary.
-				if(getFailureMode() != FailureMode::FrameworkOutOfMemory)
-				{
-					handleBadAlloc(BadAllocSource::TestFinalization, true, false, true);
-				}
+				handleBadAlloc(BadAllocSource::TestInitialization, true, true);
 			}
 			catch(...)
 			{
@@ -1119,10 +1145,11 @@ namespace partest
 		* @param message The log message
 		* @return true if the log entry was recorded successfully
 		* @throws TestIntegrityFailure if the test frame has finished running and the log entry cannot be recorded
-		* @throws FrameworkAllocationFailure if memory allocation fails while recording the log entry
+		* @throws TestAllocationFailure if memory allocation fails while recording the log entry
 		*/
 		bool recordLog(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message)
 		{
+			bool testAllocFailed = false;
 			try
 			{
 				LogEntry log = LogEntry(level, type, message);
@@ -1138,8 +1165,13 @@ namespace partest
 			}
 			catch(std::bad_alloc &)
 			{
-				handleBadAlloc(BadAllocSource::LogRecording, false, true, true);
+				handleBadAlloc(BadAllocSource::LogRecording, false, true);
+				testAllocFailed = true;
 			}
+
+			if(testAllocFailed)
+				throw TestAllocationFailure();
+
 			return false;
 		}
 

@@ -70,7 +70,8 @@ namespace partest
 			// If it is, it indicates a serious issue with the test framework itself.
 			assert(test != nullptr && "Test was run with a null TestFrame pointer.");
 
-			TestContext ctx(test, runTest);
+			TestContext runtimeCtx(test, runTest, false);
+			TestContext shutdownCtx(test, runTest, true);
 
 			if(FrameworkContext::hasExceededBadAllocThreshold())
 			{
@@ -80,9 +81,9 @@ namespace partest
 
 			try
 			{
-				if(test->initializeTest(ctx))
+				if(test->initializeTest(runtimeCtx))
 				{
-					test->runTestFunction(ctx);
+					test->runTestFunction(runtimeCtx);
 				}
 			}
 			// If an exception is thrown during initialization or execution, cleanup still needs to happen.
@@ -93,14 +94,14 @@ namespace partest
 			{
 				try
 				{
-					test->finalizeTest(ctx);
+					test->finalizeTest(shutdownCtx);
 				}
 				catch(...)
 				{ }
 				throw;
 			}
 			
-			test->finalizeTest(ctx);
+			test->finalizeTest(shutdownCtx);
 
 			// TODO: Re-evaluate. Is this correct or necessary? I'm not sure it's the right behavior, and it might be confusing.
 			// It's certainly wrong if I ever implement recurrent tests, which might be a reasonable addition.
