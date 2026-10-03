@@ -308,6 +308,25 @@ namespace partest
 			}
 		}
 
+		/**
+		* Attempt to record a log entry. This is to be used in context where raising an exception is unrecoverable, such as in a destructor.
+		* If the log entry cannot be recorded for any reason, this function will return false instead of throwing an exception.
+		*
+		* @notes IMPORTANT: This function swallows framework-level control flow exceptions, such as TestIntegrityFailure and FrameworkAllocationFailure, which means it cannot be relied on to roll up a test thread early.
+		*/
+		bool tryRecordLog(LogLevel level, PARTEST_STRING_PARAM type, PARTEST_STRING_PARAM message) noexcept
+		{
+			try
+			{
+				recordLog(level, type, message);
+				return true;
+			}
+			catch(...)
+			{
+				return false;
+			}
+		}
+
 		void setTestFile(PARTEST_STRING_PARAM fileName)
 		{
 			FrameworkContext::LifetimeGuard guard;
