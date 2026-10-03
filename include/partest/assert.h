@@ -3,6 +3,7 @@
 
 #include <atomic>
 #include <string>
+#include <thread>
 
 #include <partest/common.h>
 #include <partest/exceptions.h>
